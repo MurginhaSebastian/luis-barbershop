@@ -3,7 +3,7 @@ import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import type { Barber, Product, Service } from "@/core/entities/catalog";
 import type { Customer } from "@/core/entities/customer";
 import { TimeSlot } from "@/core/entities/time-slot";
-import { BookingWindowError, NotFoundError, SlotUnavailableError } from "@/core/errors/domain-errors";
+import { BookingWindowError, InvalidAppointmentError, NotFoundError, SlotUnavailableError } from "@/core/errors/domain-errors";
 import type { BusinessHours } from "@/core/scheduling/availability";
 import { CreateAppointmentUseCase } from "./create-appointment";
 import { GetAvailableSlotsUseCase } from "./get-available-slots";
@@ -141,6 +141,11 @@ describe("CreateAppointmentUseCase", () => {
     const second = await book({ start: utc("16:00"), customer: { name: "Cliente", phone: "+51 900-000-001" } });
     expect(second.customerId).toBe(first.customerId);
     expect(repos.data.customers).toHaveLength(1);
+  });
+
+  test("sin servicios, sea el día que sea", async () => {
+    await expect(book({ serviceIds: [] })).rejects.toThrow(InvalidAppointmentError);
+    await expect(getSlots.execute({ barberId: "b1", serviceIds: [], date: "2026-11-03" })).rejects.toThrow(InvalidAppointmentError);
   });
 
   test("producto inexistente", async () => {

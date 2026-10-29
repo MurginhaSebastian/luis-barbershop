@@ -1,6 +1,6 @@
 import type { Service } from "@/core/entities/catalog";
 import type { TimeSlot } from "@/core/entities/time-slot";
-import { NotFoundError } from "@/core/errors/domain-errors";
+import { InvalidAppointmentError, NotFoundError } from "@/core/errors/domain-errors";
 import { availableSlots, shopDayRange, shopWeekday } from "@/core/scheduling/availability";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
@@ -18,6 +18,7 @@ export interface AvailabilityDeps {
 /** Servicios pedidos (sin repetir), en el orden pedido; todos deben existir y estar activos. */
 export async function loadBookableServices(repo: IServiceRepository, ids: readonly string[]): Promise<Service[]> {
   const unique = [...new Set(ids)];
+  if (unique.length === 0) throw new InvalidAppointmentError("Elige al menos un servicio.");
   const found = await repo.findByIds(unique);
   return unique.map((id) => {
     const service = found.find((s) => s.id === id);
