@@ -14,9 +14,12 @@ npm run dev          # servidor de desarrollo
 npm run build        # build de producción (también corre el chequeo de tipos de Next)
 npm run lint         # ESLint (flat config, eslint.config.mjs)
 npx tsc --noEmit     # solo tipos
+npm test                                    # Vitest, todos los tests
+npx vitest run src/core/core.test.ts -t "availableSlots"   # un archivo / un test
 ```
 
-Todavía no hay runner de tests.
+Los tests viven junto al código (`*.test.ts`). Los de casos de uso usan repositorios falsos en
+memoria definidos en el propio test y un reloj fijo (`now: () => Date` se inyecta en los deps).
 
 ## Arquitectura: Clean Architecture
 
@@ -34,6 +37,23 @@ Las dependencias solo apuntan hacia dentro: `app → presentation → applicatio
 - `src/app/`: rutas de Next. Route Handlers y Server Actions son solo adaptadores de entrada:
   validan con Zod, construyen el caso de uso con sus repositorios concretos y lo llaman. Sin
   lógica de negocio aquí.
+
+`eslint.config.mjs` hace cumplir la dirección de dependencias con `no-restricted-imports` por capa:
+si `npm run lint` se queja de un import entre capas, se corrige el diseño, no la regla.
+
+### Reservas
+- Toda la lógica de agenda es pura y vive en `src/core/scheduling/`: `availableSlots` genera los
+  inicios (cada `SLOT_STEP_MINUTES` desde la apertura de cada tramo) y descarta los que no caben,
+  pisan algo ocupado o caen fuera de la ventana; las constantes del negocio están en
+  `booking-policy.ts`. Las fechas de día son `"YYYY-MM-DD"` locales y los horarios, minutos desde
+  medianoche local; `shopDayRange`/`shopDateOf` convierten a instantes UTC.
+- `TimeSlot` es semiabierto `[start, end)`: citas consecutivas no se solapan.
+- Qué estados ocupan agenda lo decide `Appointment.blocksSchedule()`, no los repositorios
+  (`findByBarberInRange` devuelve citas en cualquier estado).
+- `CreateAppointmentUseCase` acepta una hora solo si es uno de los huecos de `findFreeSlots`
+  (`application/use-cases/booking/availability.ts`), compartido con `GetAvailableSlotsUseCase`.
+  Esa comprobación no es atómica: la persistencia debe impedir solapes (restricción de exclusión
+  por barbero en Postgres) y `IAppointmentRepository.save` traducir el conflicto a `SlotUnavailableError`.
 
 ## shadcn/ui
 
