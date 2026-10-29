@@ -1,0 +1,19 @@
+# Postgres solo para desarrollo local. Puerto 5433 para no chocar con otros Postgres de la máquina.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: barbershop
+      POSTGRES_PASSWORD: barbershop
+      POSTGRES_DB: barbershop
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U barbershop"]
+      interval: 2s
+      retries: 15
+
+volumes:
+  pgdata:
