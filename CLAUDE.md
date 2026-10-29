@@ -18,7 +18,16 @@ npm test                                    # Vitest, todos los tests
 npx vitest run src/core/core.test.ts -t "availableSlots"   # un archivo / un test
 ```
 
-Los tests viven junto al código (`*.test.ts`). Los de casos de uso usan repositorios falsos en
+Base de datos (Postgres 17 en Docker, puerto 5433; copiar `.env.example` a `.env`):
+
+```bash
+npm run db:up        # levanta Postgres
+npm run db:migrate   # aplica migraciones
+npm run db:generate  # genera una migración tras cambiar src/infrastructure/db/schema.ts
+```
+
+Los tests viven junto al código (`*.test.ts`). `repositories.test.ts` usa una base aparte,
+`barbershop_test` (la crea, la migra y la vacía en cada test), y se salta si no hay `DATABASE_URL`. Los de casos de uso usan repositorios falsos en
 memoria definidos en el propio test y un reloj fijo (`now: () => Date` se inyecta en los deps).
 
 ## Arquitectura: Clean Architecture
@@ -52,8 +61,17 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   (`findByBarberInRange` devuelve citas en cualquier estado).
 - `CreateAppointmentUseCase` acepta una hora solo si es uno de los huecos de `findFreeSlots`
   (`application/use-cases/booking/availability.ts`), compartido con `GetAvailableSlotsUseCase`.
-  Esa comprobación no es atómica: la persistencia debe impedir solapes (restricción de exclusión
-  por barbero en Postgres) y `IAppointmentRepository.save` traducir el conflicto a `SlotUnavailableError`.
+  Esa comprobación no es atómica: la garantía real es la restricción `appointments_no_overlap`
+  (`EXCLUDE USING gist`, migración `0001`), y `DrizzleAppointmentRepository.save` traduce su
+  violación (`23P01`) a `SlotUnavailableError`. Sus estados deben coincidir con `BLOCKING_STATUSES`.
+
+### Persistencia (Drizzle)
+- Esquema en `src/infrastructure/db/schema.ts`; migraciones SQL versionadas en `db/migrations/`.
+  Lo que Drizzle no modela (EXCLUDE, extensiones) va en migraciones `--custom` escritas a mano.
+- `getDb()` (`db/client.ts`) crea el pool al primer uso para que `next build` no necesite base.
+- Las líneas de servicios y productos de una cita son fotos (nombre, duración, precio) y se
+  reemplazan enteras en cada `save`, dentro de una transacción.
+- Supabase se configurará más adelante: solo cambiará `DATABASE_URL`.
 
 ## shadcn/ui
 

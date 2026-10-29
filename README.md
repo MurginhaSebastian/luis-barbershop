@@ -7,7 +7,11 @@ Architecture (`src/core`, `src/application`, `src/infrastructure`, `src/presenta
 
 ```bash
 npm install
-npm run dev     # http://localhost:3000
+cp .env.example .env
+npm run db:up       # Postgres en Docker (puerto 5433)
+npm run db:migrate
+npm run dev         # http://localhost:3000
+npm test
 npm run lint
 npm run build
 ```
