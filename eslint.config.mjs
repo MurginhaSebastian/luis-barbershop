@@ -11,7 +11,7 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-imports": ["error", {
         patterns: [{
-          group: ["@/application/**", "@/infrastructure/**", "@/presentation/**", "@/app/**",
+          group: ["**/application/**", "**/infrastructure/**", "**/presentation/**", "**/app/**",
             "next", "next/*", "react", "react/*", "react-dom", "react-dom/*", "zod", "zod/*"],
           message: "core/ es TypeScript puro: no depende de otras capas ni de librerías.",
         }],
@@ -23,7 +23,7 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-imports": ["error", {
         patterns: [{
-          group: ["@/infrastructure/**", "@/presentation/**", "@/app/**",
+          group: ["**/infrastructure/**", "**/presentation/**", "**/app/**",
             "next", "next/*", "react", "react/*", "react-dom", "react-dom/*"],
           message: "application/ solo depende de core/ y de sus propios puertos.",
         }],
