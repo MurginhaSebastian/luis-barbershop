@@ -10,6 +10,7 @@ npm install
 cp .env.example .env
 npm run db:up       # Postgres en Docker (puerto 5433)
 npm run db:migrate
+npm run db:seed     # datos de ejemplo
 npm run dev         # http://localhost:3000
 npm test
 npm run lint

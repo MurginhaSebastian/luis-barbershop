@@ -24,6 +24,7 @@ Base de datos (Postgres 17 en Docker, puerto 5433; copiar `.env.example` a `.env
 npm run db:up        # levanta Postgres
 npm run db:migrate   # aplica migraciones
 npm run db:generate  # genera una migración tras cambiar src/infrastructure/db/schema.ts
+npm run db:seed      # datos de ejemplo ficticios (idempotente; src/infrastructure/db/seed.sql)
 ```
 
 Los tests viven junto al código (`*.test.ts`). `repositories.test.ts` usa una base aparte,
@@ -64,6 +65,21 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   Esa comprobación no es atómica: la garantía real es la restricción `appointments_no_overlap`
   (`EXCLUDE USING gist`, migración `0001`), y `DrizzleAppointmentRepository.save` traduce su
   violación (`23P01`) a `SlotUnavailableError`. Sus estados deben coincidir con `BLOCKING_STATUSES`.
+
+### Web (Next 16 con `cacheComponents: true`)
+- `src/infrastructure/container.ts` (`getUseCases()`) es la raíz de composición: el único sitio
+  donde los casos de uso reciben repositorios concretos. `app/` lo llama; `presentation/` no
+  (recibe datos y la Server Action por props; ESLint lo impide).
+- Toda lectura de base o de `searchParams` va en un componente dentro de `<Suspense>`; si no
+  depende de la petición, empieza con `await connection()`. Así el build no toca la base y las
+  páginas quedan como Partial Prerender (armazón estático + datos en streaming).
+- Los horarios se leen en el servidor desde la URL (`/reservar?servicios=…&barbero=…&dia=…`,
+  formulario GET con `next/form`). La única Server Action es `createAppointmentAction`
+  (`app/reservar/actions.ts`): valida con Zod (`booking-schema.ts`, frontera de confianza) y
+  traduce `DomainError` a mensajes; cualquier otro error se registra y se responde genérico.
+- Tema: tokens de shadcn redefinidos en el bloque `.dark` de `globals.css` (`<html class="dark">`);
+  tipografías Bodoni Moda (`font-heading`) y Manrope. Fechas y horas siempre con
+  `presentation/lib/format.ts` (zona America/Lima).
 
 ### Persistencia (Drizzle)
 - Esquema en `src/infrastructure/db/schema.ts`; migraciones SQL versionadas en `db/migrations/`.
