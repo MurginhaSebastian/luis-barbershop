@@ -94,8 +94,8 @@ describe("availableSlots", () => {
   });
 
   test("respeta la antelación mínima y el máximo de días", () => {
-    const soon = at("2026-11-02T15:10:00Z"); // 10:10 en Lima: 10:00 ya pasó y 10:30/11:00 no llegan a 1 h
-    expect(starts(availableSlots({ date: "2026-11-02", hours: [hours[0]], busy: [], durationMinutes: 30, now: soon }))[0]).toBe("16:30");
+    const soon = at("2026-11-02T15:10:00Z"); // 10:10 en Lima: hasta las 12:00 no hay 2 h de antelación
+    expect(starts(availableSlots({ date: "2026-11-02", hours: [hours[0]], busy: [], durationMinutes: 30, now: soon }))[0]).toBe("17:30");
     expect(availableSlots({ date: "2026-12-03", hours, busy: [], durationMinutes: 30, now })).toEqual([]);
   });
 });
