@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:up": "docker compose up -d --wait",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "drizzle-kit migrate",
+    "db:seed": "docker compose exec -T db psql -U barbershop -d barbershop -v ON_ERROR_STOP=1 -f - < src/infrastructure/db/seed.sql"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
