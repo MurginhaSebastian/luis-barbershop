@@ -30,6 +30,17 @@ const eslintConfig = defineConfig([
       }],
     },
   },
+  {
+    files: ["src/presentation/**"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          group: ["**/infrastructure/**", "**/app/**"],
+          message: "presentation/ recibe datos y acciones por props; no monta casos de uso.",
+        }],
+      }],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
