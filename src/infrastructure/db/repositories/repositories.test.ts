@@ -104,6 +104,11 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     await expect(deps.appointments.save(rival)).rejects.toThrow(SlotUnavailableError);
   });
 
+  test("dos reservas simultáneas de un cliente nuevo comparten cliente", async () => {
+    const [a, b] = await Promise.all([book(utc("15:00"), "900000003"), book(utc("16:00"), "+51 900 000 003")]);
+    expect(a.customerId).toBe(b.customerId);
+  });
+
   test("cancelar libera el hueco también en la base", async () => {
     const first = await book(utc("15:00"));
     await deps.appointments.save(Appointment.restore({ ...first, status: AppointmentStatus.CANCELLED }));

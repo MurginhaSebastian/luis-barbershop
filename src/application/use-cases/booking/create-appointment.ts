@@ -70,8 +70,6 @@ export class CreateAppointmentUseCase {
     const phone = normalizePhone(input.phone);
     const existing = await this.deps.customers.findByPhone(phone);
     if (existing) return existing;
-    const customer = { id: crypto.randomUUID(), name: input.name.trim(), phone };
-    await this.deps.customers.save(customer);
-    return customer;
+    return this.deps.customers.save({ id: crypto.randomUUID(), name: input.name.trim(), phone });
   }
 }

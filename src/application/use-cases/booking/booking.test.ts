@@ -46,7 +46,12 @@ function makeRepos() {
     },
     customers: {
       findByPhone: async (phone: string) => customers.find((c) => c.phone === phone) ?? null,
-      save: async (c: Customer) => void customers.push(c),
+      save: async (c: Customer) => {
+        const existing = customers.find((x) => x.phone === c.phone);
+        if (existing) return existing;
+        customers.push(c);
+        return c;
+      },
     },
     schedule: {
       findBusinessHours: async (weekday: number) => (weekday === 1 ? hours : []),

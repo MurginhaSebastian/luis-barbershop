@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
 import type { Customer } from "@/core/entities/customer";
 import type { Db } from "../client";
@@ -12,10 +12,13 @@ export class DrizzleCustomerRepository implements ICustomerRepository {
     return row ?? null;
   }
 
-  async save(customer: Customer): Promise<void> {
-    await this.db
+  async save(customer: Customer): Promise<Customer> {
+    // Update sin cambios para que RETURNING devuelva la fila existente si el teléfono ya estaba.
+    const [row] = await this.db
       .insert(customers)
       .values(customer)
-      .onConflictDoUpdate({ target: customers.id, set: { name: customer.name, phone: customer.phone } });
+      .onConflictDoUpdate({ target: customers.phone, set: { phone: sql`excluded.phone` } })
+      .returning();
+    return row;
   }
 }
