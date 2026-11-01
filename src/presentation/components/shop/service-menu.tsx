@@ -1,12 +1,12 @@
 import type { Service } from "@/core/entities/catalog";
 import { formatPrice } from "@/presentation/lib/format";
 
-/** Lista de precios como la pizarra de una barbería: nombre, puntos guía y precio. */
+/** Pizarra de precios: nombre, puntos guía y precio; el más caro (el servicio principal) primero. */
 export function ServiceMenu({ services }: { services: Service[] }) {
   if (services.length === 0) return <p className="text-muted-foreground">Pronto publicaremos nuestros servicios.</p>;
   return (
     <ul className="space-y-5">
-      {services.map((s) => (
+      {services.toSorted((a, b) => b.priceCents - a.priceCents).map((s) => (
         <li key={s.id}>
           <div className="flex items-baseline gap-3">
             <span className="font-heading text-xl">{s.name}</span>
