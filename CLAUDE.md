@@ -81,6 +81,19 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   tipografías Bodoni Moda (`font-heading`) y Manrope. Fechas y horas siempre con
   `presentation/lib/format.ts` (zona America/Lima).
 
+### Landing (portada)
+- Secciones en `src/presentation/components/landing/` (hero, mosaico de servicios, nosotros,
+  por qué venir, cómo reservar, productos, testimonios, horario/ubicación, cierre, pie y botón de
+  WhatsApp). Los mosaicos enlazan a `/reservar?servicios=<id>`, que solo marca el servicio.
+- Contacto del negocio (WhatsApp, dirección, Maps, redes, Libro de Reclamaciones) en variables
+  `SHOP_*` de `.env` (ver `.env.example`), leídas y validadas por
+  `infrastructure/config/shop-contact.ts`: lo que falte o sea inválido no se muestra. Nunca en el
+  código, el repo es público.
+- Fotos provisionales de Unsplash en `public/images/` (créditos en `CREDITS.md`); la foto de cada
+  servicio se elige por su nombre en `service-gallery.tsx` hasta que haya fotos reales.
+- Testimonios en `presentation/content/testimonials.ts`: solo reales y con permiso; vacío = sección
+  oculta.
+
 ### Persistencia (Drizzle)
 - Esquema en `src/infrastructure/db/schema.ts`; migraciones SQL versionadas en `db/migrations/`.
   Lo que Drizzle no modela (EXCLUDE, extensiones) va en migraciones `--custom` escritas a mano.
