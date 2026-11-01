@@ -13,8 +13,7 @@ import { whatsappLink } from "@/presentation/lib/whatsapp";
 export default function Home() {
   const contact = getShopContact();
   return (
-    // pb extra en móvil para que el botón fijo no tape el final.
-    <main className="pb-24 md:pb-0">
+    <main>
       <Hero whatsappHref={contact.whatsapp && whatsappLink(contact.whatsapp)} />
 
       <Suspense fallback={<p className={`${container} min-h-[40rem] py-20 text-muted-foreground`}>Cargando servicios…</p>}>

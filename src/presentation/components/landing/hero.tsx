@@ -18,7 +18,7 @@ export function Hero({ whatsappHref }: { whatsappHref?: string }) {
       />
       {/* Degradado caoba: asegura contraste del texto sobre cualquier foto. */}
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/85 to-background/30" />
-      <div aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-background" />
+      <div aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-background" />
 
       <div className={`${container} grid gap-8 py-14 md:min-h-[78vh] md:grid-cols-[3rem_1fr] md:gap-12 md:py-20`}>
         <BarberPole className="h-8 md:h-auto" />
