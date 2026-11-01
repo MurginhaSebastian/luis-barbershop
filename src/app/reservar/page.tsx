@@ -30,7 +30,9 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
   const { notBefore, notAfter } = bookingWindow(new Date());
   const minDate = shopDateOf(notBefore);
   const query = slotQuerySchema.safeParse(params);
-  const searched = Object.keys(params).length > 0;
+  // Desde la portada se llega con solo ?servicios=…: se marcan, pero aún no se buscan horarios.
+  const preselected = slotQuerySchema.shape.servicios.safeParse(params.servicios);
+  const searched = "barbero" in params || "dia" in params;
 
   let slots: string[] = [];
   let problem = searched && !query.success ? "Elige al menos un servicio, un barbero y un día." : "";
@@ -57,7 +59,7 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
         services={catalog.services}
         barbers={catalog.barbers}
         selected={{
-          serviceIds: query.success ? query.data.servicios : [],
+          serviceIds: query.success ? query.data.servicios : preselected.success ? preselected.data : [],
           barberId: query.success ? query.data.barbero : undefined,
           date: query.success ? query.data.dia : minDate,
         }}
