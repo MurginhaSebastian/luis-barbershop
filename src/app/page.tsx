@@ -55,7 +55,7 @@ export default function Home() {
         </ol>
       </section>
 
-      <Suspense fallback={<p className="border-t border-border py-16 text-muted-foreground">Cargando tarifa y horario…</p>}>
+      <Suspense fallback={<p className="min-h-[26rem] border-t border-border py-16 text-muted-foreground">Cargando tarifa y horario…</p>}>
         <ShopInfo />
       </Suspense>
 

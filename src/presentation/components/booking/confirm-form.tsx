@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import type { Barber, Product, Service } from "@/core/entities/catalog";
 import { formatLongDate, formatPrice, formatTime } from "@/presentation/lib/format";
 import type { BookingAction, BookingState } from "./booking-state";
-import { choiceClass, legendClass } from "./styles";
+import { choiceClass, legendClass, primaryButtonClass } from "./styles";
 
 const fieldClass =
   "h-11 w-full rounded-xl border border-input bg-card px-4 focus-visible:outline-2 focus-visible:outline-ring aria-invalid:border-destructive";
@@ -41,7 +41,7 @@ export function ConfirmForm(props: {
         <p className="mx-auto mt-6 max-w-sm">
           Tu cita queda pendiente hasta que te escribamos por WhatsApp para confirmarla. Pagas en el local.
         </p>
-        <Link href="/" className="mt-8 inline-block text-primary underline underline-offset-4">
+        <Link href="/" className="mt-6 inline-flex min-h-11 items-center text-primary underline underline-offset-4">
           Volver al inicio
         </Link>
       </section>
@@ -135,7 +135,7 @@ export function ConfirmForm(props: {
                   name={`qty:${p.id}`}
                   value={qty[p.id] ?? 0}
                   onChange={(e) => setQty({ ...qty, [p.id]: Number(e.target.value) })}
-                  className="h-9 rounded-lg border border-input bg-card px-2"
+                  className="h-11 min-w-14 cursor-pointer rounded-lg border border-input bg-card px-2 focus-visible:outline-2 focus-visible:outline-ring"
                 >
                   {[0, 1, 2, 3].map((n) => (
                     <option key={n} value={n}>
@@ -156,7 +156,7 @@ export function ConfirmForm(props: {
         <button
           type="submit"
           disabled={pending}
-          className="h-12 rounded-full bg-primary px-8 font-semibold text-primary-foreground transition-colors hover:bg-accent hover:text-accent-foreground disabled:opacity-60"
+          className={primaryButtonClass}
         >
           {pending ? "Reservando…" : "Reservar cita"}
         </button>

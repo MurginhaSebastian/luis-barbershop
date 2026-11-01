@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DomainError } from "@/core/errors/domain-errors";
-import { bookingWindow, shopDateOf } from "@/core/scheduling/availability";
+import { bookingWindow, shopDateOf, shopWeekday } from "@/core/scheduling/availability";
 import { getUseCases } from "@/infrastructure/container";
 import { ConfirmForm } from "@/presentation/components/booking/confirm-form";
+import { ScrollIntoView } from "@/presentation/components/booking/scroll-into-view";
 import { SlotSearchForm } from "@/presentation/components/booking/slot-search-form";
 import { createAppointmentAction } from "./actions";
 import { slotQuerySchema } from "./booking-schema";
@@ -14,7 +15,7 @@ export default function ReservarPage({ searchParams }: PageProps<"/reservar">) {
   return (
     <main className="mx-auto max-w-2xl px-4 pb-24 sm:px-6">
       <h1 className="mt-6 mb-10 font-heading text-5xl">Reservar cita</h1>
-      <Suspense fallback={<p className="text-muted-foreground">Cargando servicios…</p>}>
+      <Suspense fallback={<p className="min-h-[40rem] text-muted-foreground">Cargando servicios…</p>}>
         <Booking searchParams={searchParams} />
       </Suspense>
     </main>
@@ -64,25 +65,35 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
         maxDate={shopDateOf(notAfter)}
       />
 
-      <div aria-live="polite" className="border-t border-border pt-12">
-        {problem && <p className="text-destructive">{problem}</p>}
-        {!problem && query.success && barber && slots.length === 0 && (
-          <p>
-            No quedan horarios libres ese día con {barber.name}. Prueba con otro día u otro barbero.
-          </p>
-        )}
-        {!problem && barber && slots.length > 0 && (
-          // key: al cambiar la búsqueda, el formulario empieza de cero.
-          <ConfirmForm
-            key={`${query.data?.barbero}-${query.data?.dia}-${services.map((s) => s.id).join()}`}
-            action={createAppointmentAction}
-            barber={barber}
-            services={services}
-            products={catalog.products}
-            slots={slots}
-          />
-        )}
-      </div>
+      {searched && (
+        // key: cada búsqueda nueva vuelve a llevar la vista a los resultados.
+        <ScrollIntoView
+          key={new URLSearchParams(params as Record<string, string>).toString()}
+          className="scroll-mt-4 border-t border-border pt-12"
+        >
+          <div aria-live="polite">
+            {problem && <p className="text-destructive">{problem}</p>}
+            {!problem && query.success && barber && slots.length === 0 && (
+              <p>
+                {catalog.weeklyHours[shopWeekday(query.data.dia)]?.length
+                  ? `No quedan horarios libres ese día con ${barber.name}. Prueba con otro día u otro barbero.`
+                  : "Ese día la barbería está cerrada. Elige otro día."}
+              </p>
+            )}
+            {!problem && barber && slots.length > 0 && (
+              // key: al cambiar la búsqueda, el formulario empieza de cero.
+              <ConfirmForm
+                key={`${query.data?.barbero}-${query.data?.dia}-${services.map((s) => s.id).join()}`}
+                action={createAppointmentAction}
+                barber={barber}
+                services={services}
+                products={catalog.products}
+                slots={slots}
+              />
+            )}
+          </div>
+        </ScrollIntoView>
+      )}
     </div>
   );
 }

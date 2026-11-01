@@ -1,6 +1,7 @@
 import Form from "next/form";
 import type { Barber, Service } from "@/core/entities/catalog";
 import { formatPrice } from "@/presentation/lib/format";
+import { SearchButton } from "./search-button";
 import { choiceClass, legendClass } from "./styles";
 
 /** Pasos 1–3: formulario GET; al enviarlo, la página se recarga con los horarios libres. */
@@ -70,12 +71,7 @@ export function SlotSearchForm(props: {
         <p className="mt-2 text-sm text-muted-foreground">Puedes reservar con hasta dos semanas de anticipación.</p>
       </div>
 
-      <button
-        type="submit"
-        className="h-11 rounded-full border border-primary px-6 text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
-      >
-        Ver horarios
-      </button>
+      <SearchButton />
     </Form>
   );
 }
