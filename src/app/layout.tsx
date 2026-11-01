@@ -17,12 +17,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="es" className={cn("dark font-sans", sans.variable, display.variable)}>
       <body className="min-h-dvh antialiased">
         <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5 sm:px-6">
-          <Link href="/" className="font-heading text-xl tracking-wide text-primary">
+          <Link href="/" className="inline-flex min-h-11 items-center font-heading text-xl tracking-wide text-primary">
             Luis Barbershop
           </Link>
           <Link
             href="/reservar"
-            className="rounded-full border border-primary/60 px-4 py-1.5 text-sm text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+            className="inline-flex min-h-11 items-center rounded-full border border-primary/60 px-5 text-sm text-primary transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Reservar
           </Link>
