@@ -12,7 +12,6 @@ npm run db:up       # Postgres en Docker (puerto 5433)
 npm run db:migrate
 npm run db:seed     # datos de ejemplo
 npm run dev         # http://localhost:3000
-npm test
-npm run lint
-npm run build
+npm run check       # lint, tipos, tests y build
+npm run test:e2e    # pruebas de navegador (Edge + base aparte)
 ```

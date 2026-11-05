@@ -14,9 +14,15 @@ npm run dev          # servidor de desarrollo
 npm run build        # build de producción (también corre el chequeo de tipos de Next)
 npm run lint         # ESLint (flat config, eslint.config.mjs)
 npx tsc --noEmit     # solo tipos
+npm run check        # lint + tipos + tests + build: obligatorio antes de cada commit
 npm test                                    # Vitest, todos los tests
 npx vitest run src/core/core.test.ts -t "availableSlots"   # un archivo / un test
+npm run test:e2e     # Playwright + axe contra el build real (necesita Docker encendido)
+npx playwright test e2e/booking.spec.ts -g "sin preferencia"   # una prueba de navegador
 ```
+
+Pruebas de navegador en `e2e/`: usan Edge (`channel: "msedge"`, sin descargar navegadores), `next start`
+en el puerto 3100 y una base aparte, `barbershop_e2e`, que se recrea en cada ejecución.
 
 Base de datos (Postgres 17 en Docker, puerto 5433; copiar `.env.example` a `.env`):
 
@@ -57,6 +63,11 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   pisan algo ocupado o caen fuera de la ventana; las constantes del negocio están en
   `booking-policy.ts`. Las fechas de día son `"YYYY-MM-DD"` locales y los horarios, minutos desde
   medianoche local; `shopDayRange`/`shopDateOf` convierten a instantes UTC.
+- "Sin preferencia" es `barberId: null` en los casos de uso: `findFreeSlotsByBarber` da los huecos de
+  cada barbero activo; la reserva asigna al que tiene más huecos ese día y, si otra reserva gana el
+  hueco al guardar, prueba con el siguiente.
+- Máximo `MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER` citas futuras por celular. La cita guarda
+  `customerName` tal como se escribió, porque un celular puede usarlo más de una persona.
 - `TimeSlot` es semiabierto `[start, end)`: citas consecutivas no se solapan.
 - Qué estados ocupan agenda lo decide `Appointment.blocksSchedule()`, no los repositorios
   (`findByBarberInRange` devuelve citas en cualquier estado).
@@ -73,10 +84,19 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Toda lectura de base o de `searchParams` va en un componente dentro de `<Suspense>`; si no
   depende de la petición, empieza con `await connection()`. Así el build no toca la base y las
   páginas quedan como Partial Prerender (armazón estático + datos en streaming).
-- Los horarios se leen en el servidor desde la URL (`/reservar?servicios=…&barbero=…&dia=…`,
-  formulario GET con `next/form`). La única Server Action es `createAppointmentAction`
-  (`app/reservar/actions.ts`): valida con Zod (`booking-schema.ts`, frontera de confianza) y
-  traduce `DomainError` a mensajes; cualquier otro error se registra y se responde genérico.
+- La reserva es un flujo de 4 pasos cuyo estado vive en la URL
+  (`/reservar?paso=N&servicios=…&barbero=<uuid|cualquiera>&dia=…&hora=…`): el botón Atrás funciona y
+  recargar no pierde nada. `parseBookingQuery` (`booking-schema.ts`) lee la URL campo a campo,
+  `resolveStep` y `bookingHref` (`presentation/lib/booking-flow.ts`) deciden el paso y arman los enlaces;
+  un paso sin sus datos cae en el primero incompleto. Cada paso es un componente en
+  `presentation/components/booking/` sobre `StepLayout`.
+- `StepLayout` mueve el foco al título al montarse. Los pasos que son componentes de servidor necesitan
+  `key` propia: sin ella React reutiliza la plantilla y el foco no se mueve.
+- La única Server Action es `createAppointmentAction` (`app/reservar/actions.ts`): valida con Zod
+  (`booking-schema.ts`, frontera de confianza) y traduce `DomainError` a mensajes; cualquier otro error
+  se registra y se responde genérico. Los mensajes de `DomainError` los lee el cliente: sin ids internos.
+- Cabeceras de seguridad en `next.config.ts`, solo en producción. `script-src` lleva `'unsafe-inline'`
+  porque las páginas prerenderizadas no admiten nonce.
 - Tema: tokens de shadcn redefinidos en el bloque `.dark` de `globals.css` (`<html class="dark">`);
   tipografías Bodoni Moda (`font-heading`) y Manrope. Fechas y horas siempre con
   `presentation/lib/format.ts` (zona America/Lima).
@@ -88,7 +108,10 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Contacto del negocio (WhatsApp, dirección, Maps, redes, Libro de Reclamaciones) en variables
   `SHOP_*` de `.env` (ver `.env.example`), leídas y validadas por
   `infrastructure/config/shop-contact.ts`: lo que falte o sea inválido no se muestra. Nunca en el
-  código, el repo es público.
+  código, el repo es público. Parte de la página se genera al compilar: tras cambiarlos hay que volver
+  a hacer `npm run build`, o la web mezcla valores viejos y nuevos.
+- Las secciones llegan en streaming, después del salto del navegador a un `#ancla`: `ScrollToHash` lo
+  repite al final de `CatalogSections`.
 - Fotos provisionales de Unsplash en `public/images/` (créditos en `CREDITS.md`); la foto de cada
   servicio se elige por su nombre en `service-gallery.tsx` hasta que haya fotos reales.
 - Testimonios en `presentation/content/testimonials.ts`: solo reales y con permiso; vacío = sección
@@ -125,4 +148,5 @@ días configurables en el dominio.
   direcciones, clientes) en código, seeds ni tests.
 - Claude hace los commits: uno por paso, seguido de `git push`, avisando antes en una línea de
   qué incluye. Conventional Commits en español (`feat:`, `chore:`, `refactor:`), sin línea
-  `Co-Authored-By`, y con `npm run lint`, `npx tsc --noEmit` y `npm run build` en verde antes.
+  `Co-Authored-By`, y con `npm run check` en verde antes. Docker encendido: un test de integración
+  saltado no cuenta como aprobado.
