@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { e2eDatabaseUrl } from "./e2e/database";
+import { e2eDatabaseUrl, e2ePanelEnv } from "./e2e/database";
 
 const PORT = 3100;
 
@@ -28,6 +28,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}/icon.svg`,
     timeout: 180_000,
     reuseExistingServer: false,
-    env: { DATABASE_URL: e2eDatabaseUrl() },
+    env: { DATABASE_URL: e2eDatabaseUrl(), ...e2ePanelEnv() },
   },
 });

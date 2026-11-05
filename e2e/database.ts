@@ -1,6 +1,18 @@
+import { scryptSync } from "node:crypto";
 import { Client } from "pg";
 
 const E2E_DB = "barbershop_e2e";
+
+// Solo para las pruebas: la base y el servidor de pruebas son locales y efímeros.
+export const PANEL_PASSWORD = "clave-solo-para-pruebas";
+
+export function e2ePanelEnv() {
+  const salt = "e2e";
+  return {
+    PANEL_PASSWORD_HASH: `${salt}:${scryptSync(PANEL_PASSWORD, salt, 64).toString("hex")}`,
+    PANEL_SESSION_SECRET: "secreto-solo-para-pruebas-e2e-0123456789",
+  };
+}
 
 function baseUrl(): string {
   try {
