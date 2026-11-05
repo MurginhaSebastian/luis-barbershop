@@ -62,6 +62,14 @@ test.describe("portada", () => {
   });
 });
 
+test("una dirección que no existe muestra la página 404 de la marca", async ({ page }) => {
+  const response = await page.goto("/no-existe");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Esta página no existe" })).toBeVisible();
+  await page.getByRole("main").getByRole("link", { name: "Reservar cita" }).click();
+  await expect(page.getByRole("heading", { name: /Qué servicio/ })).toBeVisible();
+});
+
 test.describe("adaptable", () => {
   for (const width of [375, 768, 1024, 1440]) {
     test(`sin scroll horizontal a ${width} px`, async ({ page }) => {
