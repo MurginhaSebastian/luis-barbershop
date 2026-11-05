@@ -4,10 +4,11 @@ import { BookingWindowError, NotFoundError, SlotUnavailableError } from "@/core/
 import { bookingWindow, shopDateOf } from "@/core/scheduling/availability";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
 import type { IProductRepository } from "@/application/ports/repositories/product-repository";
-import { type AvailabilityDeps, findFreeSlots, loadBookableServices } from "./availability";
+import { type AvailabilityDeps, findFreeSlotsByBarber, loadBookableServices } from "./availability";
 
 export interface CreateAppointmentInput {
-  barberId: string;
+  /** null = sin preferencia: se asigna el barbero libre con menos carga ese día. */
+  barberId: string | null;
   serviceIds: readonly string[];
   products?: readonly { productId: string; quantity: number }[];
   customer: { name: string; phone: string };
@@ -31,29 +32,44 @@ export class CreateAppointmentUseCase {
     }
 
     // Exigir que el inicio sea uno de los huecos libres cubre a la vez horario, alineación y solapes.
-    const free = await findFreeSlots(this.deps, input.barberId, shopDateOf(input.start), totalDuration(services));
-    if (!free.some((slot) => slot.start.getTime() === input.start.getTime())) {
-      throw new SlotUnavailableError();
-    }
+    const byBarber = await findFreeSlotsByBarber(
+      this.deps,
+      input.barberId,
+      shopDateOf(input.start),
+      totalDuration(services),
+    );
+    const candidates = byBarber
+      .filter((b) => b.slots.some((slot) => slot.start.getTime() === input.start.getTime()))
+      .sort((a, b) => b.slots.length - a.slots.length);
+    if (candidates.length === 0) throw new SlotUnavailableError();
 
     const products = await this.loadProductLines(input.products ?? []);
     const customer = await this.findOrCreateCustomer(input.customer);
+    const lines = services.map((s) => ({
+      serviceId: s.id,
+      name: s.name,
+      durationMinutes: s.durationMinutes,
+      priceCents: s.priceCents,
+    }));
 
-    const appointment = Appointment.book({
-      id: crypto.randomUUID(),
-      barberId: input.barberId,
-      customerId: customer.id,
-      start: input.start,
-      services: services.map((s) => ({
-        serviceId: s.id,
-        name: s.name,
-        durationMinutes: s.durationMinutes,
-        priceCents: s.priceCents,
-      })),
-      products,
-    });
-    await this.deps.appointments.save(appointment);
-    return appointment;
+    for (const { barberId } of candidates) {
+      const appointment = Appointment.book({
+        id: crypto.randomUUID(),
+        barberId,
+        customerId: customer.id,
+        start: input.start,
+        services: lines,
+        products,
+      });
+      try {
+        await this.deps.appointments.save(appointment);
+        return appointment;
+      } catch (error) {
+        // Otra reserva ganó ese hueco justo ahora: sin preferencia, aún puede atenderle otro barbero.
+        if (!(error instanceof SlotUnavailableError)) throw error;
+      }
+    }
+    throw new SlotUnavailableError();
   }
 
   private async loadProductLines(items: readonly { productId: string; quantity: number }[]): Promise<ProductLine[]> {

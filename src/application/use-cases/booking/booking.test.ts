@@ -120,6 +120,41 @@ describe("GetAvailableSlotsUseCase", () => {
   });
 });
 
+describe("sin preferencia de barbero", () => {
+  test("ofrece la unión de las horas libres de todos, sin repetir", async () => {
+    await book({ barberId: "b1", start: utc("15:00") });
+    await book({ barberId: "b2", start: utc("15:00"), customer: { name: "Otro", phone: "900000002" } });
+    await book({ barberId: "b1", start: utc("16:00"), customer: { name: "Otro", phone: "900000003" } });
+
+    const slots = await getSlots.execute({ barberId: null, serviceIds: ["corte"], date: DATE });
+    expect(starts(slots)).toEqual(["15:30", "16:00", "16:30", "17:00", "17:30"]);
+  });
+
+  test("asigna al barbero con más huecos libres ese día", async () => {
+    await book({ barberId: "b1", start: utc("16:00") });
+    const a = await book({ barberId: null, start: utc("15:00"), customer: { name: "Otro", phone: "900000002" } });
+    expect(a.barberId).toBe("b2");
+  });
+
+  test("si otra reserva gana el hueco al guardar, prueba con el siguiente barbero", async () => {
+    const save = repos.appointments.save;
+    repos.appointments.save = async (a) => {
+      if (a.barberId === "b1") throw new SlotUnavailableError();
+      return save(a);
+    };
+    const a = await book({ barberId: null });
+    expect(a.barberId).toBe("b2");
+  });
+
+  test("sin ningún barbero libre a esa hora, avisa", async () => {
+    await book({ barberId: "b1" });
+    await book({ barberId: "b2", customer: { name: "Otro", phone: "900000002" } });
+    await expect(
+      book({ barberId: null, customer: { name: "Tercero", phone: "900000003" } }),
+    ).rejects.toThrow(SlotUnavailableError);
+  });
+});
+
 describe("CreateAppointmentUseCase", () => {
   test("guarda la cita PENDING con foto de precios y productos", async () => {
     const a = await book({ serviceIds: ["corte", "barba"], products: [{ productId: "cera", quantity: 1 }] });

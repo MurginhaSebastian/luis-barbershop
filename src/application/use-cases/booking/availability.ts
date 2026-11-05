@@ -45,3 +45,21 @@ export async function findFreeSlots(
   const busy = [...blocks, ...appointments.filter((a) => a.blocksSchedule()).map((a) => a.slot)];
   return availableSlots({ date, hours, busy, durationMinutes, now: deps.now() });
 }
+
+export interface BarberSlots {
+  barberId: string;
+  slots: TimeSlot[];
+}
+
+/** Huecos libres del barbero elegido o, sin preferencia (null), de cada barbero activo. */
+export async function findFreeSlotsByBarber(
+  deps: AvailabilityDeps,
+  barberId: string | null,
+  date: string,
+  durationMinutes: number,
+): Promise<BarberSlots[]> {
+  const ids = barberId ? [barberId] : (await deps.barbers.findAllActive()).map((b) => b.id);
+  return Promise.all(
+    ids.map(async (id) => ({ barberId: id, slots: await findFreeSlots(deps, id, date, durationMinutes) })),
+  );
+}
