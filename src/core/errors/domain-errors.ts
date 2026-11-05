@@ -26,7 +26,7 @@ export class TooManyActiveAppointmentsError extends DomainError {
 export class InvalidAppointmentError extends DomainError {}
 
 export class NotFoundError extends DomainError {
-  constructor(entity: string, id: string) {
-    super(`${entity} no encontrado: ${id}`);
+  constructor(entity: string) {
+    super(`${entity} ya no está disponible. Vuelve a elegir, por favor.`);
   }
 }

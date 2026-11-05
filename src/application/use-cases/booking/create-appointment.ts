@@ -89,7 +89,7 @@ export class CreateAppointmentUseCase {
     const found = await this.deps.products.findByIds(items.map((i) => i.productId));
     return items.map(({ productId, quantity }) => {
       const product = found.find((p) => p.id === productId);
-      if (!product?.active) throw new NotFoundError("Producto", productId);
+      if (!product?.active) throw new NotFoundError("Producto");
       return { productId, name: product.name, quantity, unitPriceCents: product.priceCents };
     });
   }

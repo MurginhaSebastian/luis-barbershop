@@ -22,7 +22,7 @@ export async function loadBookableServices(repo: IServiceRepository, ids: readon
   const found = await repo.findByIds(unique);
   return unique.map((id) => {
     const service = found.find((s) => s.id === id);
-    if (!service?.active) throw new NotFoundError("Servicio", id);
+    if (!service?.active) throw new NotFoundError("Servicio");
     return service;
   });
 }
@@ -34,7 +34,7 @@ export async function findFreeSlots(
   durationMinutes: number,
 ): Promise<TimeSlot[]> {
   const barber = await deps.barbers.findById(barberId);
-  if (!barber?.active) throw new NotFoundError("Barbero", barberId);
+  if (!barber?.active) throw new NotFoundError("Barbero");
 
   const range = shopDayRange(date);
   const [hours, blocks, appointments] = await Promise.all([
