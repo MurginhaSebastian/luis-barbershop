@@ -3,7 +3,13 @@ import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import type { Barber, Product, Service } from "@/core/entities/catalog";
 import type { Customer } from "@/core/entities/customer";
 import { TimeSlot } from "@/core/entities/time-slot";
-import { BookingWindowError, InvalidAppointmentError, NotFoundError, SlotUnavailableError } from "@/core/errors/domain-errors";
+import {
+  BookingWindowError,
+  InvalidAppointmentError,
+  NotFoundError,
+  SlotUnavailableError,
+  TooManyActiveAppointmentsError,
+} from "@/core/errors/domain-errors";
 import type { BusinessHours } from "@/core/scheduling/availability";
 import { CreateAppointmentUseCase } from "./create-appointment";
 import { GetAvailableSlotsUseCase } from "./get-available-slots";
@@ -61,6 +67,8 @@ function makeRepos() {
     appointments: {
       findByBarberInRange: async (barberId: string, range: TimeSlot) =>
         appointments.filter((a) => a.barberId === barberId && a.slot.overlaps(range)),
+      findByCustomerFrom: async (customerId: string, from: Date) =>
+        appointments.filter((a) => a.customerId === customerId && a.slot.end > from),
       save: async (a: Appointment) => void appointments.push(a),
     },
     now: () => NOW,
@@ -186,6 +194,18 @@ describe("CreateAppointmentUseCase", () => {
   test("sin servicios, sea el día que sea", async () => {
     await expect(book({ serviceIds: [] })).rejects.toThrow(InvalidAppointmentError);
     await expect(getSlots.execute({ barberId: "b1", serviceIds: [], date: "2026-11-03" })).rejects.toThrow(InvalidAppointmentError);
+  });
+
+  test("un celular no puede tener más de 2 citas activas", async () => {
+    await book({ start: utc("15:00") });
+    const second = await book({ start: utc("15:30") });
+    await expect(book({ start: utc("16:00") })).rejects.toThrow(TooManyActiveAppointmentsError);
+
+    // Cancelar una libera el cupo; otro celular nunca se ve afectado.
+    repos.data.appointments.splice(repos.data.appointments.indexOf(second), 1,
+      Appointment.restore({ ...second, status: AppointmentStatus.CANCELLED }));
+    await expect(book({ start: utc("16:00") })).resolves.toBeInstanceOf(Appointment);
+    await expect(book({ start: utc("16:30"), customer: { name: "Otro", phone: "900000002" } })).resolves.toBeInstanceOf(Appointment);
   });
 
   test("producto inexistente", async () => {

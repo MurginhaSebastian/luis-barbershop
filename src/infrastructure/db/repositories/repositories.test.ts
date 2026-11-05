@@ -7,7 +7,7 @@ import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
 import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import { TimeSlot } from "@/core/entities/time-slot";
-import { SlotUnavailableError } from "@/core/errors/domain-errors";
+import { SlotUnavailableError, TooManyActiveAppointmentsError } from "@/core/errors/domain-errors";
 import type { Db } from "../client";
 import * as schema from "../schema";
 import { DrizzleAppointmentRepository } from "./appointment-repository";
@@ -107,6 +107,12 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   test("dos reservas simultáneas de un cliente nuevo comparten cliente", async () => {
     const [a, b] = await Promise.all([book(utc("15:00"), "900000003"), book(utc("16:00"), "+51 900 000 003")]);
     expect(a.customerId).toBe(b.customerId);
+  });
+
+  test("cuenta las citas futuras del cliente en la base", async () => {
+    await book(utc("15:00"));
+    await book(utc("15:30"));
+    await expect(book(utc("16:00"))).rejects.toThrow(TooManyActiveAppointmentsError);
   });
 
   test("cancelar libera el hueco también en la base", async () => {

@@ -26,6 +26,18 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       .where(
         and(eq(appointments.barberId, barberId), lt(appointments.startsAt, range.end), gt(appointments.endsAt, range.start)),
       );
+    return this.withLines(rows);
+  }
+
+  async findByCustomerFrom(customerId: string, from: Date): Promise<Appointment[]> {
+    const rows = await this.db
+      .select()
+      .from(appointments)
+      .where(and(eq(appointments.customerId, customerId), gt(appointments.endsAt, from)));
+    return this.withLines(rows);
+  }
+
+  private async withLines(rows: (typeof appointments.$inferSelect)[]): Promise<Appointment[]> {
     if (rows.length === 0) return [];
 
     const ids = rows.map((r) => r.id);

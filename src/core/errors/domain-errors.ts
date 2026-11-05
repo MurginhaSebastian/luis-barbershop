@@ -17,6 +17,12 @@ export class SlotUnavailableError extends DomainError {
 
 export class BookingWindowError extends DomainError {}
 
+export class TooManyActiveAppointmentsError extends DomainError {
+  constructor(limit: number) {
+    super(`Este celular ya tiene ${limit} citas por venir. Escríbenos por WhatsApp si necesitas otra.`);
+  }
+}
+
 export class InvalidAppointmentError extends DomainError {}
 
 export class NotFoundError extends DomainError {

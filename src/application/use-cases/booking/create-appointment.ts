@@ -1,7 +1,13 @@
 import { Appointment, type ProductLine, totalDuration } from "@/core/entities/appointment";
 import { type Customer, normalizePhone } from "@/core/entities/customer";
-import { BookingWindowError, NotFoundError, SlotUnavailableError } from "@/core/errors/domain-errors";
+import {
+  BookingWindowError,
+  NotFoundError,
+  SlotUnavailableError,
+  TooManyActiveAppointmentsError,
+} from "@/core/errors/domain-errors";
 import { bookingWindow, shopDateOf } from "@/core/scheduling/availability";
+import { MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER } from "@/core/scheduling/booking-policy";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
 import type { IProductRepository } from "@/application/ports/repositories/product-repository";
 import { type AvailabilityDeps, findFreeSlotsByBarber, loadBookableServices } from "./availability";
@@ -45,6 +51,12 @@ export class CreateAppointmentUseCase {
 
     const products = await this.loadProductLines(input.products ?? []);
     const customer = await this.findOrCreateCustomer(input.customer);
+    // shortcut: dos reservas simultáneas del mismo celular podrían pasar el límite; bloquear por cliente si se abusa.
+    const upcoming = await this.deps.appointments.findByCustomerFrom(customer.id, this.deps.now());
+    if (upcoming.filter((a) => a.blocksSchedule()).length >= MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER) {
+      throw new TooManyActiveAppointmentsError(MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER);
+    }
+
     const lines = services.map((s) => ({
       serviceId: s.id,
       name: s.name,
