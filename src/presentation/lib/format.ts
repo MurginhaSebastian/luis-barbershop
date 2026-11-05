@@ -4,7 +4,6 @@ const TIME_ZONE = "America/Lima";
 const price = new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" });
 const time = new Intl.DateTimeFormat("es-PE", { timeZone: TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false });
 const longDate = new Intl.DateTimeFormat("es-PE", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long" });
-
 const dayParts = new Intl.DateTimeFormat("es-PE", { timeZone: TIME_ZONE, weekday: "short", day: "numeric", month: "short" });
 
 export const WEEKDAYS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
