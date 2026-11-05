@@ -20,7 +20,7 @@ export function StepLayout(props: {
   return (
     <>
       {props.progress}
-      <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_20rem] lg:items-start">
+      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div>
           {props.backHref && (
             <Link

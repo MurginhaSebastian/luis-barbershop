@@ -17,7 +17,9 @@ export function BarberStep(props: {
 }) {
   const next = (barbero: string) => bookingHref(3, { ...props.selection, barbero, hora: undefined });
   return (
+    // key: sin ella React reutiliza la plantilla entre pasos y no mueve el foco al título.
     <StepLayout
+      key="barber-step"
       progress={props.progress}
       title="¿Con quién?"
       backHref={bookingHref(1, props.selection)}

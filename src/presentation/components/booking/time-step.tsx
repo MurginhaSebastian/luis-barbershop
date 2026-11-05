@@ -25,7 +25,9 @@ export function TimeStep(props: {
   barberName?: string;
 }) {
   return (
+    // key: sin ella React reutiliza la plantilla entre pasos y no mueve el foco al título.
     <StepLayout
+      key="time-step"
       progress={props.progress}
       title="¿Qué día y a qué hora?"
       backHref={bookingHref(2, props.selection)}

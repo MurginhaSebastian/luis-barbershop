@@ -6,13 +6,6 @@ import { ANY_BARBER, type BookingSelection } from "@/presentation/lib/booking-fl
 const toArray = (v: unknown) => (v === undefined || v === null ? [] : [v].flat());
 const serviceIds = z.preprocess(toArray, z.array(z.uuid()).min(1).max(5));
 
-/** Parámetros de la URL para mostrar horarios: ?servicios=…&barbero=…&dia=YYYY-MM-DD */
-export const slotQuerySchema = z.object({
-  servicios: serviceIds,
-  barbero: z.uuid(),
-  dia: z.iso.date(),
-});
-
 const barberChoice = z.union([z.uuid(), z.literal(ANY_BARBER)]);
 
 /** Lee la URL campo a campo: lo inválido se ignora y el flujo vuelve al paso que le falte. */

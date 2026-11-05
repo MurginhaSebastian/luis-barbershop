@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseBookingForm, parseBookingQuery, slotQuerySchema } from "./booking-schema";
+import { parseBookingForm, parseBookingQuery } from "./booking-schema";
 
 const BARBER = "10000000-0000-4000-8000-000000000001";
 const CORTE = "20000000-0000-4000-8000-000000000001";
@@ -50,15 +50,6 @@ describe("parseBookingForm", () => {
   });
 });
 
-describe("slotQuerySchema", () => {
-  test("acepta uno o varios servicios en la URL", () => {
-    expect(slotQuerySchema.safeParse({ servicios: CORTE, barbero: BARBER, dia: "2026-11-02" }).success).toBe(true);
-    expect(slotQuerySchema.safeParse({ servicios: [CORTE, CORTE], barbero: BARBER, dia: "2026-11-02" }).success).toBe(true);
-    expect(slotQuerySchema.safeParse({ barbero: BARBER, dia: "2026-11-02" }).success).toBe(false);
-    expect(slotQuerySchema.safeParse({ servicios: CORTE, barbero: BARBER, dia: "02/11/2026" }).success).toBe(false);
-  });
-});
-
 describe("parseBookingQuery", () => {
   test("lee la selección completa de la URL", () => {
     const hora = "2026-11-02T15:00:00.000Z";
@@ -66,6 +57,11 @@ describe("parseBookingQuery", () => {
       requestedStep: 4,
       selection: { servicios: [CORTE], barbero: "cualquiera", dia: "2026-11-02", hora },
     });
+  });
+
+  test("acepta uno o varios servicios", () => {
+    expect(parseBookingQuery({ servicios: CORTE }).selection.servicios).toEqual([CORTE]);
+    expect(parseBookingQuery({ servicios: [CORTE, BARBER] }).selection.servicios).toEqual([CORTE, BARBER]);
   });
 
   test("ignora lo manipulado en vez de romper la página", () => {
