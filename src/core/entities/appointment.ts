@@ -1,4 +1,4 @@
-import { InvalidAppointmentError } from "../errors/domain-errors";
+import { InvalidAppointmentError, InvalidStatusChangeError } from "../errors/domain-errors";
 import { TimeSlot } from "./time-slot";
 
 export const AppointmentStatus = {
@@ -15,6 +15,15 @@ const BLOCKING_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
   AppointmentStatus.CONFIRMED,
   AppointmentStatus.COMPLETED,
 ]);
+
+// Una cita cancelada no se reabre: su hora ya podría ser de otro cliente.
+const ALLOWED_CHANGES: Record<AppointmentStatus, readonly AppointmentStatus[]> = {
+  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW"],
+  CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],
+  COMPLETED: [],
+  CANCELLED: [],
+  NO_SHOW: [],
+};
 
 /** Foto del servicio al reservar: si luego cambia el precio, la cita conserva el suyo. */
 export interface ServiceLine {
@@ -70,6 +79,11 @@ export class Appointment {
   /** Reconstruye una cita ya persistida (uso de los repositorios). */
   static restore(p: AppointmentProps): Appointment {
     return new Appointment(p.id, p.barberId, p.customerId, p.customerName, p.slot, p.status, p.services, p.products);
+  }
+
+  changeStatus(status: AppointmentStatus): Appointment {
+    if (!ALLOWED_CHANGES[this.status].includes(status)) throw new InvalidStatusChangeError();
+    return Appointment.restore({ ...this, status });
   }
 
   blocksSchedule(): boolean {

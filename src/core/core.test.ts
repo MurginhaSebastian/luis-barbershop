@@ -2,7 +2,12 @@ import { describe, expect, test } from "vitest";
 import { Appointment, AppointmentStatus } from "./entities/appointment";
 import { normalizePhone } from "./entities/customer";
 import { TimeSlot } from "./entities/time-slot";
-import { InvalidAppointmentError, InvalidDateError, InvalidTimeSlotError } from "./errors/domain-errors";
+import {
+  InvalidAppointmentError,
+  InvalidDateError,
+  InvalidStatusChangeError,
+  InvalidTimeSlotError,
+} from "./errors/domain-errors";
 import { availableSlots, shopDateOf, shopDayRange, shopWeekday } from "./scheduling/availability";
 
 const at = (iso: string) => new Date(iso);
@@ -49,6 +54,31 @@ describe("Appointment", () => {
     for (const status of [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW]) {
       expect(Appointment.restore({ ...a, status }).blocksSchedule()).toBe(false);
     }
+  });
+
+  test("sigue el recorrido de una cita", () => {
+    const { CONFIRMED, COMPLETED } = AppointmentStatus;
+    const done = Appointment.book(base).changeStatus(CONFIRMED).changeStatus(COMPLETED);
+    expect(done.status).toBe(COMPLETED);
+  });
+
+  test("cambiar de estado no altera el resto de la cita", () => {
+    const a = Appointment.book(base);
+    const confirmed = a.changeStatus(AppointmentStatus.CONFIRMED);
+    expect(a.status).toBe(AppointmentStatus.PENDING);
+    expect(confirmed.slot).toBe(a.slot);
+    expect(confirmed.totalCents).toBe(a.totalCents);
+  });
+
+  test.each([
+    ["PENDING", "COMPLETED"],
+    ["CANCELLED", "CONFIRMED"],
+    ["NO_SHOW", "CONFIRMED"],
+    ["COMPLETED", "CANCELLED"],
+    ["CONFIRMED", "CONFIRMED"],
+  ] as const)("no permite pasar de %s a %s", (from, to) => {
+    const a = Appointment.restore({ ...Appointment.book(base), status: from });
+    expect(() => a.changeStatus(to)).toThrow(InvalidStatusChangeError);
   });
 
   test("exige al menos un servicio y cantidades enteras positivas", () => {
