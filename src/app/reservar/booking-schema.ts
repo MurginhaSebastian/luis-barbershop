@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ANY_BARBER, type BookingSelection } from "@/presentation/lib/booking-flow";
 
 // Frontera de confianza: todo lo que llega del navegador (URL o formulario) pasa por aquí.
 
@@ -12,8 +13,28 @@ export const slotQuerySchema = z.object({
   dia: z.iso.date(),
 });
 
+const barberChoice = z.union([z.uuid(), z.literal(ANY_BARBER)]);
+
+/** Lee la URL campo a campo: lo inválido se ignora y el flujo vuelve al paso que le falte. */
+export function parseBookingQuery(params: Record<string, string | string[] | undefined>): {
+  requestedStep?: number;
+  selection: BookingSelection;
+} {
+  const one = (key: string) => [params[key]].flat()[0];
+  const valid = <T>(schema: z.ZodType<T>, value: unknown) => schema.safeParse(value).data;
+  return {
+    requestedStep: valid(z.coerce.number().int().min(1).max(4), one("paso")),
+    selection: {
+      servicios: valid(serviceIds, params.servicios) ?? [],
+      barbero: valid(barberChoice, one("barbero")),
+      dia: valid(z.iso.date(), one("dia")),
+      hora: valid(z.iso.datetime(), one("hora")),
+    },
+  };
+}
+
 export const bookingSchema = z.object({
-  barberId: z.uuid(),
+  barberId: barberChoice.transform((v) => (v === ANY_BARBER ? null : v)),
   serviceIds,
   products: z
     .array(z.object({ productId: z.uuid(), quantity: z.coerce.number().int().min(1).max(10) }))

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseBookingForm, slotQuerySchema } from "./booking-schema";
+import { parseBookingForm, parseBookingQuery, slotQuerySchema } from "./booking-schema";
 
 const BARBER = "10000000-0000-4000-8000-000000000001";
 const CORTE = "20000000-0000-4000-8000-000000000001";
@@ -57,4 +57,27 @@ describe("slotQuerySchema", () => {
     expect(slotQuerySchema.safeParse({ barbero: BARBER, dia: "2026-11-02" }).success).toBe(false);
     expect(slotQuerySchema.safeParse({ servicios: CORTE, barbero: BARBER, dia: "02/11/2026" }).success).toBe(false);
   });
+});
+
+describe("parseBookingQuery", () => {
+  test("lee la selección completa de la URL", () => {
+    const hora = "2026-11-02T15:00:00.000Z";
+    expect(parseBookingQuery({ paso: "4", servicios: [CORTE], barbero: "cualquiera", dia: "2026-11-02", hora })).toEqual({
+      requestedStep: 4,
+      selection: { servicios: [CORTE], barbero: "cualquiera", dia: "2026-11-02", hora },
+    });
+  });
+
+  test("ignora lo manipulado en vez de romper la página", () => {
+    expect(parseBookingQuery({ paso: "99", servicios: "x", barbero: "1 OR 1=1", dia: "ayer", hora: "luego" })).toEqual({
+      requestedStep: undefined,
+      selection: { servicios: [], barbero: undefined, dia: undefined, hora: undefined },
+    });
+  });
+});
+
+test("sin preferencia llega al caso de uso como null", () => {
+  const fields = valid.map(([k, v]) => [k, k === "barberId" ? "cualquiera" : v] as [string, string]);
+  const r = parseBookingForm(form(fields));
+  expect(r.success && r.data.barberId).toBeNull();
 });
