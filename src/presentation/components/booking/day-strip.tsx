@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { formatDayParts, formatLongDate } from "@/presentation/lib/format";
+import { formatDayParts } from "@/presentation/lib/format";
 import { cn } from "@/presentation/lib/utils";
 
 export interface DayOption {
@@ -47,7 +47,6 @@ export function DayStrip({ days, selected }: { days: DayOption[]; selected: stri
                 href={href}
                 scroll={false}
                 prefetch={false}
-                aria-label={formatLongDate(`${date}T12:00:00-05:00`)}
                 aria-current={isSelected ? "date" : undefined}
                 className={cn(
                   chip,
