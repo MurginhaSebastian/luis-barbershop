@@ -1,10 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createSessionToken, getPanelConfig, isValidSessionToken, SESSION_HOURS } from "@/infrastructure/auth/session";
 
 const COOKIE = "panel_session";
 
 export async function hasPanelSession(): Promise<boolean> {
+  await connection(); // La caducidad se compara con la hora actual: solo en tiempo de petición.
   const config = getPanelConfig();
   if (!config) return false;
   const token = (await cookies()).get(COOKIE)?.value;
