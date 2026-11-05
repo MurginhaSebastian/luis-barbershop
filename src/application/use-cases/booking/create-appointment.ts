@@ -69,6 +69,7 @@ export class CreateAppointmentUseCase {
         id: crypto.randomUUID(),
         barberId,
         customerId: customer.id,
+        customerName: input.customer.name.trim(),
         start: input.start,
         services: lines,
         products,

@@ -59,6 +59,7 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
         id: r.id,
         barberId: r.barberId,
         customerId: r.customerId,
+        customerName: r.customerName,
         slot: TimeSlot.create(r.startsAt, r.endsAt),
         status: r.status,
         services: serviceRows
@@ -77,6 +78,7 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       id: appointment.id,
       barberId: appointment.barberId,
       customerId: appointment.customerId,
+      customerName: appointment.customerName,
       startsAt: appointment.slot.start,
       endsAt: appointment.slot.end,
       status: appointment.status,

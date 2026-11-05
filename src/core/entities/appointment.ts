@@ -35,6 +35,8 @@ export interface AppointmentProps {
   id: string;
   barberId: string;
   customerId: string;
+  /** Quien reservó, tal como lo escribió: un celular lo puede usar más de una persona. */
+  customerName: string;
   slot: TimeSlot;
   status: AppointmentStatus;
   services: readonly ServiceLine[];
@@ -46,6 +48,7 @@ export class Appointment {
     readonly id: string,
     readonly barberId: string,
     readonly customerId: string,
+    readonly customerName: string,
     readonly slot: TimeSlot,
     readonly status: AppointmentStatus,
     readonly services: readonly ServiceLine[],
@@ -66,7 +69,7 @@ export class Appointment {
 
   /** Reconstruye una cita ya persistida (uso de los repositorios). */
   static restore(p: AppointmentProps): Appointment {
-    return new Appointment(p.id, p.barberId, p.customerId, p.slot, p.status, p.services, p.products);
+    return new Appointment(p.id, p.barberId, p.customerId, p.customerName, p.slot, p.status, p.services, p.products);
   }
 
   blocksSchedule(): boolean {

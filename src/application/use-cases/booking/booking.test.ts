@@ -191,6 +191,12 @@ describe("CreateAppointmentUseCase", () => {
     expect(repos.data.customers).toHaveLength(1);
   });
 
+  test("la cita conserva el nombre escrito aunque el celular sea de otro cliente", async () => {
+    await book({ customer: { name: "María", phone: "900000001" } });
+    const a = await book({ start: utc("16:00"), customer: { name: "  Pedro ", phone: "900000001" } });
+    expect(a.customerName).toBe("Pedro");
+  });
+
   test("sin servicios, sea el día que sea", async () => {
     await expect(book({ serviceIds: [] })).rejects.toThrow(InvalidAppointmentError);
     await expect(getSlots.execute({ barberId: "b1", serviceIds: [], date: "2026-11-03" })).rejects.toThrow(InvalidAppointmentError);

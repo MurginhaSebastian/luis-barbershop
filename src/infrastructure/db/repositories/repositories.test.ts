@@ -97,6 +97,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       id: crypto.randomUUID(),
       barberId: BARBER,
       customerId: first.customerId,
+      customerName: "Rival",
       start: utc("15:15"),
       services: first.services,
       products: [],

@@ -88,6 +88,7 @@ export const appointments = pgTable(
     id: uuid().primaryKey(),
     barberId: uuid("barber_id").notNull().references(() => barbers.id),
     customerId: uuid("customer_id").notNull().references(() => customers.id),
+    customerName: text("customer_name").notNull(),
     startsAt: instant("starts_at").notNull(),
     endsAt: instant("ends_at").notNull(),
     status: appointmentStatus().notNull().default("PENDING"),

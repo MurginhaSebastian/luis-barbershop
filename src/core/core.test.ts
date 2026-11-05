@@ -27,6 +27,7 @@ describe("Appointment", () => {
     id: "a1",
     barberId: "b1",
     customerId: "c1",
+    customerName: "Cliente Prueba",
     start: at("2026-11-02T15:00:00Z"),
     services: [
       { serviceId: "s1", name: "Corte", durationMinutes: 30, priceCents: 3000 },
