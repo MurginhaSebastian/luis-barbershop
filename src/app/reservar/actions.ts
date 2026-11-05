@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { DomainError } from "@/core/errors/domain-errors";
+import { DomainError, SlotUnavailableError } from "@/core/errors/domain-errors";
 import { getUseCases } from "@/infrastructure/container";
 import type { BookingState } from "@/presentation/components/booking/booking-state";
 import { parseBookingForm } from "./booking-schema";
@@ -21,9 +21,16 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
   const { name, phone, ...booking } = parsed.data;
   try {
     const appointment = await getUseCases().createAppointment.execute({ ...booking, customer: { name, phone } });
-    return { status: "ok", start: appointment.slot.start.toISOString(), totalCents: appointment.totalCents };
+    return {
+      status: "ok",
+      start: appointment.slot.start.toISOString(),
+      totalCents: appointment.totalCents,
+      barberId: appointment.barberId,
+    };
   } catch (error) {
-    if (error instanceof DomainError) return { status: "error", message: error.message };
+    if (error instanceof DomainError) {
+      return { status: "error", message: error.message, slotTaken: error instanceof SlotUnavailableError };
+    }
     console.error("createAppointmentAction", error);
     return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };
   }
