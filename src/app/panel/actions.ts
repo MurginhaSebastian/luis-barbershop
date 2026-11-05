@@ -1,12 +1,17 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { AppointmentStatus } from "@/core/entities/appointment";
+import { DomainError } from "@/core/errors/domain-errors";
 import { LoginThrottle } from "@/infrastructure/auth/login-throttle";
 import { verifyPassword } from "@/infrastructure/auth/password";
 import { getPanelConfig } from "@/infrastructure/auth/session";
+import { getUseCases } from "@/infrastructure/container";
 import type { LoginState } from "@/presentation/components/panel/login-form";
-import { endPanelSession, startPanelSession } from "./session";
+import { endPanelSession, requirePanelSession, startPanelSession } from "./session";
 
 const MAX_PASSWORD_LENGTH = 200;
 const throttle = new LoginThrottle();
@@ -33,6 +38,24 @@ export async function loginAction(_prev: LoginState, form: FormData): Promise<Lo
   throttle.reset(origin);
   await startPanelSession(config.sessionSecret);
   redirect("/panel");
+}
+
+const statusChange = z.object({ id: z.uuid(), status: z.enum(AppointmentStatus) });
+
+export async function changeStatusAction(id: string, status: AppointmentStatus): Promise<{ error?: string }> {
+  await requirePanelSession();
+  const parsed = statusChange.safeParse({ id, status });
+  if (!parsed.success) return { error: "No se pudo identificar la cita." };
+
+  try {
+    await getUseCases().changeAppointmentStatus.execute(parsed.data);
+  } catch (error) {
+    if (error instanceof DomainError) return { error: error.message };
+    console.error("changeStatusAction", error);
+    return { error: "No se pudo guardar el cambio. Inténtalo de nuevo." };
+  }
+  refresh();
+  return {};
 }
 
 export async function logoutAction(): Promise<void> {
