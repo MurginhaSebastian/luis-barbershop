@@ -70,6 +70,27 @@ test("una dirección que no existe muestra la página 404 de la marca", async ({
   await expect(page.getByRole("heading", { name: /Qué servicio/ })).toBeVisible();
 });
 
+test("las cabeceras de seguridad están y no rompen nada", async ({ page }) => {
+  const problems: string[] = [];
+  page.on("console", (m) => m.type() === "error" && problems.push(m.text()));
+  page.on("pageerror", (e) => problems.push(String(e)));
+
+  const response = await page.goto("/");
+  const headers = response?.headers() ?? {};
+  expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+  expect(headers["x-content-type-options"]).toBe("nosniff");
+  expect(headers["x-frame-options"]).toBe("DENY");
+  expect(headers["x-powered-by"]).toBeUndefined();
+
+  await page.getByRole("heading", { name: "Servicios" }).waitFor();
+  await bookUntilData(page);
+  await page.getByLabel("Nombre").fill("Cliente Prueba");
+  await page.getByLabel(/Celular/).fill("900000456");
+  await page.getByRole("button", { name: "Reservar cita" }).click();
+  await page.getByRole("heading", { name: "Reserva registrada" }).waitFor();
+  expect(problems).toEqual([]);
+});
+
 test.describe("adaptable", () => {
   for (const width of [375, 768, 1024, 1440]) {
     test(`sin scroll horizontal a ${width} px`, async ({ page }) => {
