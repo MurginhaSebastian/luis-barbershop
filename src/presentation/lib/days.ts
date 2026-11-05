@@ -12,6 +12,11 @@ export function daysBetween(first: string, last: string): string[] {
   return days;
 }
 
+/** La fecha "YYYY-MM-DD" desplazada ese número de días. */
+export function shiftDay(date: string, days: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+}
+
 /** Separa las horas en Mañana y Tarde (según la hora de la barbería) y omite la parte vacía. */
 export function groupByDayPart(slots: readonly string[]) {
   const isMorning = (iso: string) => Number(formatTime(iso).slice(0, 2)) < 12;

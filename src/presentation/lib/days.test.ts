@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { daysBetween, groupByDayPart } from "./days";
+import { daysBetween, groupByDayPart, shiftDay } from "./days";
 
 describe("daysBetween", () => {
   test("incluye los extremos y cruza el cambio de mes", () => {
@@ -9,6 +9,11 @@ describe("daysBetween", () => {
   test("un solo día", () => {
     expect(daysBetween("2026-11-02", "2026-11-02")).toEqual(["2026-11-02"]);
   });
+});
+
+test("shiftDay cruza meses y años en ambos sentidos", () => {
+  expect(shiftDay("2026-12-31", 1)).toBe("2027-01-01");
+  expect(shiftDay("2026-11-01", -1)).toBe("2026-10-31");
 });
 
 describe("groupByDayPart", () => {
