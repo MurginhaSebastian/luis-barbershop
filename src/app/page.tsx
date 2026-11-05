@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { getShopContact } from "@/infrastructure/config/shop-contact";
 import { getUseCases } from "@/infrastructure/container";
 import { Hero } from "@/presentation/components/landing/hero";
+import { ScrollToHash } from "@/presentation/components/landing/scroll-to-hash";
 import { About, ClosingCta, HowToBook, Products, Testimonials, VisitUs, WhyUs } from "@/presentation/components/landing/sections";
 import { ServiceGallery } from "@/presentation/components/landing/service-gallery";
 import { container, ctaClass, sectionTitle } from "@/presentation/components/landing/styles";
@@ -53,6 +54,7 @@ async function CatalogSections({ address, mapsUrl }: { address?: string; mapsUrl
       <Products products={products} />
       <Testimonials items={testimonials} />
       <VisitUs weeklyHours={weeklyHours} address={address} mapsUrl={mapsUrl} />
+      <ScrollToHash />
     </>
   );
 }
