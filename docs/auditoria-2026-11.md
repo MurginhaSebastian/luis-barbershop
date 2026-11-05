@@ -24,14 +24,21 @@ Revisión de la web completa tras el rediseño de la reserva.
 - La cita quedaba a nombre del primer cliente que usó ese celular.
 - El formulario no decía para qué se usan los datos.
 
+## Añadido después de la auditoría
+
+Panel del barbero en `/panel`, con entrada por clave y pruebas de acceso sin sesión, cookie falsificada,
+sesión caducada y freno de intentos. Las citas nuevas salen por confirmar y se avisa al cliente por
+WhatsApp con un toque; el envío lo hace el barbero, no es automático.
+
 ## Pendiente antes de publicar
 
-1. **Panel para el barbero.** Hoy nadie se entera de una reserva sin entrar a la base de datos.
-2. **Límite por IP.** El límite de 2 citas va por celular y se salta cambiando el número. Depende del
+1. **Límite por IP.** El límite de 2 citas va por celular y se salta cambiando el número. Depende del
    hosting, porque hay que saber cómo llega la IP real.
-3. **Política de privacidad.** Hay un aviso en el formulario, pero falta la página completa, que debe
+2. **Política de privacidad.** Hay un aviso en el formulario, pero falta la página completa, que debe
    revisar el negocio o un abogado (Ley 29733).
-4. **Datos reales.** Contacto, servicios, precios, fotos y Libro de Reclamaciones.
+3. **Datos reales.** Contacto, servicios, precios, fotos y Libro de Reclamaciones.
+4. **Clave del panel de producción.** Generarla con `npm run panel:clave` en el hosting; la de desarrollo
+   no debe usarse.
 
 ## Riesgos aceptados
 

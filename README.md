@@ -11,7 +11,8 @@ cp .env.example .env
 npm run db:up       # Postgres en Docker (puerto 5433)
 npm run db:migrate
 npm run db:seed     # datos de ejemplo
-npm run dev         # http://localhost:3000
+npm run panel:clave # genera la clave del panel: copia las líneas PANEL_* a .env
+npm run dev         # http://localhost:3000 (panel del barbero en /panel)
 npm run check       # lint, tipos, tests y build
 npm run test:e2e    # pruebas de navegador (Edge + base aparte)
 ```

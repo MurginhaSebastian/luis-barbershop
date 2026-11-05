@@ -31,6 +31,7 @@ npm run db:up        # levanta Postgres
 npm run db:migrate   # aplica migraciones
 npm run db:generate  # genera una migración tras cambiar src/infrastructure/db/schema.ts
 npm run db:seed      # datos de ejemplo ficticios (idempotente; src/infrastructure/db/seed.sql)
+npm run panel:clave  # genera la clave del panel y las líneas PANEL_* para .env
 ```
 
 Los tests viven junto al código (`*.test.ts`). `repositories.test.ts` usa una base aparte,
@@ -116,6 +117,21 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   servicio se elige por su nombre en `service-gallery.tsx` hasta que haya fotos reales.
 - Testimonios en `presentation/content/testimonials.ts`: solo reales y con permiso; vacío = sección
   oculta.
+
+### Panel del barbero (`/panel`)
+- Una sola clave para la barbería: hash `scrypt` en `PANEL_PASSWORD_HASH`, sesión sin estado firmada con
+  `PANEL_SESSION_SECRET` (12 h, cookie `httpOnly`). Sin esas variables el panel no deja entrar a nadie.
+  Código en `infrastructure/auth/`; las cookies en `app/panel/session.ts`.
+- **`requirePanelSession()` va en cada página y en cada Server Action del panel**: proteger la página no
+  protege sus acciones. La sesión se comprueba tras `connection()`, porque compara con la hora actual.
+- `GetAgendaUseCase` devuelve datos planos (`AgendaItem`): las citas futuras sin confirmar de cualquier
+  día y la agenda del día elegido. Qué cambios de estado se permiten lo decide
+  `Appointment.changeStatus()`; una cita cancelada no se reabre.
+- Confirmar y cancelar abren WhatsApp con el mensaje escrito (`presentation/lib/whatsapp.ts`). El
+  `window.open` va antes de cualquier `await`, o el navegador lo bloquea. La agenda se refresca sola cada
+  minuto (`AutoRefresh`).
+- El freno de intentos (`LoginThrottle`) vive en memoria del proceso: revisar si la web pasa a varias
+  instancias, y qué cabecera de IP es de fiar en el hosting.
 
 ### Persistencia (Drizzle)
 - Esquema en `src/infrastructure/db/schema.ts`; migraciones SQL versionadas en `db/migrations/`.
