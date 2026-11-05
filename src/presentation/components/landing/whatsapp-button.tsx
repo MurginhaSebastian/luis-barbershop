@@ -1,7 +1,12 @@
+"use client";
+
 import { MessageCircle } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 /** Botón flotante de WhatsApp; en móvil queda por encima de la barra fija de "Reservar cita". */
 export function WhatsappButton({ href }: { href: string }) {
+  // En la reserva taparía las horas de la columna derecha.
+  if (usePathname() === "/reservar") return null;
   return (
     <a
       href={href}
