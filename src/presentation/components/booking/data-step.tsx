@@ -183,9 +183,14 @@ export function DataStep(props: {
           </div>
         )}
 
-        <button type="submit" disabled={pending} className={`${primaryButtonClass} w-full sm:w-auto`}>
-          {pending ? "Reservando…" : "Reservar cita"}
-        </button>
+        <div>
+          <button type="submit" disabled={pending} className={`${primaryButtonClass} w-full sm:w-auto`}>
+            {pending ? "Reservando…" : "Reservar cita"}
+          </button>
+          <p className="mt-3 max-w-md text-sm text-muted-foreground">
+            Usamos tu nombre y celular solo para gestionar tu cita y escribirte sobre ella.
+          </p>
+        </div>
       </form>
     </StepLayout>
   );
