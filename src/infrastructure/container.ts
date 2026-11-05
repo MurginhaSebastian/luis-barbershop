@@ -1,3 +1,5 @@
+import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
+import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
 import { GetCatalogUseCase } from "@/application/use-cases/catalog/get-catalog";
@@ -23,5 +25,7 @@ export function getUseCases() {
     getCatalog: new GetCatalogUseCase(deps),
     getAvailableSlots: new GetAvailableSlotsUseCase(deps),
     createAppointment: new CreateAppointmentUseCase(deps),
+    getAgenda: new GetAgendaUseCase(deps),
+    changeAppointmentStatus: new ChangeAppointmentStatusUseCase(deps),
   };
 }

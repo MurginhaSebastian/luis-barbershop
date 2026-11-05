@@ -4,6 +4,8 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
+import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
+import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
 import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import { TimeSlot } from "@/core/entities/time-slot";
@@ -114,6 +116,27 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     await book(utc("15:00"));
     await book(utc("15:30"));
     await expect(book(utc("16:00"))).rejects.toThrow(TooManyActiveAppointmentsError);
+  });
+
+  test("la agenda lee citas, clientes y barberos, y confirmar las saca de pendientes", async () => {
+    const booked = await book(utc("15:00"));
+    const getAgenda = new GetAgendaUseCase(deps);
+
+    const before = await getAgenda.execute({ date: DATE });
+    expect(before.pending.map((i) => i.id)).toEqual([booked.id]);
+    expect(before.day[0]).toMatchObject({
+      customerName: "Cliente Prueba",
+      phone: "51900000001",
+      barberName: "Barbero A",
+      services: ["Corte"],
+      products: ["2 × Cera"],
+    });
+
+    await new ChangeAppointmentStatusUseCase(deps).execute({ id: booked.id, status: AppointmentStatus.CONFIRMED });
+    const after = await getAgenda.execute({ date: DATE });
+    expect(after.pending).toEqual([]);
+    expect(after.day[0].status).toBe(AppointmentStatus.CONFIRMED);
+    expect((await deps.appointments.findById(booked.id))?.services).toEqual(booked.services);
   });
 
   test("cancelar libera el hueco también en la base", async () => {

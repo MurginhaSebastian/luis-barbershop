@@ -40,6 +40,11 @@ export class DrizzleBarberRepository implements IBarberRepository {
     return row ?? null;
   }
 
+  async findByIds(ids: readonly string[]): Promise<Barber[]> {
+    if (ids.length === 0) return [];
+    return this.db.select().from(barbers).where(inArray(barbers.id, [...ids]));
+  }
+
   async findAllActive(): Promise<Barber[]> {
     return this.db.select().from(barbers).where(eq(barbers.active, true)).orderBy(barbers.name);
   }

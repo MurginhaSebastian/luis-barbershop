@@ -1,7 +1,12 @@
-import type { Appointment } from "@/core/entities/appointment";
+import type { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import type { TimeSlot } from "@/core/entities/time-slot";
 
 export interface IAppointmentRepository {
+  findById(id: string): Promise<Appointment | null>;
+  /** Citas de todos los barberos que se cruzan con el rango, en cualquier estado. */
+  findInRange(range: TimeSlot): Promise<Appointment[]>;
+  /** Citas en ese estado que aún no han terminado en ese instante. */
+  findByStatusFrom(status: AppointmentStatus, from: Date): Promise<Appointment[]>;
   /** Citas del barbero que se cruzan con el rango, en cualquier estado: el dominio decide cuáles bloquean. */
   findByBarberInRange(barberId: string, range: TimeSlot): Promise<Appointment[]>;
   /** Citas del cliente que aún no han terminado en ese instante, en cualquier estado. */

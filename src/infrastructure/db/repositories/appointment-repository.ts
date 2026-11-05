@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, lt } from "drizzle-orm";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
-import { Appointment } from "@/core/entities/appointment";
+import { Appointment, type AppointmentStatus } from "@/core/entities/appointment";
 import { TimeSlot } from "@/core/entities/time-slot";
 import { SlotUnavailableError } from "@/core/errors/domain-errors";
 import type { Db } from "../client";
@@ -18,6 +18,28 @@ function isOverlapViolation(error: unknown): boolean {
 
 export class DrizzleAppointmentRepository implements IAppointmentRepository {
   constructor(private readonly db: Db) {}
+
+  async findById(id: string): Promise<Appointment | null> {
+    const rows = await this.db.select().from(appointments).where(eq(appointments.id, id));
+    const [appointment] = await this.withLines(rows);
+    return appointment ?? null;
+  }
+
+  async findInRange(range: TimeSlot): Promise<Appointment[]> {
+    const rows = await this.db
+      .select()
+      .from(appointments)
+      .where(and(lt(appointments.startsAt, range.end), gt(appointments.endsAt, range.start)));
+    return this.withLines(rows);
+  }
+
+  async findByStatusFrom(status: AppointmentStatus, from: Date): Promise<Appointment[]> {
+    const rows = await this.db
+      .select()
+      .from(appointments)
+      .where(and(eq(appointments.status, status), gt(appointments.endsAt, from)));
+    return this.withLines(rows);
+  }
 
   async findByBarberInRange(barberId: string, range: TimeSlot): Promise<Appointment[]> {
     const rows = await this.db

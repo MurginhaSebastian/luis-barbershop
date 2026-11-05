@@ -40,6 +40,7 @@ function makeRepos() {
     data: { blocks, appointments, customers },
     barbers: {
       findById: async (id: string) => barbers.find((b) => b.id === id) ?? null,
+      findByIds: async (ids: readonly string[]) => barbers.filter((b) => ids.includes(b.id)),
       findAllActive: async () => barbers.filter((b) => b.active),
     },
     services: {
@@ -51,6 +52,7 @@ function makeRepos() {
       findAllActive: async () => products.filter((p) => p.active),
     },
     customers: {
+      findByIds: async (ids: readonly string[]) => customers.filter((c) => ids.includes(c.id)),
       findByPhone: async (phone: string) => customers.find((c) => c.phone === phone) ?? null,
       save: async (c: Customer) => {
         const existing = customers.find((x) => x.phone === c.phone);
@@ -65,6 +67,10 @@ function makeRepos() {
         blocks.filter((b) => (b.barberId === null || b.barberId === barberId) && b.slot.overlaps(range)).map((b) => b.slot),
     },
     appointments: {
+      findById: async (id: string) => appointments.find((a) => a.id === id) ?? null,
+      findInRange: async (range: TimeSlot) => appointments.filter((a) => a.slot.overlaps(range)),
+      findByStatusFrom: async (status: string, from: Date) =>
+        appointments.filter((a) => a.status === status && a.slot.end > from),
       findByBarberInRange: async (barberId: string, range: TimeSlot) =>
         appointments.filter((a) => a.barberId === barberId && a.slot.overlaps(range)),
       findByCustomerFrom: async (customerId: string, from: Date) =>
