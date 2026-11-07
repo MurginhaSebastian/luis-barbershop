@@ -59,16 +59,16 @@ test.describe("datos hostiles", () => {
     await bookUntilData(page);
     await fillData(page);
     // Se captura el envío real y se repite como si viniera de otra web.
+    let forgedStatus = 0;
     await page.route("**/reservar**", async (route) => {
       const real = route.request();
       if (real.method() !== "POST") return route.continue();
       const forged = await request.fetch(real, { headers: { ...real.headers(), origin: "https://atacante.example" } });
-      expect(forged.status()).toBeGreaterThanOrEqual(400);
+      forgedStatus = forged.status();
       await route.abort();
     });
     await page.getByRole("button", { name: "Reservar cita" }).click();
-    await expect.poll(() => count("appointments")).toBe(0);
-    await page.waitForTimeout(500);
+    await expect.poll(() => forgedStatus, { message: "el envío falsificado debe haberse hecho" }).toBeGreaterThanOrEqual(400);
     expect(await count("appointments")).toBe(0);
   });
 });
