@@ -300,6 +300,13 @@ test.describe("bloqueos", () => {
   });
 });
 
+test("en el móvil la pestaña actual queda a la vista", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await login(page);
+  await page.goto("/panel/horario");
+  await expect(page.getByRole("navigation", { name: "Secciones del panel" }).getByRole("link", { name: "Horario" })).toBeInViewport({ ratio: 1 });
+});
+
 test("las pantallas del panel son accesibles y caben en el móvil", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await login(page);

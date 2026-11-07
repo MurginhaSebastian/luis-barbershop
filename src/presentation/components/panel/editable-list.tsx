@@ -84,10 +84,10 @@ function ItemForm(props: ListProps & { item?: EditableItem; heading: string }) {
 export function EditableList(props: ListProps & { items: EditableItem[]; addHeading: string }) {
   return (
     <div className="mt-6 space-y-3">
-      <ItemForm heading={props.addHeading} fields={props.fields} action={props.action} />
       {props.items.map((item) => (
         <ItemForm key={item.id} item={item} heading={item.title} fields={props.fields} action={props.action} />
       ))}
+      <ItemForm heading={props.addHeading} fields={props.fields} action={props.action} />
     </div>
   );
 }

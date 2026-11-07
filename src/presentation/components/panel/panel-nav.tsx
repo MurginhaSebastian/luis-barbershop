@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { cn } from "@/presentation/lib/utils";
 
 const SECTIONS = [
@@ -15,6 +16,12 @@ const SECTIONS = [
 /** Solo navegación: cada página y acción del panel comprueba la sesión por su cuenta. */
 export function PanelNav({ logout }: { logout: () => Promise<void> }) {
   const pathname = usePathname();
+  const current = useRef<HTMLAnchorElement>(null);
+  // En el móvil las pestañas se deslizan: la actual debe quedar a la vista.
+  useEffect(() => {
+    current.current?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [pathname]);
+
   if (pathname === "/panel/entrar") return null;
   return (
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
@@ -22,6 +29,7 @@ export function PanelNav({ logout }: { logout: () => Promise<void> }) {
         {SECTIONS.map(({ href, label }) => (
           <Link
             key={href}
+            ref={pathname === href ? current : undefined}
             href={href}
             aria-current={pathname === href ? "page" : undefined}
             className={cn(
