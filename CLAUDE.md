@@ -98,7 +98,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `presentation/components/booking/` sobre `StepLayout`.
 - `StepLayout` mueve el foco al título al montarse. Los pasos que son componentes de servidor necesitan
   `key` propia: sin ella React reutiliza la plantilla y el foco no se mueve.
-- La única Server Action es `createAppointmentAction` (`app/reservar/actions.ts`): valida con Zod
+- La Server Action pública es `createAppointmentAction` (`app/reservar/actions.ts`): valida con Zod
   (`booking-schema.ts`, frontera de confianza) y traduce `DomainError` a mensajes; cualquier otro error
   se registra y se responde genérico. Los mensajes de `DomainError` los lee el cliente: sin ids internos.
 - Cabeceras de seguridad en `next.config.ts`, solo en producción. `script-src` lleva `'unsafe-inline'`
@@ -135,6 +135,14 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Confirmar y cancelar abren WhatsApp con el mensaje escrito (`presentation/lib/whatsapp.ts`). El
   `window.open` va antes de cualquier `await`, o el navegador lo bloquea. La agenda se refresca sola cada
   minuto (`AutoRefresh`).
+- Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`): acciones en
+  `app/panel/admin-actions.ts`, formato en `admin-schema.ts` y reglas en `core/catalog/rules.ts`. Los casos de
+  uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple.
+- Nada con citas se borra: servicios, productos y barberos solo se ocultan (`active: false`). Editar un
+  precio no toca citas existentes, porque guardan su foto de precio.
+- Ocultar un barbero o bloquear un periodo nunca cancela citas: la acción devuelve un `warning` con cuántas
+  quedan afectadas y el barbero decide en la agenda.
+- `next build` vacía `.next/`: no dejes ahí nada que quieras conservar.
 - El freno de intentos (`LoginThrottle`) vive en memoria del proceso: revisar si la web pasa a varias
   instancias, y qué cabecera de IP es de fiar en el hosting.
 
