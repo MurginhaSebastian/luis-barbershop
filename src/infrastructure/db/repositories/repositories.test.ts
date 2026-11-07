@@ -29,6 +29,7 @@ const NOW = new Date("2026-11-01T12:00:00Z");
 const DATE = "2026-11-02";
 const utc = (hhmm: string) => new Date(`${DATE}T${hhmm}:00Z`);
 const BARBER = "00000000-0000-4000-8000-000000000001";
+const OTHER_BARBER = "00000000-0000-4000-8000-000000000002";
 const CORTE = "00000000-0000-4000-8000-000000000011";
 const CERA = "00000000-0000-4000-8000-000000000021";
 
@@ -137,6 +138,37 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect(after.pending).toEqual([]);
     expect(after.day[0].status).toBe(AppointmentStatus.CONFIRMED);
     expect((await deps.appointments.findById(booked.id))?.services).toEqual(booked.services);
+  });
+
+  describe("reservas simultáneas", () => {
+    const race = (attempts: number, barberId: string | null) =>
+      Promise.allSettled(
+        Array.from({ length: attempts }, (_, i) =>
+          new CreateAppointmentUseCase(deps).execute({
+            barberId,
+            serviceIds: [CORTE],
+            customer: { name: `Cliente ${i}`, phone: `9000001${String(i).padStart(2, "0")}` },
+            start: utc("15:00"),
+          }),
+        ),
+      );
+
+    test("de 10 personas a la misma hora solo una consigue la cita", async () => {
+      const results = await race(10, BARBER);
+      const failed = results.filter((r) => r.status === "rejected");
+      expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(failed).toHaveLength(9);
+      for (const r of failed) expect((r as PromiseRejectedResult).reason).toBeInstanceOf(SlotUnavailableError);
+      expect(await db.select().from(schema.appointments)).toHaveLength(1);
+    });
+
+    test("sin preferencia, cada barbero recibe una cita y nadie se solapa", async () => {
+      await db.insert(schema.barbers).values({ id: OTHER_BARBER, name: "Barbero B" });
+      const results = await race(6, null);
+      const booked = results.flatMap((r) => (r.status === "fulfilled" ? [r.value.barberId] : []));
+      expect(booked.toSorted()).toEqual([BARBER, OTHER_BARBER].toSorted());
+      expect(await db.select().from(schema.appointments)).toHaveLength(2);
+    });
   });
 
   test("cancelar libera el hueco también en la base", async () => {
