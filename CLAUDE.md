@@ -17,9 +17,14 @@ npx tsc --noEmit     # solo tipos
 npm run check        # lint + tipos + tests + build: obligatorio antes de cada commit
 npm test                                    # Vitest, todos los tests
 npx vitest run src/core/core.test.ts -t "availableSlots"   # un archivo / un test
+npm run test:coverage  # cobertura de la lógica, con mínimo obligatorio
+npm run test:mutation  # rompe reglas críticas a propósito y exige que un test lo detecte
 npm run test:e2e     # Playwright + axe contra el build real (necesita Docker encendido)
 npx playwright test e2e/booking.spec.ts -g "sin preferencia"   # una prueba de navegador
 ```
+
+Al añadir una regla crítica (seguridad, dinero, agenda), añade su mutante en `scripts/mutation-check.mjs`.
+Detalle de la batería de calidad en `docs/qa-2026-11.md`.
 
 Pruebas de navegador en `e2e/`: usan Edge (`channel: "msedge"`, sin descargar navegadores), `next start`
 en el puerto 3100 y una base aparte, `barbershop_e2e`, que se recrea en cada ejecución.
