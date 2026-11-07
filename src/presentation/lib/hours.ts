@@ -1,4 +1,5 @@
 import type { BusinessHours } from "@/core/scheduling/availability";
+import { WEEKDAYS } from "./format";
 
 export interface WeekdayGroup {
   /** 0 = domingo … 6 = sábado. */
@@ -8,6 +9,14 @@ export interface WeekdayGroup {
 }
 
 const MONDAY_FIRST = [1, 2, 3, 4, 5, 6, 0];
+const position = (day: number) => (day + 6) % 7; // lunes = 0 … domingo = 6
+
+/** "Domingo", "Lunes y martes" o "Lunes a sábado". */
+export function daysLabel({ first, last }: WeekdayGroup): string {
+  if (first === last) return WEEKDAYS[first];
+  const joiner = position(last) - position(first) === 1 ? " y " : " a ";
+  return `${WEEKDAYS[first]}${joiner}${WEEKDAYS[last].toLowerCase()}`;
+}
 const sameHours = (a: BusinessHours[], b: BusinessHours[]) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Agrupa los días seguidos (de lunes a domingo) que tienen exactamente los mismos tramos. */

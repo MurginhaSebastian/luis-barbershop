@@ -1,14 +1,6 @@
 import type { BusinessHours } from "@/core/scheduling/availability";
-import { formatMinuteOfDay, WEEKDAYS } from "@/presentation/lib/format";
-import { groupWeekdays, type WeekdayGroup } from "@/presentation/lib/hours";
-
-const position = (day: number) => (day + 6) % 7; // lunes = 0 … domingo = 6
-
-function daysLabel({ first, last }: WeekdayGroup) {
-  if (first === last) return WEEKDAYS[first];
-  const joiner = position(last) - position(first) === 1 ? " y " : " a ";
-  return `${WEEKDAYS[first]}${joiner}${WEEKDAYS[last].toLowerCase()}`;
-}
+import { formatMinuteOfDay } from "@/presentation/lib/format";
+import { daysLabel, groupWeekdays } from "@/presentation/lib/hours";
 
 /** Horario semanal compacto: los días seguidos con el mismo horario van en una sola línea. */
 export function WeeklyHours({ weeklyHours }: { weeklyHours: BusinessHours[][] }) {
