@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:mutation": "node scripts/mutation-check.mjs",
     "test:e2e": "playwright test",
     "check": "eslint && next typegen && tsc --noEmit && vitest run && next build",
     "panel:clave": "node --no-warnings scripts/panel-password.mjs",
