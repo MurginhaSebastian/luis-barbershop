@@ -31,6 +31,11 @@ export function shopDateOf(instant: Date): string {
   return new Date(instant.getTime() + SHOP_UTC_OFFSET_MINUTES * MINUTE_MS).toISOString().slice(0, 10);
 }
 
+/** Instante de un día de la barbería, a esos minutos desde su medianoche (1440 = fin del día). */
+export function shopInstant(date: string, minute: number): Date {
+  return new Date(shopMidnight(date).getTime() + minute * MINUTE_MS);
+}
+
 /** Intervalo del día local completo, para pedir bloqueos y citas a los repositorios. */
 export function shopDayRange(date: string): TimeSlot {
   const start = shopMidnight(date);
