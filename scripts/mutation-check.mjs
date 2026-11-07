@@ -24,6 +24,14 @@ const mutants = [
   ["Teléfono: se deja de normalizar", "src/core/entities/customer.ts", "return /^9\\d{8}$/.test(digits) ? `51${digits}` : digits;", "return digits;"],
   ["Reserva: se puede saltar pasos por URL", "src/presentation/lib/booking-flow.ts", "return Math.min(requested ?? 1, reachable) as BookingStep;", "return (requested ?? 1) as BookingStep;"],
   ["Validación: acepta cualquier celular", "src/app/reservar/booking-schema.ts", '.pipe(z.string().regex(/^(\\+?51)?9\\d{8}$/, "Escribe un celular de 9 dígitos que empiece por 9."))', ".pipe(z.string())"],
+  ["Panel: guardar un servicio sin comprobar sesión", "src/app/panel/admin-actions.ts", "export async function saveServiceAction(_prev: AdminState, form: FormData): Promise<AdminState> {\n  await requirePanelSession();", "export async function saveServiceAction(_prev: AdminState, form: FormData): Promise<AdminState> {"],
+  ["Panel: quitar un bloqueo sin comprobar sesión", "src/app/panel/admin-actions.ts", "export async function removeBlockAction(id: string): Promise<AdminState> {\n  await requirePanelSession();", "export async function removeBlockAction(id: string): Promise<AdminState> {"],
+  ["Precio: los céntimos se calculan mal", "src/app/panel/admin-schema.ts", 'Number(cents.padEnd(2, "0"))', "Number(cents)"],
+  ["Horario: los tramos se pueden pisar", "src/core/catalog/rules.ts", "if (i > 0 && openMinute < sorted[i - 1].closeMinute) {", "if (i < 0) {"],
+  ["Precio: se aceptan negativos", "src/core/catalog/rules.ts", "priceCents < 0 || ", ""],
+  ["Bloqueo: cuenta citas de otros barberos", "src/application/use-cases/admin/manage-schedule.ts", "a.blocksSchedule() && (!input.barberId || a.barberId === input.barberId)", "a.blocksSchedule()"],
+  ["Bloqueo: se aceptan periodos pasados", "src/application/use-cases/admin/manage-schedule.ts", 'if (input.slot.end <= this.deps.now()) throw new InvalidCatalogError("Ese periodo ya pasó.");', ""],
+  ["Barbero: el aviso cuenta citas canceladas", "src/application/use-cases/admin/manage-catalog.ts", "appointments.filter((a) => a.blocksSchedule()).length", "appointments.length"],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
 ];
 
