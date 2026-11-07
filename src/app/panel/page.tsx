@@ -5,7 +5,7 @@ import { shopDateOf } from "@/core/scheduling/availability";
 import { getUseCases } from "@/infrastructure/container";
 import { AgendaView } from "@/presentation/components/panel/agenda-view";
 import { AutoRefresh } from "@/presentation/components/panel/auto-refresh";
-import { changeStatusAction, logoutAction } from "./actions";
+import { changeStatusAction } from "./actions";
 import { requirePanelSession } from "./session";
 
 export const metadata: Metadata = { title: "Agenda" };
@@ -13,14 +13,7 @@ export const metadata: Metadata = { title: "Agenda" };
 export default function PanelPage({ searchParams }: PageProps<"/panel">) {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 pt-4 pb-24 sm:px-6">
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-heading text-4xl sm:text-5xl">Agenda</h1>
-        <form action={logoutAction}>
-          <button type="submit" className="min-h-11 cursor-pointer text-sm text-muted-foreground underline underline-offset-4">
-            Cerrar sesión
-          </button>
-        </form>
-      </div>
+      <h1 className="font-heading text-4xl sm:text-5xl">Agenda</h1>
       <Suspense fallback={<p className="mt-6 min-h-96 text-muted-foreground">Cargando…</p>}>
         <Panel searchParams={searchParams} />
       </Suspense>
