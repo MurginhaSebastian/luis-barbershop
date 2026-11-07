@@ -1,7 +1,7 @@
 "use client";
 
 import Form from "next/form";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Service } from "@/core/entities/catalog";
 import type { BookingSelection } from "@/presentation/lib/booking-flow";
 import { formatPrice } from "@/presentation/lib/format";
@@ -12,8 +12,13 @@ import { SubmitButton } from "./submit-button";
 
 /** Paso 1: elegir uno o varios servicios, viendo el total mientras se marcan. */
 export function ServiceStep(props: { progress: ReactNode; services: Service[]; selection: BookingSelection }) {
+  const form = useRef<HTMLFormElement>(null);
   const [chosen, setChosen] = useState(props.selection.servicios);
-  const toggle = (id: string) => setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
+  const readForm = () => {
+    if (form.current) setChosen(new FormData(form.current).getAll("servicios").map(String));
+  };
+  // Lo marcado antes de que cargue el JavaScript no pasa por React: se lee del formulario al arrancar.
+  useEffect(readForm, []);
   const sorted = props.services.toSorted((a, b) => b.priceCents - a.priceCents);
   return (
     <StepLayout
@@ -21,7 +26,7 @@ export function ServiceStep(props: { progress: ReactNode; services: Service[]; s
       title="¿Qué servicio quieres?"
       summary={<BookingSummary services={sorted.filter((s) => chosen.includes(s.id))} />}
     >
-      <Form action="/reservar" className="space-y-6">
+      <Form ref={form} action="/reservar" onChange={readForm} className="space-y-6">
         <input type="hidden" name="paso" value="2" />
         {props.selection.barbero && <input type="hidden" name="barbero" value={props.selection.barbero} />}
         {props.selection.dia && <input type="hidden" name="dia" value={props.selection.dia} />}
@@ -35,8 +40,7 @@ export function ServiceStep(props: { progress: ReactNode; services: Service[]; s
                   type="checkbox"
                   name="servicios"
                   value={s.id}
-                  checked={chosen.includes(s.id)}
-                  onChange={() => toggle(s.id)}
+                  defaultChecked={props.selection.servicios.includes(s.id)}
                   className="size-5 accent-primary"
                 />
                 <span className="flex-1">

@@ -74,6 +74,23 @@ test.describe("datos hostiles", () => {
 });
 
 test.describe("uso real y torpe", () => {
+  test("en un celular lento, marcar un servicio antes de que cargue el JavaScript no se pierde", async ({ page }) => {
+    let release = () => {};
+    const javascript = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/_next/static/chunks/**/*.js", async (route) => {
+      await javascript;
+      await route.continue();
+    });
+
+    await page.goto("/reservar", { waitUntil: "commit" });
+    await page.getByLabel(/Corte clásico/).check();
+    release();
+
+    await expect(page.getByRole("button", { name: "Continuar" })).toBeEnabled();
+    await expect(page.getByLabel(/Corte clásico/)).toBeChecked();
+    await expect(page.getByLabel("Resumen de tu reserva")).toContainText("S/ 30.00");
+  });
+
   test("el doble clic en Reservar crea una sola cita", async ({ page }) => {
     await bookUntilData(page);
     await fillData(page);
