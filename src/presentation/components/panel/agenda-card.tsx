@@ -44,7 +44,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
   return (
     <article
       aria-label={`${formatTime(item.start)}, ${item.customerName}`}
-      className={cn("rounded-2xl border border-border bg-card p-4", finished && "opacity-70")}
+      className={cn("rounded-2xl border border-border bg-card p-4 wrap-anywhere", finished && "opacity-70")}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
