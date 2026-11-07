@@ -4,6 +4,8 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
+import { ManageCatalogUseCase } from "@/application/use-cases/admin/manage-catalog";
+import { ManageScheduleUseCase } from "@/application/use-cases/admin/manage-schedule";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
@@ -138,6 +140,55 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect(after.pending).toEqual([]);
     expect(after.day[0].status).toBe(AppointmentStatus.CONFIRMED);
     expect((await deps.appointments.findById(booked.id))?.services).toEqual(booked.services);
+  });
+
+  describe("administración", () => {
+    test("editar un precio se ve en el catálogo y no altera una cita ya reservada", async () => {
+      const booked = await book(utc("15:00"));
+      const catalog = new ManageCatalogUseCase(deps);
+      await catalog.saveService({ id: CORTE, name: "Corte", durationMinutes: 30, priceCents: 9900, active: true });
+
+      expect((await deps.services.findByIds([CORTE]))[0].priceCents).toBe(9900);
+      expect((await deps.appointments.findById(booked.id))?.totalCents).toBe(booked.totalCents);
+    });
+
+    test("lo oculto sale del catálogo público pero sigue en el panel", async () => {
+      const catalog = new ManageCatalogUseCase(deps);
+      await catalog.saveProduct({ id: CERA, name: "Cera", priceCents: 2500, active: false });
+      expect(await deps.products.findAllActive()).toEqual([]);
+      expect(await catalog.listProducts()).toHaveLength(1);
+    });
+
+    test("un alta nueva aparece en el catálogo", async () => {
+      const catalog = new ManageCatalogUseCase(deps);
+      await catalog.saveBarber({ name: "Barbero C", active: true });
+      expect((await catalog.listBarbers()).map((b) => b.name)).toEqual(["Barbero A", "Barbero C"]);
+    });
+
+    test("cambiar el horario de un día cambia las horas ofrecidas", async () => {
+      await new ManageScheduleUseCase(deps).saveDayHours(1, [{ openMinute: 660, closeMinute: 690 }]);
+      const slots = await new GetAvailableSlotsUseCase(deps).execute({ barberId: BARBER, serviceIds: [CORTE], date: DATE });
+      expect(slots.map((s) => s.start.toISOString().slice(11, 16))).toEqual(["16:00"]);
+    });
+
+    test("cerrar un día lo deja sin horas", async () => {
+      await new ManageScheduleUseCase(deps).saveDayHours(1, []);
+      expect(await new GetAvailableSlotsUseCase(deps).execute({ barberId: BARBER, serviceIds: [CORTE], date: DATE })).toEqual([]);
+    });
+
+    test("un bloqueo quita sus horas y al borrarlo vuelven", async () => {
+      const schedule = new ManageScheduleUseCase(deps);
+      const hours = () => new GetAvailableSlotsUseCase(deps).execute({ barberId: BARBER, serviceIds: [CORTE], date: DATE });
+      const before = (await hours()).length;
+
+      await schedule.addBlock({ barberId: null, slot: TimeSlot.create(utc("15:00"), utc("16:00")), reason: "Feriado" });
+      expect((await hours()).length).toBe(before - 2);
+
+      const [block] = await schedule.listBlocks();
+      expect(block).toMatchObject({ barberName: null, reason: "Feriado" });
+      await schedule.removeBlock(block.id);
+      expect((await hours()).length).toBe(before);
+    });
   });
 
   describe("reservas simultáneas", () => {

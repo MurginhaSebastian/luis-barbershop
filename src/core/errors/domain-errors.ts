@@ -25,6 +25,8 @@ export class TooManyActiveAppointmentsError extends DomainError {
 
 export class InvalidAppointmentError extends DomainError {}
 
+export class InvalidCatalogError extends DomainError {}
+
 export class InvalidStatusChangeError extends DomainError {
   constructor() {
     super("Esta cita ya no admite ese cambio. Actualiza la agenda.");

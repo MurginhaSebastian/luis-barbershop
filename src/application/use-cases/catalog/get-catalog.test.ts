@@ -8,10 +8,23 @@ test("devuelve lo activo y el horario de los 7 días, con el domingo en la posic
   const barber = { id: "b1", name: "Luis", active: true };
 
   const catalog = await new GetCatalogUseCase({
-    services: { findAllActive: async () => [service], findByIds: async () => [] },
-    products: { findAllActive: async () => [product], findByIds: async () => [] },
-    barbers: { findAllActive: async () => [barber], findById: async () => null, findByIds: async () => [] },
-    schedule: { findBusinessHours: async (weekday) => (weekday === 0 ? sunday : []), findBlocks: async () => [] },
+    services: { findAllActive: async () => [service], findByIds: async () => [], findAll: async () => [], save: async () => {} },
+    products: { findAllActive: async () => [product], findByIds: async () => [], findAll: async () => [], save: async () => {} },
+    barbers: {
+      findAllActive: async () => [barber],
+      findById: async () => null,
+      findByIds: async () => [],
+      findAll: async () => [],
+      save: async () => {},
+    },
+    schedule: {
+      findBusinessHours: async (weekday) => (weekday === 0 ? sunday : []),
+      findBlocks: async () => [],
+      saveBusinessHours: async () => {},
+      findBlocksFrom: async () => [],
+      addBlock: async () => {},
+      removeBlock: async () => {},
+    },
   }).execute();
 
   expect(catalog).toEqual({

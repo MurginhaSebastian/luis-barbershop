@@ -17,6 +17,14 @@ export class DrizzleServiceRepository implements IServiceRepository {
   async findAllActive(): Promise<Service[]> {
     return this.db.select().from(services).where(eq(services.active, true)).orderBy(services.name);
   }
+
+  async findAll(): Promise<Service[]> {
+    return this.db.select().from(services).orderBy(services.name);
+  }
+
+  async save(service: Service): Promise<void> {
+    await this.db.insert(services).values(service).onConflictDoUpdate({ target: services.id, set: service });
+  }
 }
 
 export class DrizzleProductRepository implements IProductRepository {
@@ -29,6 +37,14 @@ export class DrizzleProductRepository implements IProductRepository {
 
   async findAllActive(): Promise<Product[]> {
     return this.db.select().from(products).where(eq(products.active, true)).orderBy(products.name);
+  }
+
+  async findAll(): Promise<Product[]> {
+    return this.db.select().from(products).orderBy(products.name);
+  }
+
+  async save(product: Product): Promise<void> {
+    await this.db.insert(products).values(product).onConflictDoUpdate({ target: products.id, set: product });
   }
 }
 
@@ -47,5 +63,13 @@ export class DrizzleBarberRepository implements IBarberRepository {
 
   async findAllActive(): Promise<Barber[]> {
     return this.db.select().from(barbers).where(eq(barbers.active, true)).orderBy(barbers.name);
+  }
+
+  async findAll(): Promise<Barber[]> {
+    return this.db.select().from(barbers).orderBy(barbers.name);
+  }
+
+  async save(barber: Barber): Promise<void> {
+    await this.db.insert(barbers).values(barber).onConflictDoUpdate({ target: barbers.id, set: barber });
   }
 }

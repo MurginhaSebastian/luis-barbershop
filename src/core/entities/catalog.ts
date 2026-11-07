@@ -1,3 +1,5 @@
+import type { TimeSlot } from "./time-slot";
+
 /** Precios en céntimos de sol (PEN) para no operar con decimales. */
 export interface Service {
   id: string;
@@ -18,4 +20,12 @@ export interface Barber {
   id: string;
   name: string;
   active: boolean;
+}
+
+export interface ScheduleBlock {
+  id: string;
+  /** null = toda la barbería (feriado, cierre). */
+  barberId: string | null;
+  slot: TimeSlot;
+  reason: string | null;
 }

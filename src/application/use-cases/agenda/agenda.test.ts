@@ -47,6 +47,8 @@ function makeRepos(appointments: Appointment[]) {
       ],
       findById: async () => null,
       findAllActive: async () => [],
+      findAll: async () => [],
+      save: async () => {},
     },
     now: () => NOW,
   };

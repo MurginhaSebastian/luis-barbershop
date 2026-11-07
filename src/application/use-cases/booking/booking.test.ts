@@ -42,14 +42,20 @@ function makeRepos() {
       findById: async (id: string) => barbers.find((b) => b.id === id) ?? null,
       findByIds: async (ids: readonly string[]) => barbers.filter((b) => ids.includes(b.id)),
       findAllActive: async () => barbers.filter((b) => b.active),
+      findAll: async () => barbers,
+      save: async () => {},
     },
     services: {
       findByIds: async (ids: readonly string[]) => services.filter((s) => ids.includes(s.id)),
       findAllActive: async () => services.filter((s) => s.active),
+      findAll: async () => services,
+      save: async () => {},
     },
     products: {
       findByIds: async (ids: readonly string[]) => products.filter((p) => ids.includes(p.id)),
       findAllActive: async () => products.filter((p) => p.active),
+      findAll: async () => products,
+      save: async () => {},
     },
     customers: {
       findByIds: async (ids: readonly string[]) => customers.filter((c) => ids.includes(c.id)),
@@ -65,6 +71,10 @@ function makeRepos() {
       findBusinessHours: async (weekday: number) => (weekday === 1 ? hours : []),
       findBlocks: async (barberId: string, range: TimeSlot) =>
         blocks.filter((b) => (b.barberId === null || b.barberId === barberId) && b.slot.overlaps(range)).map((b) => b.slot),
+      saveBusinessHours: async () => {},
+      findBlocksFrom: async () => [],
+      addBlock: async () => {},
+      removeBlock: async () => {},
     },
     appointments: {
       findById: async (id: string) => appointments.find((a) => a.id === id) ?? null,

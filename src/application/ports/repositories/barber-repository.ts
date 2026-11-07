@@ -5,4 +5,7 @@ export interface IBarberRepository {
   /** También los inactivos: sus citas pasadas siguen en la agenda. */
   findByIds(ids: readonly string[]): Promise<Barber[]>;
   findAllActive(): Promise<Barber[]>;
+  /** También los ocultos, para el panel. */
+  findAll(): Promise<Barber[]>;
+  save(barber: Barber): Promise<void>;
 }
