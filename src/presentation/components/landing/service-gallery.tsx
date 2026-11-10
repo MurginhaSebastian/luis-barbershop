@@ -11,7 +11,7 @@ const PHOTOS: [RegExp, string][] = [
 ];
 
 // Sin foto propia subida desde el panel, una de ejemplo elegida por el nombre del servicio.
-function photoFor(service: Service) {
+export function photoFor(service: Pick<Service, "name">) {
   return PHOTOS.find(([pattern]) => pattern.test(service.name))?.[1] ?? "/images/hero.jpg";
 }
 

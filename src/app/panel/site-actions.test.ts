@@ -1,19 +1,32 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { InvalidSettingsError } from "@/core/errors/domain-errors";
-import { saveContactAction, saveSectionsAction } from "./site-actions";
-import { parseContactForm, parseSectionsForm } from "./site-schema";
+import { removeImageAction, saveContactAction, saveSectionsAction, uploadImageAction } from "./site-actions";
+import { parseContactForm, parseImageTarget, parseSectionsForm } from "./site-schema";
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   requirePanelSession: vi.fn(),
   saveContact: vi.fn(),
   saveSections: vi.fn(),
+  setImage: vi.fn(),
+  setServiceImage: vi.fn(),
+  removeImage: vi.fn(),
+  removeServiceImage: vi.fn(),
 }));
 
 vi.mock("next/cache", () => ({ refresh: mocks.refresh }));
 vi.mock("./session", () => ({ requirePanelSession: mocks.requirePanelSession }));
 vi.mock("@/infrastructure/container", () => ({
-  getUseCases: () => ({ manageSite: { saveContact: mocks.saveContact, saveSections: mocks.saveSections } }),
+  getUseCases: () => ({
+    manageSite: {
+      saveContact: mocks.saveContact,
+      saveSections: mocks.saveSections,
+      setImage: mocks.setImage,
+      setServiceImage: mocks.setServiceImage,
+      removeImage: mocks.removeImage,
+      removeServiceImage: mocks.removeServiceImage,
+    },
+  }),
 }));
 
 function form(fields: Record<string, string>) {
@@ -78,5 +91,52 @@ describe("acciones", () => {
       error: "Los enlaces deben empezar por https://.",
     });
     expect(mocks.refresh).not.toHaveBeenCalled();
+  });
+});
+
+const SERVICE = "20000000-0000-4000-8000-000000000001";
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2]);
+
+function upload(target: string, file?: File) {
+  const f = new FormData();
+  f.append("target", target);
+  if (file) f.append("file", file);
+  return f;
+}
+
+test("parseImageTarget acepta huecos y servicios, y nada más", () => {
+  expect(parseImageTarget("hero")).toEqual({ kind: "slot", slot: "hero" });
+  expect(parseImageTarget(`service:${SERVICE}`)).toEqual({ kind: "service", serviceId: SERVICE });
+  for (const bad of ["fondo", "service:1 OR 1=1", SERVICE, "service:", null]) expect(parseImageTarget(bad)).toBeNull();
+});
+
+describe("fotos", () => {
+  test("sin sesión no se sube ni se quita nada", async () => {
+    mocks.requirePanelSession.mockRejectedValue(new Error("REDIRECT /panel/entrar"));
+    await expect(uploadImageAction({}, upload("hero", new File([JPEG], "a.jpg")))).rejects.toThrow("REDIRECT");
+    await expect(removeImageAction({}, upload("hero"))).rejects.toThrow("REDIRECT");
+    for (const fn of [mocks.setImage, mocks.setServiceImage, mocks.removeImage, mocks.removeServiceImage]) {
+      expect(fn).not.toHaveBeenCalled();
+    }
+  });
+
+  test("sube al hueco o al servicio indicado", async () => {
+    expect(await uploadImageAction({}, upload("hero", new File([JPEG], "a.jpg")))).toEqual({ ok: "Foto actualizada. Ya se ve en la web." });
+    expect(mocks.setImage).toHaveBeenCalledWith("hero", JPEG);
+    await uploadImageAction({}, upload(`service:${SERVICE}`, new File([JPEG], "a.jpg")));
+    expect(mocks.setServiceImage).toHaveBeenCalledWith(SERVICE, JPEG);
+  });
+
+  test("sin archivo, con uno enorme o con destino inventado no llama al caso de uso", async () => {
+    expect((await uploadImageAction({}, upload("hero"))).error).toBe("Elige una foto.");
+    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "grande.jpg");
+    expect((await uploadImageAction({}, upload("hero", big))).error).toContain("5 MB");
+    expect((await uploadImageAction({}, upload("../etc", new File([JPEG], "a.jpg")))).error).toBeDefined();
+    expect(mocks.setImage).not.toHaveBeenCalled();
+  });
+
+  test("quitar vuelve a la de ejemplo", async () => {
+    expect(await removeImageAction({}, upload(`service:${SERVICE}`))).toEqual({ ok: "Vuelve a verse la foto de ejemplo." });
+    expect(mocks.removeServiceImage).toHaveBeenCalledWith(SERVICE);
   });
 });

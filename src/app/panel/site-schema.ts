@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { normalizePhone } from "@/core/entities/customer";
-import { CONTACT_URL_FIELDS, type ShopContact, SITE_SECTIONS, type SiteSettings } from "@/core/entities/site";
+import { CONTACT_URL_FIELDS, IMAGE_SLOTS, type ImageSlot, type ShopContact, SITE_SECTIONS, type SiteSettings } from "@/core/entities/site";
 
 // Formato del formulario de la web; las reglas (WhatsApp peruano, solo https) están en core/entities/site.ts.
 
@@ -26,4 +26,15 @@ export function parseContactForm(form: FormData) {
 
 export function parseSectionsForm(form: FormData): SiteSettings["sections"] {
   return Object.fromEntries(SITE_SECTIONS.map((s) => [s, form.get(s) === "on"])) as SiteSettings["sections"];
+}
+
+export type ImageTarget = { kind: "slot"; slot: ImageSlot } | { kind: "service"; serviceId: string };
+
+/** "hero" (un hueco de la portada) o "service:<uuid>" (la foto de un servicio). */
+export function parseImageTarget(value: FormDataEntryValue | null): ImageTarget | null {
+  if (typeof value !== "string") return null;
+  const slot = z.enum(IMAGE_SLOTS).safeParse(value);
+  if (slot.success) return { kind: "slot", slot: slot.data };
+  const service = z.uuid().safeParse(value.replace(/^service:/, ""));
+  return value.startsWith("service:") && service.success ? { kind: "service", serviceId: service.data } : null;
 }
