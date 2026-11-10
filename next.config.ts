@@ -24,8 +24,21 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+// Las fotos subidas a Supabase Storage pasan por el optimizador de Next: así se sirven desde la propia web
+// y la política de contenido no tiene que admitir otro dominio.
+const supabaseHost = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : undefined;
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    remotePatterns: supabaseHost
+      ? [{ protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }]
+      : [],
+  },
+  experimental: {
+    // Fotos de hasta 5 MB más el sobrante del formulario multipart.
+    serverActions: { bodySizeLimit: "6mb" },
+  },
   async headers() {
     return process.env.NODE_ENV === "production" ? [{ source: "/:path*", headers: securityHeaders }] : [];
   },
