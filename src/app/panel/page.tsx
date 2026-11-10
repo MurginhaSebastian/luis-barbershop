@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { z } from "zod";
 import { shopDateOf } from "@/core/scheduling/availability";
-import { getUseCases } from "@/infrastructure/container";
+import { getUseCases, getVapidPublicKey } from "@/infrastructure/container";
 import { AgendaView } from "@/presentation/components/panel/agenda-view";
 import { AutoRefresh } from "@/presentation/components/panel/auto-refresh";
+import { PushToggle } from "@/presentation/components/panel/push-toggle";
 import { changeStatusAction } from "./actions";
+import { sendTestPushAction, subscribePushAction, unsubscribePushAction } from "./push-actions";
 import { requirePanelSession } from "./session";
 
 export const metadata: Metadata = { title: "Agenda" };
@@ -28,6 +30,12 @@ async function Panel({ searchParams }: Pick<PageProps<"/panel">, "searchParams">
   const agenda = await getUseCases().getAgenda.execute({ date });
   return (
     <>
+      <PushToggle
+        publicKey={getVapidPublicKey()}
+        subscribe={subscribePushAction}
+        unsubscribe={unsubscribePushAction}
+        sendTest={sendTestPushAction}
+      />
       <AgendaView agenda={agenda} date={date} today={today} changeStatus={changeStatusAction} />
       <AutoRefresh />
     </>

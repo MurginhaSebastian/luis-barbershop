@@ -207,3 +207,65 @@ test.describe("agenda", () => {
     await check("agenda");
   });
 });
+
+test.describe("avisos push", () => {
+  /** El navegador de pruebas no tiene servicio de push: se simula su suscripción, con claves reales. */
+  async function fakePushService(page: Page) {
+    await page.addInitScript(() => {
+      const w = window as unknown as { fakeSub: PushSubscription | null };
+      w.fakeSub = null;
+      const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      PushManager.prototype.subscribe = async function () {
+        const pair = await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"]);
+        const json = {
+          endpoint: "https://push.e2e.invalid/dispositivo",
+          expirationTime: null,
+          keys: {
+            p256dh: b64(new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))),
+            auth: b64(crypto.getRandomValues(new Uint8Array(16))),
+          },
+        };
+        w.fakeSub = {
+          endpoint: json.endpoint,
+          toJSON: () => json,
+          unsubscribe: async () => ((w.fakeSub = null), true),
+        } as unknown as PushSubscription;
+        return w.fakeSub;
+      };
+      PushManager.prototype.getSubscription = async () => w.fakeSub;
+    });
+  }
+
+  const devices = () =>
+    withE2eDatabase(async (db) => (await db.query("SELECT endpoint FROM push_subscriptions")).rows.map((r) => r.endpoint));
+
+  test.beforeEach(() => withE2eDatabase((db) => db.query("TRUNCATE push_subscriptions")));
+
+  test("se activan, se prueban y se desactivan en este dispositivo", async ({ page, context }) => {
+    await context.grantPermissions(["notifications"]);
+    await fakePushService(page);
+    await login(page);
+    const box = page.getByRole("region", { name: "Avisos en este dispositivo" });
+
+    await box.getByRole("button", { name: "Activar avisos" }).click();
+    await expect(box).toContainText("Avisos activados en este dispositivo");
+    expect(await devices()).toEqual(["https://push.e2e.invalid/dispositivo"]);
+
+    // El servicio de push no existe: el aviso no llega y el panel lo dice.
+    await box.getByRole("button", { name: "Enviar prueba" }).click();
+    await expect(box.getByRole("alert")).toContainText("No llegó a ningún dispositivo");
+    expect(await devices()).toHaveLength(1);
+
+    await box.getByRole("button", { name: "Desactivar" }).click();
+    await expect(box.getByRole("button", { name: "Activar avisos" })).toBeVisible();
+    expect(await devices()).toEqual([]);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  });
+
+  test("con los avisos bloqueados explica cómo permitirlos", async ({ page, context }) => {
+    await context.clearPermissions();
+    await page.addInitScript(() => Object.defineProperty(Notification, "permission", { get: () => "denied" }));
+    await login(page);
+    await expect(page.getByRole("region", { name: "Avisos en este dispositivo" })).toContainText("Bloqueaste los avisos");
+  });
+});
