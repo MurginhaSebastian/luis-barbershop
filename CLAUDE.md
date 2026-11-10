@@ -118,8 +118,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   la cabecera, la portada y el pie.
 - Las secciones llegan en streaming, después del salto del navegador a un `#ancla`: `ScrollToHash` lo
   repite al final de `CatalogSections`.
-- Fotos provisionales de Unsplash en `public/images/` (créditos en `CREDITS.md`); la foto de cada
-  servicio se elige por su nombre en `service-gallery.tsx` hasta que haya fotos reales.
+- Fotos provisionales de Unsplash en `public/images/` (créditos en `CREDITS.md`). Se sustituyen por las que
+  se suban en `/panel/web`; sin foto subida, cada servicio usa la que elige `photoFor` por su nombre.
 - Testimonios en `presentation/content/testimonials.ts`: solo reales y con permiso; vacío = sección
   oculta.
 
@@ -143,8 +143,32 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Ocultar un barbero o bloquear un periodo nunca cancela citas: la acción devuelve un `warning` con cuántas
   quedan afectadas y el barbero decide en la agenda.
 - `next build` vacía `.next/`: no dejes ahí nada que quieras conservar.
+- La agenda (`/panel`) lleva `PushToggle`: activar, probar y desactivar los avisos en ese dispositivo.
 - El freno de intentos (`LoginThrottle`) vive en memoria del proceso: revisar si la web pasa a varias
   instancias, y qué cabecera de IP es de fiar en el hosting.
+
+### Fotos subidas
+- `ManageSiteUseCase` comprueba el tipo por contenido (`core/entities/image.ts`: JPEG, PNG, WebP, 5 MB) y
+  `SharpImageOptimizer` la deja en WebP de 1600 px como máximo, sin metadatos (pueden llevar la ubicación).
+- `selectImageStorage` elige dónde guardar: Supabase Storage por su API REST si están `SUPABASE_URL`,
+  `SUPABASE_SERVICE_ROLE_KEY` (solo servidor, nunca `NEXT_PUBLIC_`) y `SUPABASE_BUCKET`; si no, disco local
+  (`.uploads/`, servido en `/imagenes/[archivo]`) fuera de producción o con `IMAGE_STORAGE=local`. En
+  producción sin Supabase la subida se desactiva, porque el disco del hosting no conserva archivos.
+- El disco local solo acepta nombres `<uuid>.webp` generados por nosotros: impide salir de la carpeta.
+- `next.config.ts` admite en `next/image` solo el host de `SUPABASE_URL` (leído al compilar).
+
+### Avisos push
+- Al reservar, `createAppointmentAction` llama a `ManagePushUseCase.notifyNewBooking` dentro de `after()`: el
+  cliente no espera y un aviso fallido solo se registra. El mensaje nunca lleva el celular del cliente.
+- `WebPushSender` (`infrastructure/push/`) cifra con `web-push` y entrega por `fetch`; un 404 o 410 borra el
+  dispositivo y cualquier otro fallo solo se cuenta. Claves VAPID en `VAPID_*` (`npm run panel:push`): sin
+  ellas el panel explica que faltan y no se envía nada. Cambiarlas obliga a reactivar cada dispositivo.
+- `public/sw.js` muestra el aviso, abre o enfoca `/panel` y manda un mensaje a las pestañas abiertas, que
+  `AutoRefresh` usa para refrescar al momento. Se registra con `scope: "/panel"`.
+- `public/panel.webmanifest` solo se enlaza desde el layout del panel: en iPhone los avisos exigen instalar
+  el panel en la pantalla de inicio. Probar en local funciona en `localhost`; en un celular, solo con HTTPS.
+- En las pruebas de navegador no hay servicio de push: se simula la suscripción y el aviso se entrega por
+  CDP (`ServiceWorker.deliverPushMessage`).
 
 ### Persistencia (Drizzle)
 - Esquema en `src/infrastructure/db/schema.ts`; migraciones SQL versionadas en `db/migrations/`.

@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { PANEL_PASSWORD, resetCatalog } from "./database";
-import { bookUntilData, chooseBarber, chooseDay, chooseServices, fillData } from "./helpers";
+import { bookUntilData, chooseBarber, chooseServices, fillData } from "./helpers";
 
 test.beforeEach(() => resetCatalog());
 test.afterAll(() => resetCatalog());
