@@ -62,9 +62,11 @@ function PhotoForm({ slot, upload, remove }: { slot: PhotoSlot; upload: AdminAct
           >
             Volver a la foto de ejemplo
           </button>
-          <FormStatus state={removeState} />
         </form>
       )}
+      {/* Fuera del formulario: al quitar la foto el botón desaparece, pero la confirmación debe verse. */}
+      <FormStatus state={removeState} />
+
     </li>
   );
 }
