@@ -2,6 +2,7 @@ import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/c
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { ManageCatalogUseCase } from "@/application/use-cases/admin/manage-catalog";
 import { ManageSiteUseCase } from "@/application/use-cases/admin/manage-site";
+import { ManagePushUseCase } from "@/application/use-cases/push/manage-push";
 import { ManageScheduleUseCase } from "@/application/use-cases/admin/manage-schedule";
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
@@ -15,10 +16,13 @@ import { DrizzleSiteSettingsRepository } from "./db/repositories/site-settings-r
 import { LocalImageStorage } from "./images/local-storage";
 import { selectImageStorage } from "./images/select-storage";
 import { SharpImageOptimizer } from "./images/sharp-optimizer";
+import { DrizzlePushSubscriptionRepository } from "./db/repositories/push-subscription-repository";
+import { readVapidKeys, WebPushSender } from "./push/web-push-sender";
 
 /** Raíz de composición: único sitio donde los casos de uso reciben sus implementaciones concretas. */
 export function getUseCases() {
   const db = getDb();
+  const vapid = readVapidKeys(process.env);
   const deps = {
     barbers: new DrizzleBarberRepository(db),
     services: new DrizzleServiceRepository(db),
@@ -29,6 +33,8 @@ export function getUseCases() {
     siteSettings: new DrizzleSiteSettingsRepository(db),
     images: selectImageStorage(process.env),
     imageOptimizer: new SharpImageOptimizer(),
+    pushSubscriptions: new DrizzlePushSubscriptionRepository(db),
+    pushSender: vapid ? new WebPushSender(vapid) : null,
     now: () => new Date(),
   };
   return {
@@ -39,6 +45,7 @@ export function getUseCases() {
     manageCatalog: new ManageCatalogUseCase(deps),
     manageSchedule: new ManageScheduleUseCase(deps),
     manageSite: new ManageSiteUseCase(deps),
+    managePush: new ManagePushUseCase(deps),
     changeAppointmentStatus: new ChangeAppointmentStatusUseCase(deps),
   };
 }
@@ -46,4 +53,9 @@ export function getUseCases() {
 /** Fotos en el disco del servidor (desarrollo, o hosting con disco propio). */
 export function getLocalImages() {
   return new LocalImageStorage(process.env.UPLOADS_DIR || ".uploads");
+}
+
+/** La clave pública VAPID: el navegador la necesita para suscribirse. No es secreta. */
+export function getVapidPublicKey(): string | null {
+  return readVapidKeys(process.env)?.publicKey ?? null;
 }

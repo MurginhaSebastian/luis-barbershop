@@ -36,6 +36,13 @@
       "when": 1794279374157,
       "tag": "0004_service_image",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794279960863,
+      "tag": "0005_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }

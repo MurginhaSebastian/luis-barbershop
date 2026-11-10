@@ -141,3 +141,11 @@ export const siteSettings = pgTable(
   },
   (t) => [check("site_settings_single_row", sql`${t.id} = 1`)],
 );
+
+/** Dispositivos del panel que reciben avisos push; el endpoint identifica al dispositivo. */
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  endpoint: text().primaryKey(),
+  p256dh: text().notNull(),
+  auth: text().notNull(),
+  createdAt: instant("created_at").notNull().defaultNow(),
+});

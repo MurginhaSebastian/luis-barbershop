@@ -10,6 +10,7 @@ import { ManageSiteUseCase } from "@/application/use-cases/admin/manage-site";
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { InvalidSettingsError } from "@/core/errors/domain-errors";
 import { DrizzleSiteSettingsRepository } from "./site-settings-repository";
+import { DrizzlePushSubscriptionRepository } from "./push-subscription-repository";
 import { DrizzleServiceRepository as ServiceRepo } from "./catalog-repositories";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
@@ -72,7 +73,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings CASCADE`);
+    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings, push_subscriptions CASCADE`);
     await db.insert(schema.barbers).values({ id: BARBER, name: "Barbero A" });
     await db.insert(schema.services).values({ id: CORTE, name: "Corte", durationMinutes: 30, priceCents: 3000 });
     await db.insert(schema.products).values({ id: CERA, name: "Cera", priceCents: 2500 });
@@ -194,6 +195,18 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       await schedule.removeBlock(block.id);
       expect((await hours()).length).toBe(before);
     });
+  });
+
+  test("suscripciones push: una por dispositivo, se actualizan y se borran", async () => {
+    const repo = new DrizzlePushSubscriptionRepository(db);
+    const sub = { endpoint: "https://push.example/1", p256dh: "B".repeat(87), auth: "a".repeat(22) };
+    await repo.save(sub);
+    await repo.save({ ...sub, auth: "b".repeat(22) });
+    await repo.save({ ...sub, endpoint: "https://push.example/2" });
+    expect(await repo.findAll()).toHaveLength(2);
+    expect((await repo.findAll()).find((s) => s.endpoint === sub.endpoint)?.auth).toBe("b".repeat(22));
+    await repo.remove(sub.endpoint);
+    expect((await repo.findAll()).map((s) => s.endpoint)).toEqual(["https://push.example/2"]);
   });
 
   describe("ajustes de la web", () => {
