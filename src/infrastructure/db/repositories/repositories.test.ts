@@ -10,6 +10,7 @@ import { ManageSiteUseCase } from "@/application/use-cases/admin/manage-site";
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { InvalidSettingsError } from "@/core/errors/domain-errors";
 import { DrizzleSiteSettingsRepository } from "./site-settings-repository";
+import { DrizzleServiceRepository as ServiceRepo } from "./catalog-repositories";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
@@ -196,7 +197,13 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   });
 
   describe("ajustes de la web", () => {
-    const site = () => new ManageSiteUseCase({ siteSettings: new DrizzleSiteSettingsRepository(db) });
+    const site = () =>
+      new ManageSiteUseCase({
+        siteSettings: new DrizzleSiteSettingsRepository(db),
+        services: new ServiceRepo(db),
+        images: null,
+        imageOptimizer: { toWebp: async (b) => b },
+      });
 
     test("sin nada guardado da los valores por defecto", async () => {
       expect(await site().get()).toEqual(DEFAULT_SITE_SETTINGS);
@@ -210,6 +217,19 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       const settings = await site().get();
       expect(settings.contact).toEqual({ whatsapp: "51900000000", mapsUrl: "https://maps.google.com/?q=Lima" });
       expect(settings.sections).toEqual({ ...DEFAULT_SITE_SETTINGS.sections, about: false });
+    });
+
+    test("editar un servicio desde el panel no le borra la foto", async () => {
+      const services = new ServiceRepo(db);
+      const [corte] = await services.findByIds([CORTE]);
+      await services.save({ ...corte, imageUrl: "/imagenes/00000000-0000-4000-8000-000000000009.webp" });
+
+      await new ManageCatalogUseCase(deps).saveService({ id: CORTE, name: "Corte", durationMinutes: 30, priceCents: 4000, active: true });
+      const [after] = await services.findByIds([CORTE]);
+      expect(after).toMatchObject({ priceCents: 4000, imageUrl: "/imagenes/00000000-0000-4000-8000-000000000009.webp" });
+
+      await services.save({ ...after, imageUrl: null });
+      expect((await services.findByIds([CORTE]))[0].imageUrl).toBeNull();
     });
 
     test("un enlace peligroso no se guarda", async () => {

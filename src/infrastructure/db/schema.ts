@@ -25,6 +25,7 @@ export const services = pgTable(
     durationMinutes: integer("duration_minutes").notNull(),
     priceCents: integer("price_cents").notNull(),
     active: boolean().notNull().default(true),
+    imageUrl: text("image_url"),
   },
   (t) => [
     check("services_duration_positive", sql`${t.durationMinutes} > 0`),

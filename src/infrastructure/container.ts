@@ -13,6 +13,8 @@ import { DrizzleCustomerRepository } from "./db/repositories/customer-repository
 import { DrizzleScheduleRepository } from "./db/repositories/schedule-repository";
 import { DrizzleSiteSettingsRepository } from "./db/repositories/site-settings-repository";
 import { LocalImageStorage } from "./images/local-storage";
+import { selectImageStorage } from "./images/select-storage";
+import { SharpImageOptimizer } from "./images/sharp-optimizer";
 
 /** Raíz de composición: único sitio donde los casos de uso reciben sus implementaciones concretas. */
 export function getUseCases() {
@@ -25,6 +27,8 @@ export function getUseCases() {
     schedule: new DrizzleScheduleRepository(db),
     appointments: new DrizzleAppointmentRepository(db),
     siteSettings: new DrizzleSiteSettingsRepository(db),
+    images: selectImageStorage(process.env),
+    imageOptimizer: new SharpImageOptimizer(),
     now: () => new Date(),
   };
   return {

@@ -7,6 +7,8 @@ export interface Service {
   durationMinutes: number;
   priceCents: number;
   active: boolean;
+  /** Foto propia subida desde el panel; sin ella la web usa una de ejemplo. */
+  imageUrl?: string | null;
 }
 
 export interface Product {
