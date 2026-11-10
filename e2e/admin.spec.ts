@@ -23,7 +23,7 @@ function nextMonday() {
 }
 
 test.describe("acceso", () => {
-  for (const path of ["/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario"]) {
+  for (const path of ["/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario", "/panel/web"]) {
     test(`${path} exige sesión`, async ({ page }) => {
       await page.goto(path);
       await expect(page).toHaveURL(/\/panel\/entrar$/);
@@ -33,7 +33,7 @@ test.describe("acceso", () => {
   test("la navegación lleva a cada sección", async ({ page }) => {
     await login(page);
     const nav = page.getByRole("navigation", { name: "Secciones del panel" });
-    for (const name of ["Servicios", "Productos", "Barberos", "Horario"]) {
+    for (const name of ["Servicios", "Productos", "Barberos", "Horario", "Web"]) {
       await nav.getByRole("link", { name }).click();
       await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
       await expect(nav.getByRole("link", { name })).toHaveAttribute("aria-current", "page");
@@ -310,7 +310,7 @@ test("en el móvil la pestaña actual queda a la vista", async ({ page }) => {
 test("las pantallas del panel son accesibles y caben en el móvil", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await login(page);
-  for (const path of ["/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario"]) {
+  for (const path of ["/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario", "/panel/web"]) {
     await page.goto(path);
     await page.getByRole("form").first().waitFor();
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
@@ -318,4 +318,64 @@ test("las pantallas del panel son accesibles y caben en el móvil", async ({ pag
     expect(serious, path).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), path).toBeLessThanOrEqual(0);
   }
+});
+
+test.describe("web", () => {
+  test("el contacto guardado aparece en la portada y lo vacío desaparece", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/web");
+    const form = card(page, "Contacto");
+    await form.getByLabel("WhatsApp").fill("900 111 222");
+    await form.getByLabel("Instagram").fill("https://instagram.com/ejemplo");
+    await form.getByLabel("Dirección").fill("Av. Ejemplo 123");
+    await form.getByRole("button", { name: "Guardar contacto" }).click();
+    await expect(form.getByText("Guardado. Ya se ve en la web.")).toBeVisible();
+
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "Escríbenos por WhatsApp" }).first()).toHaveAttribute("href", /wa\.me\/51900111222/);
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Instagram" })).toHaveAttribute("href", "https://instagram.com/ejemplo");
+    await expect(page.getByText("Av. Ejemplo 123").first()).toBeVisible();
+
+    await page.goto("/panel/web");
+    await card(page, "Contacto").getByLabel("Instagram").fill("");
+    await card(page, "Contacto").getByRole("button", { name: "Guardar contacto" }).click();
+    await expect(card(page, "Contacto").getByText("Guardado. Ya se ve en la web.")).toBeVisible();
+    await page.goto("/");
+    await page.getByRole("contentinfo").waitFor();
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Instagram" })).toHaveCount(0);
+  });
+
+  test("un enlace javascript: no se guarda ni llega a la web", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/web");
+    const form = card(page, "Contacto");
+    await form.getByLabel("Enlace de Google Maps").fill("javascript:alert(document.cookie)");
+    await form.getByRole("button", { name: "Guardar contacto" }).click();
+    await expect(form.getByRole("alert")).toContainText("https://");
+
+    await page.goto("/");
+    await page.getByRole("heading", { name: "Servicios" }).waitFor();
+    await expect(page.locator('a[href^="javascript:"]')).toHaveCount(0);
+  });
+
+  test("ocultar secciones las quita de la portada y del menú", async ({ page }, info) => {
+    await login(page);
+    await page.goto("/panel/web");
+    const form = card(page, "Secciones visibles");
+    await form.getByLabel("Productos para llevar").uncheck();
+    await form.getByLabel("Nosotros").uncheck();
+    await form.getByRole("button", { name: "Guardar secciones" }).click();
+    await expect(form.getByText("Guardado. Ya se ve en la web.")).toBeVisible();
+
+    await page.goto("/");
+    await page.getByRole("heading", { name: "Servicios" }).waitFor();
+    await expect(page.getByRole("heading", { name: "Para llevar a casa" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: /Oficio de barbería/ })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Horario", level: 2 })).toBeVisible();
+    if (info.project.name === "escritorio") {
+      const menu = page.getByRole("navigation", { name: "Principal" });
+      await expect(menu.getByRole("link", { name: "Productos" })).toHaveCount(0);
+      await expect(menu.getByRole("link", { name: "Horario" })).toBeVisible();
+    }
+  });
 });
