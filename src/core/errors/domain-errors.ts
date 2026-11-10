@@ -29,6 +29,8 @@ export class InvalidCatalogError extends DomainError {}
 
 export class InvalidSettingsError extends DomainError {}
 
+export class InvalidImageError extends DomainError {}
+
 export class InvalidStatusChangeError extends DomainError {
   constructor() {
     super("Esta cita ya no admite ese cambio. Actualiza la agenda.");
