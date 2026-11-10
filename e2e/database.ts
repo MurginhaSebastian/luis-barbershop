@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { Client } from "pg";
 
 const E2E_DB = "barbershop_e2e";
+export const E2E_UPLOADS_DIR = ".uploads-e2e";
 
 // Solo para las pruebas: la base y el servidor de pruebas son locales y efímeros.
 export const PANEL_PASSWORD = "clave-solo-para-pruebas";

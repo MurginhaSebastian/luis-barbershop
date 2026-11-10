@@ -1,5 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
-import { e2eDatabaseUrl, e2ePanelEnv } from "./e2e/database";
+import { E2E_UPLOADS_DIR, e2eDatabaseUrl, e2ePanelEnv } from "./e2e/database";
 
 const PORT = 3100;
 
@@ -28,6 +28,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}/icon.svg`,
     timeout: 180_000,
     reuseExistingServer: false,
-    env: { DATABASE_URL: e2eDatabaseUrl(), ...e2ePanelEnv() },
+    // Fotos en una carpeta propia de las pruebas (next start es producción: sin esto no habría subida).
+    env: { DATABASE_URL: e2eDatabaseUrl(), ...e2ePanelEnv(), IMAGE_STORAGE: "local", UPLOADS_DIR: E2E_UPLOADS_DIR },
   },
 });
