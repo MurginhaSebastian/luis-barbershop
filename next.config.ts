@@ -9,6 +9,8 @@ const contentSecurityPolicy = [
   "img-src 'self' data:",
   "font-src 'self'",
   "connect-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -22,6 +24,13 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+];
+
+// El service worker de los avisos: siempre la última versión y sin permisos de más.
+const serviceWorkerHeaders = [
+  { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+  { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+  { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
 ];
 
 // Las fotos subidas a Supabase Storage pasan por el optimizador de Next: así se sirven desde la propia web
@@ -40,7 +49,8 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "6mb" },
   },
   async headers() {
-    return process.env.NODE_ENV === "production" ? [{ source: "/:path*", headers: securityHeaders }] : [];
+    const sw = { source: "/sw.js", headers: serviceWorkerHeaders };
+    return process.env.NODE_ENV === "production" ? [{ source: "/:path*", headers: securityHeaders }, sw] : [sw];
   },
   cacheComponents: true,
   partialPrefetching: true,

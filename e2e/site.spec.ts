@@ -91,6 +91,20 @@ test("las cabeceras de seguridad están y no rompen nada", async ({ page }) => {
   expect(problems).toEqual([]);
 });
 
+test("el panel se puede instalar y su service worker no queda en caché", async ({ request }) => {
+  const sw = await request.get("/sw.js");
+  expect(sw.headers()["content-type"]).toContain("javascript");
+  expect(sw.headers()["cache-control"]).toContain("no-store");
+  expect(sw.headers()["content-security-policy"]).toBe("default-src 'self'; script-src 'self'");
+
+  expect(await (await request.get("/panel/entrar")).text()).toContain('rel="manifest" href="/panel.webmanifest"');
+  const manifest = await (await request.get("/panel.webmanifest")).json();
+  expect(manifest).toMatchObject({ start_url: "/panel", scope: "/panel", display: "standalone" });
+  for (const icon of manifest.icons) expect((await request.get(icon.src)).ok()).toBe(true);
+  // La web pública no se ofrece como app del panel.
+  expect(await (await request.get("/")).text()).not.toContain('rel="manifest"');
+});
+
 test.describe("adaptable", () => {
   for (const width of [375, 768, 1024, 1440]) {
     test(`sin scroll horizontal a ${width} px`, async ({ page }) => {
