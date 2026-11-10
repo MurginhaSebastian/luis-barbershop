@@ -11,6 +11,7 @@ const SECTIONS = [
   { href: "/panel/productos", label: "Productos" },
   { href: "/panel/barberos", label: "Barberos" },
   { href: "/panel/horario", label: "Horario" },
+  { href: "/panel/web", label: "Web" },
 ];
 
 /** Solo navegación: cada página y acción del panel comprueba la sesión por su cuenta. */
