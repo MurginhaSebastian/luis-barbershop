@@ -1,30 +1,14 @@
 "use server";
 
-import { refresh } from "next/cache";
 import { z } from "zod";
 import { TimeSlot } from "@/core/entities/time-slot";
-import { DomainError } from "@/core/errors/domain-errors";
 import { getUseCases } from "@/infrastructure/container";
 import type { AdminState } from "@/presentation/components/panel/admin-state";
 import { parseBarberForm, parseBlockForm, parseHoursForm, parseProductForm, parseServiceForm } from "./admin-schema";
+import { firstIssue, runAdmin as run } from "./run-admin";
 import { requirePanelSession } from "./session";
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
-
-/** Traduce el resultado a la pantalla. Cada acción comprueba la sesión antes de llamarla. */
-async function run(work: () => Promise<AdminState>): Promise<AdminState> {
-  try {
-    const state = await work();
-    refresh();
-    return state;
-  } catch (error) {
-    if (error instanceof DomainError) return { error: error.message };
-    console.error("panel", error);
-    return { error: "No se pudo guardar. Inténtalo de nuevo." };
-  }
-}
-
-const firstIssue = (error: z.ZodError): AdminState => ({ error: error.issues[0]?.message ?? "Revisa los datos." });
 
 export async function saveServiceAction(_prev: AdminState, form: FormData): Promise<AdminState> {
   await requirePanelSession();
