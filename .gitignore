@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/.uploads*
 /test-results
 /playwright-report
 

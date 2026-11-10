@@ -12,6 +12,7 @@ import { DrizzleBarberRepository, DrizzleProductRepository, DrizzleServiceReposi
 import { DrizzleCustomerRepository } from "./db/repositories/customer-repository";
 import { DrizzleScheduleRepository } from "./db/repositories/schedule-repository";
 import { DrizzleSiteSettingsRepository } from "./db/repositories/site-settings-repository";
+import { LocalImageStorage } from "./images/local-storage";
 
 /** Raíz de composición: único sitio donde los casos de uso reciben sus implementaciones concretas. */
 export function getUseCases() {
@@ -36,4 +37,9 @@ export function getUseCases() {
     manageSite: new ManageSiteUseCase(deps),
     changeAppointmentStatus: new ChangeAppointmentStatusUseCase(deps),
   };
+}
+
+/** Fotos en el disco del servidor (desarrollo, o hosting con disco propio). */
+export function getLocalImages() {
+  return new LocalImageStorage(process.env.UPLOADS_DIR || ".uploads");
 }
