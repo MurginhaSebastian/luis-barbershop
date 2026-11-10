@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 const instant = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -128,4 +128,15 @@ export const appointmentProducts = pgTable(
     primaryKey({ columns: [t.appointmentId, t.position] }),
     check("appointment_products_quantity_positive", sql`${t.quantity} > 0`),
   ],
+);
+
+/** Una sola fila con lo que se ve en la portada; se lee con readSiteSettings, que completa lo que falte. */
+export const siteSettings = pgTable(
+  "site_settings",
+  {
+    id: smallint().primaryKey().default(1),
+    data: jsonb().notNull(),
+    updatedAt: instant("updated_at").notNull().defaultNow(),
+  },
+  (t) => [check("site_settings_single_row", sql`${t.id} = 1`)],
 );

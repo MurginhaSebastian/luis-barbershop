@@ -6,6 +6,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest"
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
 import { ManageCatalogUseCase } from "@/application/use-cases/admin/manage-catalog";
 import { ManageScheduleUseCase } from "@/application/use-cases/admin/manage-schedule";
+import { ManageSiteUseCase } from "@/application/use-cases/admin/manage-site";
+import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
+import { InvalidSettingsError } from "@/core/errors/domain-errors";
+import { DrizzleSiteSettingsRepository } from "./site-settings-repository";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
@@ -67,7 +71,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments CASCADE`);
+    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings CASCADE`);
     await db.insert(schema.barbers).values({ id: BARBER, name: "Barbero A" });
     await db.insert(schema.services).values({ id: CORTE, name: "Corte", durationMinutes: 30, priceCents: 3000 });
     await db.insert(schema.products).values({ id: CERA, name: "Cera", priceCents: 2500 });
@@ -188,6 +192,29 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       expect(block).toMatchObject({ barberName: null, reason: "Feriado" });
       await schedule.removeBlock(block.id);
       expect((await hours()).length).toBe(before);
+    });
+  });
+
+  describe("ajustes de la web", () => {
+    const site = () => new ManageSiteUseCase({ siteSettings: new DrizzleSiteSettingsRepository(db) });
+
+    test("sin nada guardado da los valores por defecto", async () => {
+      expect(await site().get()).toEqual(DEFAULT_SITE_SETTINGS);
+    });
+
+    test("guardar contacto no borra las secciones, y al revés", async () => {
+      await site().saveSections({ ...DEFAULT_SITE_SETTINGS.sections, products: false });
+      await site().saveContact({ whatsapp: "51900000000", mapsUrl: "https://maps.google.com/?q=Lima" });
+      await site().saveSections({ ...DEFAULT_SITE_SETTINGS.sections, about: false });
+
+      const settings = await site().get();
+      expect(settings.contact).toEqual({ whatsapp: "51900000000", mapsUrl: "https://maps.google.com/?q=Lima" });
+      expect(settings.sections).toEqual({ ...DEFAULT_SITE_SETTINGS.sections, about: false });
+    });
+
+    test("un enlace peligroso no se guarda", async () => {
+      await expect(site().saveContact({ mapsUrl: "javascript:alert(1)" })).rejects.toThrow(InvalidSettingsError);
+      expect((await site().get()).contact).toEqual({});
     });
   });
 

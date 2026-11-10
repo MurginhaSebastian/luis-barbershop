@@ -22,6 +22,13 @@
       "when": 1793854223878,
       "tag": "0002_appointment_customer_name",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794277770396,
+      "tag": "0003_site_settings",
+      "breakpoints": true
     }
   ]
 }
