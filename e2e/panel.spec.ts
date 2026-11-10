@@ -274,6 +274,33 @@ test.describe("avisos push", () => {
     expect(await statuses()).toEqual(["PENDING"]);
   });
 
+  test("al llegar un aviso, la agenda abierta muestra la reserva sin esperar", async ({ page, context, browser }, testInfo) => {
+    await context.grantPermissions(["notifications"]);
+    const cdp = await context.newCDPSession(page);
+    const registrationId = new Promise<string>((resolve) =>
+      cdp.on("ServiceWorker.workerRegistrationUpdated", ({ registrations }) => {
+        const panel = registrations.find((r) => r.scopeURL.endsWith("/panel") && !r.isDeleted);
+        if (panel) resolve(panel.registrationId);
+      }),
+    );
+    await cdp.send("ServiceWorker.enable");
+    await login(page);
+    await expect(page.getByRole("region", { name: "Avisos en este dispositivo" })).toContainText("Activar avisos");
+    await page.evaluate(() => navigator.serviceWorker.ready);
+
+    // Un cliente reserva desde otro navegador.
+    const customer = await browser.newContext({ baseURL: testInfo.project.use.baseURL });
+    await bookAppointment(await customer.newPage());
+    await customer.close();
+    await expect(page.getByText("Cliente Prueba")).toHaveCount(0);
+
+    const origin = new URL(page.url()).origin;
+    const data = JSON.stringify({ title: "Nueva reserva", body: "Cliente Prueba", url: "/panel" });
+    await cdp.send("ServiceWorker.deliverPushMessage", { origin, registrationId: await registrationId, data });
+    // Mucho antes del minuto del refresco automático.
+    await expect(page.getByText("Cliente Prueba").first()).toBeVisible({ timeout: 10_000 });
+  });
+
   test("con los avisos bloqueados explica cómo permitirlos", async ({ page, context }) => {
     await context.clearPermissions();
     await page.addInitScript(() => Object.defineProperty(Notification, "permission", { get: () => "denied" }));
