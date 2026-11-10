@@ -32,6 +32,14 @@ const mutants = [
   ["Bloqueo: cuenta citas de otros barberos", "src/application/use-cases/admin/manage-schedule.ts", "a.blocksSchedule() && (!input.barberId || a.barberId === input.barberId)", "a.blocksSchedule()"],
   ["Bloqueo: se aceptan periodos pasados", "src/application/use-cases/admin/manage-schedule.ts", 'if (input.slot.end <= this.deps.now()) throw new InvalidCatalogError("Ese periodo ya pasó.");', ""],
   ["Barbero: el aviso cuenta citas canceladas", "src/application/use-cases/admin/manage-catalog.ts", "appointments.filter((a) => a.blocksSchedule()).length", "appointments.length"],
+  ["Contacto: se aceptan enlaces que no son https", "src/core/entities/site.ts", 'return new URL(value).protocol === "https:";', "return Boolean(new URL(value).protocol);"],
+  ["Foto: se acepta un archivo disfrazado", "src/core/entities/image.ts", 'if (!detectImageType(bytes)) throw new InvalidImageError("Solo se aceptan fotos JPG, PNG o WebP.");', ""],
+  ["Foto: el nombre deja rutas fuera de la carpeta", "src/infrastructure/images/local-storage.ts", "const FILE_NAME = /^[0-9a-f-]{36}\\.webp$/;", "const FILE_NAME = /\\.webp$/;"],
+  ["Panel web: subir una foto sin comprobar sesión", "src/app/panel/site-actions.ts", "export async function uploadImageAction(_prev: AdminState, form: FormData): Promise<AdminState> {\n  await requirePanelSession();", "export async function uploadImageAction(_prev: AdminState, form: FormData): Promise<AdminState> {"],
+  ["Avisos: activar un dispositivo sin comprobar sesión", "src/app/panel/push-actions.ts", "export async function subscribePushAction(input: unknown): Promise<AdminState> {\n  await requirePanelSession();", "export async function subscribePushAction(input: unknown): Promise<AdminState> {"],
+  ["Avisos: se aceptan endpoints que no son https", "src/core/entities/push.ts", 'url.protocol !== "https:" || ', ""],
+  ["Avisos: un fallo pasajero borra el dispositivo", "src/application/use-cases/push/manage-push.ts", "        } catch {\n          // Un dispositivo que falla no impide avisar a los demás.\n          report.failed++;", "        } catch {\n          // Un dispositivo que falla no impide avisar a los demás.\n          await this.deps.pushSubscriptions.remove(subscription.endpoint);\n          report.failed++;"],
+  ["Reserva: un aviso fallido revienta tras responder", "src/app/reservar/actions.ts", '        console.error("aviso de reserva", error);\n      }', "        throw error;\n      }"],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
 ];
 

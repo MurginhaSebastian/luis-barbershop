@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import sharp from "sharp";
 import { afterAll, describe, expect, test } from "vitest";
 import { detectImageType } from "@/core/entities/image";
@@ -59,5 +59,20 @@ describe("LocalImageStorage", () => {
     await storage.remove("/imagenes/../package.json");
     await storage.remove("https://otro.sitio/foto.webp");
     expect(existsSync("package.json")).toBe(true);
+  });
+
+  test("tampoco con nombres que terminan en .webp", async () => {
+    const outside = ".uploads-test-fuera";
+    await mkdir(outside, { recursive: true });
+    await writeFile(`${outside}/secreto.webp`, "no es tuyo");
+    try {
+      expect(await storage.read(`../${outside}/secreto.webp`)).toBeNull();
+      await storage.remove(`/imagenes/../${outside}/secreto.webp`);
+      expect(existsSync(`${outside}/secreto.webp`)).toBe(true);
+      await expect(storage.save(`../${outside}/otro.webp`, new Uint8Array([1]))).rejects.toThrow();
+      expect(existsSync(`${outside}/otro.webp`)).toBe(false);
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 });
