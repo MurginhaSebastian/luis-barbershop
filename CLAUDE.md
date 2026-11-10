@@ -111,11 +111,11 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Secciones en `src/presentation/components/landing/` (hero, mosaico de servicios, nosotros,
   por qué venir, cómo reservar, productos, testimonios, horario/ubicación, cierre, pie y botón de
   WhatsApp). Los mosaicos enlazan a `/reservar?servicios=<id>`, que solo marca el servicio.
-- Contacto del negocio (WhatsApp, dirección, Maps, redes, Libro de Reclamaciones) en variables
-  `SHOP_*` de `.env` (ver `.env.example`), leídas y validadas por
-  `infrastructure/config/shop-contact.ts`: lo que falte o sea inválido no se muestra. Nunca en el
-  código, el repo es público. Parte de la página se genera al compilar: tras cambiarlos hay que volver
-  a hacer `npm run build`, o la web mezcla valores viejos y nuevos.
+- Contacto, secciones visibles y fotos de la portada viven en la tabla `site_settings` (una fila JSON),
+  editables en `/panel/web`. `readSiteSettings` (`core/entities/site.ts`) lee lo guardado sin fiarse y
+  completa con `DEFAULT_SITE_SETTINGS`; los enlaces solo admiten `https:`. Nunca en el código: el repo es
+  público. `getSiteSettings` (`app/site-settings.ts`) hace una sola lectura por petición, aunque la pidan
+  la cabecera, la portada y el pie.
 - Las secciones llegan en streaming, después del salto del navegador a un `#ancla`: `ScrollToHash` lo
   repite al final de `CatalogSections`.
 - Fotos provisionales de Unsplash en `public/images/` (créditos en `CREDITS.md`); la foto de cada

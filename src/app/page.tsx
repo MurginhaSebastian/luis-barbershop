@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { connection } from "next/server";
 import { Suspense } from "react";
-import { getShopContact } from "@/infrastructure/config/shop-contact";
 import { getUseCases } from "@/infrastructure/container";
 import { Hero } from "@/presentation/components/landing/hero";
 import { ScrollToHash } from "@/presentation/components/landing/scroll-to-hash";
@@ -10,15 +8,18 @@ import { ServiceGallery } from "@/presentation/components/landing/service-galler
 import { container, ctaClass, sectionTitle } from "@/presentation/components/landing/styles";
 import { testimonials } from "@/presentation/content/testimonials";
 import { whatsappLink } from "@/presentation/lib/whatsapp";
+import { getSiteSettings } from "./site-settings";
 
 export default function Home() {
-  const contact = getShopContact();
   return (
     <main>
-      <Hero whatsappHref={contact.whatsapp && whatsappLink(contact.whatsapp)} />
+      {/* El armazón estático ya trae la portada; al llegar los ajustes se añade el botón de WhatsApp. */}
+      <Suspense fallback={<Hero />}>
+        <HeroWithSettings />
+      </Suspense>
 
       <Suspense fallback={<p className={`${container} min-h-[40rem] py-20 text-muted-foreground`}>Cargando servicios…</p>}>
-        <CatalogSections address={contact.address} mapsUrl={contact.mapsUrl} />
+        <CatalogSections />
       </Suspense>
 
       <ClosingCta />
@@ -32,8 +33,13 @@ export default function Home() {
   );
 }
 
-async function CatalogSections({ address, mapsUrl }: { address?: string; mapsUrl?: string }) {
-  await connection();
+async function HeroWithSettings() {
+  const { contact } = await getSiteSettings();
+  return <Hero whatsappHref={contact.whatsapp && whatsappLink(contact.whatsapp)} />;
+}
+
+async function CatalogSections() {
+  const { sections, contact } = await getSiteSettings();
   const { services, products, weeklyHours } = await getUseCases().getCatalog.execute();
   return (
     <>
@@ -48,12 +54,12 @@ async function CatalogSections({ address, mapsUrl }: { address?: string; mapsUrl
           <ServiceGallery services={services} />
         </div>
       </section>
-      <About />
-      <WhyUs />
-      <HowToBook />
-      <Products products={products} />
+      {sections.about && <About />}
+      {sections.whyUs && <WhyUs />}
+      {sections.howToBook && <HowToBook />}
+      {sections.products && <Products products={products} />}
       <Testimonials items={testimonials} />
-      <VisitUs weeklyHours={weeklyHours} address={address} mapsUrl={mapsUrl} />
+      {sections.visit && <VisitUs weeklyHours={weeklyHours} address={contact.address} mapsUrl={contact.mapsUrl} />}
       <ScrollToHash />
     </>
   );
