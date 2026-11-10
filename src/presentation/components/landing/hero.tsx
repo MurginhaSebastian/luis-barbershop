@@ -4,11 +4,11 @@ import { BarberPole } from "@/presentation/components/shop/barber-pole";
 import { container, ctaClass, ghostCtaClass } from "./styles";
 
 /** Portada a todo el ancho: foto oscurecida con la paleta de la casa y el nombre encima. */
-export function Hero({ whatsappHref }: { whatsappHref?: string }) {
+export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: string }) {
   return (
     <section className="relative isolate overflow-hidden">
       <Image
-        src="/images/hero.jpg"
+        src={image ?? "/images/hero.jpg"}
         alt=""
         fill
         sizes="100vw"

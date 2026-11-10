@@ -6,11 +6,12 @@ import { WeeklyHours } from "@/presentation/components/shop/weekly-hours";
 import { formatPrice } from "@/presentation/lib/format";
 import { container, ctaClass, sectionTitle } from "./styles";
 
-export function About() {
+/** `image`: foto subida desde el panel; sin ella, la de ejemplo. Igual en Products y ClosingCta. */
+export function About({ image }: { image?: string }) {
   return (
     <section id="nosotros" aria-labelledby="nosotros-t" className={`${container} grid scroll-mt-6 items-center gap-10 py-20 md:grid-cols-2 md:gap-16`}>
       <div className="relative aspect-[4/3] overflow-hidden rounded-2xl ring-1 ring-border">
-        <Image src="/images/sillon.jpg" alt="Sillones de barbero frente a los espejos" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
+        <Image src={image ?? "/images/sillon.jpg"} alt="La barbería por dentro" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
       </div>
       <div>
         <h2 id="nosotros-t" className={sectionTitle}>
@@ -82,7 +83,7 @@ export function HowToBook() {
   );
 }
 
-export function Products({ products }: { products: Product[] }) {
+export function Products({ products, image }: { products: Product[]; image?: string }) {
   if (products.length === 0) return null;
   return (
     <section id="productos" aria-labelledby="productos-t" className="scroll-mt-6 border-y border-border bg-card">
@@ -105,7 +106,7 @@ export function Products({ products }: { products: Product[] }) {
           </ul>
         </div>
         <div className="relative aspect-[4/3] overflow-hidden rounded-2xl ring-1 ring-border">
-          <Image src="/images/herramientas.jpg" alt="Máquinas, tijeras, peine y productos de barbería" fill sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />
+          <Image src={image ?? "/images/herramientas.jpg"} alt="Productos de la barbería" fill sizes="(min-width: 768px) 55vw, 100vw" className="object-cover" />
         </div>
       </div>
     </section>
@@ -178,10 +179,10 @@ export function VisitUs({
   );
 }
 
-export function ClosingCta() {
+export function ClosingCta({ image }: { image?: string }) {
   return (
     <section className="relative isolate overflow-hidden">
-      <Image src="/images/tijeras.jpg" alt="" fill sizes="100vw" className="-z-10 object-cover" />
+      <Image src={image ?? "/images/tijeras.jpg"} alt="" fill sizes="100vw" className="-z-10 object-cover" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-background/80" />
       <div className={`${container} py-24 text-center`}>
         <p className="font-heading text-[clamp(2.5rem,8vw,5rem)] leading-tight">¿Toca corte?</p>

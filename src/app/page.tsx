@@ -22,7 +22,9 @@ export default function Home() {
         <CatalogSections />
       </Suspense>
 
-      <ClosingCta />
+      <Suspense fallback={<ClosingCta />}>
+        <ClosingWithSettings />
+      </Suspense>
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-3 backdrop-blur md:hidden">
         <Link href="/reservar" className={`${ctaClass} w-full`}>
@@ -34,12 +36,17 @@ export default function Home() {
 }
 
 async function HeroWithSettings() {
-  const { contact } = await getSiteSettings();
-  return <Hero whatsappHref={contact.whatsapp && whatsappLink(contact.whatsapp)} />;
+  const { contact, images } = await getSiteSettings();
+  return <Hero whatsappHref={contact.whatsapp && whatsappLink(contact.whatsapp)} image={images.hero} />;
+}
+
+async function ClosingWithSettings() {
+  const { images } = await getSiteSettings();
+  return <ClosingCta image={images.closing} />;
 }
 
 async function CatalogSections() {
-  const { sections, contact } = await getSiteSettings();
+  const { sections, contact, images } = await getSiteSettings();
   const { services, products, weeklyHours } = await getUseCases().getCatalog.execute();
   return (
     <>
@@ -54,10 +61,10 @@ async function CatalogSections() {
           <ServiceGallery services={services} />
         </div>
       </section>
-      {sections.about && <About />}
+      {sections.about && <About image={images.about} />}
       {sections.whyUs && <WhyUs />}
       {sections.howToBook && <HowToBook />}
-      {sections.products && <Products products={products} />}
+      {sections.products && <Products products={products} image={images.products} />}
       <Testimonials items={testimonials} />
       {sections.visit && <VisitUs weeklyHours={weeklyHours} address={contact.address} mapsUrl={contact.mapsUrl} />}
       <ScrollToHash />

@@ -10,7 +10,7 @@ const PHOTOS: [RegExp, string][] = [
   [/corte/i, "/images/tijeras.jpg"],
 ];
 
-// shortcut: la foto se elige por el nombre del servicio; añadir una columna de imagen cuando haya fotos reales.
+// Sin foto propia subida desde el panel, una de ejemplo elegida por el nombre del servicio.
 function photoFor(service: Service) {
   return PHOTOS.find(([pattern]) => pattern.test(service.name))?.[1] ?? "/images/hero.jpg";
 }
@@ -27,7 +27,7 @@ export function ServiceGallery({ services }: { services: Service[] }) {
             className="group relative flex aspect-[4/5] cursor-pointer flex-col justify-end overflow-hidden rounded-2xl ring-1 ring-border focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
           >
             <Image
-              src={photoFor(s)}
+              src={s.imageUrl ?? photoFor(s)}
               alt=""
               fill
               sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
