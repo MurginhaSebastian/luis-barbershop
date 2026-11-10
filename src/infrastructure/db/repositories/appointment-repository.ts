@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
 import { Appointment, type AppointmentStatus } from "@/core/entities/appointment";
 import { TimeSlot } from "@/core/entities/time-slot";
@@ -107,6 +107,9 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     };
     try {
       await this.db.transaction(async (tx) => {
+        // La restricción anti-solape se comprueba tras insertar: dos reservas simultáneas del mismo barbero
+        // se esperarían entre sí (deadlock). En fila por barbero, la segunda ve la primera ya guardada.
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${appointment.barberId}, 0))`);
         await tx
           .insert(appointments)
           .values(row)
