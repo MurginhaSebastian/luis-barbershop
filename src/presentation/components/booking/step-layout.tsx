@@ -12,8 +12,11 @@ export function StepLayout(props: {
   summary: ReactNode;
   children: ReactNode;
 }) {
+  const step = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
+    // Quien ya llegó con el teclado a un campo antes de que cargara el JavaScript no pierde su sitio.
+    if (step.current?.contains(document.activeElement)) return;
     heading.current?.focus({ preventScroll: true });
     window.scrollTo({ top: 0 });
   }, []);
@@ -21,7 +24,7 @@ export function StepLayout(props: {
     <>
       {props.progress}
       <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-        <div>
+        <div ref={step}>
           {props.backHref && (
             <Link
               href={props.backHref}

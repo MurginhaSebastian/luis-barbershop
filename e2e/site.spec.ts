@@ -179,8 +179,13 @@ test.describe("accesibilidad", () => {
 
   test("se puede reservar solo con el teclado", async ({ page }) => {
     await page.goto("/reservar");
-    await page.getByLabel(/Corte clásico/).focus();
+    // El paso llega en streaming y está oculto un instante: focus() no espera a que se vea.
+    const service = page.getByLabel(/Corte clásico/);
+    await service.waitFor();
+    await service.focus();
     await page.keyboard.press("Space");
+    // Sin JavaScript aún, "Continuar" sigue desactivado: un usuario real espera a que se active.
+    await expect(page.getByRole("button", { name: "Continuar" })).toBeEnabled();
     await page.getByRole("button", { name: "Continuar" }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: "¿Con quién?" })).toBeFocused();
