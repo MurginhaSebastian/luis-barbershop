@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { DomainError, SlotUnavailableError } from "@/core/errors/domain-errors";
 import { getUseCases } from "@/infrastructure/container";
@@ -20,7 +21,17 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
 
   const { name, phone, ...booking } = parsed.data;
   try {
-    const appointment = await getUseCases().createAppointment.execute({ ...booking, customer: { name, phone } });
+    const { createAppointment, managePush } = getUseCases();
+    const appointment = await createAppointment.execute({ ...booking, customer: { name, phone } });
+    // Después de responder: el cliente no espera al aviso y un aviso fallido no deshace la reserva.
+    after(async () => {
+      try {
+        const report = await managePush.notifyNewBooking(appointment);
+        if (report.failed > 0) console.error("aviso de reserva", report);
+      } catch (error) {
+        console.error("aviso de reserva", error);
+      }
+    });
     return {
       status: "ok",
       start: appointment.slot.start.toISOString(),

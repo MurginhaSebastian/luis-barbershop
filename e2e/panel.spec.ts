@@ -262,6 +262,18 @@ test.describe("avisos push", () => {
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   });
 
+  test("la reserva se registra aunque el aviso no pueda entregarse", async ({ page }) => {
+    await withE2eDatabase((db) =>
+      db.query("INSERT INTO push_subscriptions (endpoint, p256dh, auth) VALUES ($1, $2, $3)", [
+        "https://push.e2e.invalid/roto",
+        "B".repeat(87),
+        "a".repeat(22),
+      ]),
+    );
+    await bookAppointment(page);
+    expect(await statuses()).toEqual(["PENDING"]);
+  });
+
   test("con los avisos bloqueados explica cómo permitirlos", async ({ page, context }) => {
     await context.clearPermissions();
     await page.addInitScript(() => Object.defineProperty(Notification, "permission", { get: () => "denied" }));
