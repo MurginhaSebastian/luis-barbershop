@@ -5,8 +5,10 @@ import { Hero } from "@/presentation/components/landing/hero";
 import { ScrollToHash } from "@/presentation/components/landing/scroll-to-hash";
 import { About, ClosingCta, HowToBook, Products, Testimonials, VisitUs, WhyUs } from "@/presentation/components/landing/sections";
 import { ServiceGallery } from "@/presentation/components/landing/service-gallery";
+import { ShopFacts } from "@/presentation/components/landing/shop-facts";
 import { container, ctaClass, sectionTitle } from "@/presentation/components/landing/styles";
 import { testimonials } from "@/presentation/content/testimonials";
+import { describeOpening } from "@/presentation/lib/hours";
 import { whatsappLink } from "@/presentation/lib/whatsapp";
 import { getSiteSettings } from "./site-settings";
 
@@ -47,9 +49,18 @@ async function ClosingWithSettings() {
 
 async function CatalogSections() {
   const { sections, contact, images } = await getSiteSettings();
-  const { services, products, weeklyHours } = await getUseCases().getCatalog.execute();
+  const { getCatalog } = getUseCases();
+  const [{ services, products, weeklyHours }, opening] = await Promise.all([getCatalog.execute(), getCatalog.openingStatus()]);
   return (
     <>
+      <ShopFacts
+        opening={describeOpening(opening, new Date())}
+        isOpen={opening?.open === true}
+        showHours={sections.visit}
+        address={contact.address}
+        mapsUrl={contact.mapsUrl}
+        fromCents={services.length ? Math.min(...services.map((s) => s.priceCents)) : null}
+      />
       <section id="servicios" aria-labelledby="servicios-t" className={`${container} scroll-mt-6 py-20`}>
         <h2 id="servicios-t" className={sectionTitle}>
           Servicios

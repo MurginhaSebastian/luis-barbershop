@@ -1,5 +1,6 @@
-import type { BusinessHours } from "@/core/scheduling/availability";
-import { WEEKDAYS } from "./format";
+import { type BusinessHours, shopDateOf, shopWeekday } from "@/core/scheduling/availability";
+import type { OpeningStatus } from "@/core/scheduling/opening-status";
+import { formatLongDate, formatTime, WEEKDAYS } from "./format";
 
 export interface WeekdayGroup {
   /** 0 = domingo … 6 = sábado. */
@@ -29,4 +30,20 @@ export function groupWeekdays(weeklyHours: BusinessHours[][]): WeekdayGroup[] {
     else groups.push({ first: day, last: day, hours });
   }
   return groups;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** "Abierto ahora, hasta las 20:00", "Cerrado. Abre mañana a las 10:00"… en la hora de Lima. */
+export function describeOpening(status: OpeningStatus | null, now: Date): string | null {
+  if (!status) return null;
+  if (status.open) return `Abierto ahora, hasta las ${formatTime(status.until)}`;
+  const day = shopDateOf(status.opensAt);
+  const at = formatTime(status.opensAt);
+  if (day === shopDateOf(now)) return `Cerrado ahora. Abre hoy a las ${at}`;
+  if (day === shopDateOf(new Date(now.getTime() + DAY_MS))) return `Cerrado. Abre mañana a las ${at}`;
+  if (status.opensAt.getTime() - now.getTime() < 6 * DAY_MS) {
+    return `Cerrado. Abre el ${WEEKDAYS[shopWeekday(day)].toLowerCase()} a las ${at}`;
+  }
+  return `Cerrado. Abre el ${formatLongDate(status.opensAt)}`;
 }

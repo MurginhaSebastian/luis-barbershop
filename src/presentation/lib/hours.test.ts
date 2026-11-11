@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { groupWeekdays } from "./hours";
+import { describeOpening, groupWeekdays } from "./hours";
 
 const split = [
   { openMinute: 600, closeMinute: 840 },
@@ -30,5 +30,31 @@ describe("groupWeekdays", () => {
 
   test("todo cerrado es un solo grupo", () => {
     expect(groupWeekdays(week({}))).toEqual([{ first: 1, last: 0, hours: [] }]);
+  });
+});
+
+describe("describeOpening", () => {
+  const lima = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-05:00`);
+  const now = lima("2026-11-09", "11:30"); // lunes
+
+  test.each([
+    [{ open: true as const, until: lima("2026-11-09", "14:00") }, "Abierto ahora, hasta las 14:00"],
+    [{ open: false as const, opensAt: lima("2026-11-09", "15:00") }, "Cerrado ahora. Abre hoy a las 15:00"],
+    [{ open: false as const, opensAt: lima("2026-11-10", "10:00") }, "Cerrado. Abre mañana a las 10:00"],
+    [{ open: false as const, opensAt: lima("2026-11-12", "10:00") }, "Cerrado. Abre el jueves a las 10:00"],
+    [{ open: false as const, opensAt: lima("2026-11-20", "10:00") }, "Cerrado. Abre el viernes, 20 de noviembre"],
+  ])("%o", (status, text) => {
+    expect(describeOpening(status, now)).toBe(text);
+  });
+
+  test("de noche, 'mañana' es el día siguiente en Lima, no en UTC", () => {
+    // 22:00 en Lima ya es el día siguiente en UTC.
+    expect(describeOpening({ open: false, opensAt: lima("2026-11-10", "10:00") }, lima("2026-11-09", "22:00"))).toBe(
+      "Cerrado. Abre mañana a las 10:00",
+    );
+  });
+
+  test("sin horario no dice nada", () => {
+    expect(describeOpening(null, now)).toBeNull();
   });
 });
