@@ -11,6 +11,8 @@ export interface PhotoSlot {
   /** "hero" o "service:<id>": qué foto cambia. */
   target: string;
   label: string;
+  /** Dónde se ve esa foto, si no es evidente. */
+  hint?: string;
   current?: string | null;
   fallback: string;
 }
@@ -25,6 +27,7 @@ function PhotoForm({ slot, upload, remove }: { slot: PhotoSlot; upload: AdminAct
   return (
     <li className="space-y-3 rounded-2xl border border-border bg-card p-4">
       <h3 className="font-heading text-xl wrap-anywhere">{slot.label}</h3>
+      {slot.hint && <p className="text-sm text-muted-foreground">{slot.hint}</p>}
       <div className="relative aspect-video overflow-hidden rounded-xl ring-1 ring-border">
         <Image src={slot.current ?? slot.fallback} alt={`Foto actual: ${slot.label}`} fill sizes="(min-width: 768px) 40vw, 90vw" className="object-cover" />
         {!slot.current && (

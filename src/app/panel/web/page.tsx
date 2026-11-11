@@ -27,7 +27,13 @@ async function SiteSettingsEditor() {
   const [settings, services] = await Promise.all([manageSite.get(), manageCatalog.listServices()]);
   const { images } = settings;
   const slots = [
-    { target: "hero", label: "Portada", current: images.hero, fallback: "/images/hero.jpg" },
+    {
+      target: "hero",
+      label: "Portada",
+      hint: "La portada es un video; esta foto se ve mientras carga y para quien no lo reproduce.",
+      current: images.hero,
+      fallback: "/videos/corte-escritorio.jpg",
+    },
     { target: "about", label: "Nosotros", current: images.about, fallback: "/images/sillon.jpg" },
     { target: "products", label: "Productos", current: images.products, fallback: "/images/herramientas.jpg" },
     { target: "closing", label: "Cierre de la portada", current: images.closing, fallback: "/images/tijeras.jpg" },
