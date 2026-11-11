@@ -129,25 +129,3 @@
     @apply font-sans;
     }
 }
-/* Poste de barbero: franjas a 45° (periodo 56px) bajo un sombreado de cilindro. Solo se mueven las
-   franjas: desplazarlas 56·√2 px en vertical las deja igual, así el bucle no salta. */
-@theme {
-  --animate-pole: pole 3.5s linear infinite;
-  @keyframes pole {
-    to { background-position: 0 0, 0 79.196px; }
-  }
-}
-
-@utility barber-pole {
-  --pole-stripes: repeating-linear-gradient(45deg,
-    var(--color-primary) 0 14px, var(--color-foreground) 14px 28px,
-    var(--color-accent) 28px 42px, var(--color-foreground) 42px 56px);
-  background-image:
-    linear-gradient(180deg, rgb(0 0 0 / 0.55), transparent 30%, rgb(255 255 255 / 0.18) 50%, transparent 70%, rgb(0 0 0 / 0.55)),
-    var(--pole-stripes);
-  @media (width >= 48rem) {
-    background-image:
-      linear-gradient(90deg, rgb(0 0 0 / 0.55), transparent 30%, rgb(255 255 255 / 0.18) 50%, transparent 70%, rgb(0 0 0 / 0.55)),
-      var(--pole-stripes);
-  }
-}
