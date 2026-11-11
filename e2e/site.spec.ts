@@ -62,6 +62,45 @@ test.describe("portada", () => {
   });
 });
 
+test.describe("video de la portada", () => {
+  test("arranca solo y sin sonido, es decorativo y se puede pausar", async ({ page }, info) => {
+    await page.goto("/");
+    const pause = page.getByRole("button", { name: "Pausar el video" });
+    await expect(pause).toBeVisible();
+    const video = page.locator("video");
+    const state = await video.evaluate((v: HTMLVideoElement) => ({
+      muted: v.muted,
+      paused: v.paused,
+      src: v.currentSrc,
+      hidden: v.getAttribute("aria-hidden"),
+      tab: v.tabIndex,
+    }));
+    expect(state).toMatchObject({ muted: true, paused: false, hidden: "true", tab: -1 });
+    // El móvil en vertical recibe el clip vertical, que además pesa menos.
+    expect(state.src).toMatch(info.project.name === "movil" ? /corte-movil\.mp4$/ : /corte-escritorio\.mp4$/);
+    // Aparece sobre el póster solo cuando ya se mueve.
+    await expect(video).toHaveCSS("opacity", "1");
+
+    await pause.click();
+    await expect(page.getByRole("button", { name: "Reproducir el video" })).toBeVisible();
+    expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  });
+
+  test("con ahorro de datos no descarga el video", async ({ page }) => {
+    await page.addInitScript(() => Object.defineProperty(navigator, "connection", { value: { saveData: true } }));
+    const videos: string[] = [];
+    page.on("request", (r) => {
+      if (r.url().includes("/videos/") && r.url().endsWith(".mp4")) videos.push(r.url());
+    });
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "Reproducir el video" })).toBeVisible();
+    await page.waitForTimeout(1500);
+    expect(videos).toEqual([]);
+    // El póster sí está, para que la portada no quede vacía.
+    expect(await page.locator("section").first().locator("img").evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+  });
+});
+
 test("una dirección que no existe muestra la página 404 de la marca", async ({ page }) => {
   const response = await page.goto("/no-existe");
   expect(response?.status()).toBe(404);
