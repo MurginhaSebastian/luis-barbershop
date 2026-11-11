@@ -127,5 +127,7 @@
     }
   html {
     @apply font-sans;
+    /* Los saltos a una sección y el foco del teclado no quedan bajo la cabecera fija. */
+    scroll-padding-top: 6rem;
     }
 }

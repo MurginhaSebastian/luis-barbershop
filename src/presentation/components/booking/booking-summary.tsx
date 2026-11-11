@@ -8,7 +8,7 @@ export function BookingSummary(props: { services: Service[]; barberName?: string
   return (
     <aside
       aria-label="Resumen de tu reserva"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:sticky lg:top-6 lg:rounded-2xl lg:border lg:p-6"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 px-4 py-3 backdrop-blur lg:sticky lg:top-24 lg:rounded-2xl lg:border lg:p-6"
     >
       <h2 className="hidden font-heading text-2xl lg:block">Tu reserva</h2>
       {props.services.length === 0 ? (

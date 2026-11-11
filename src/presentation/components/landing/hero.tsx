@@ -9,8 +9,8 @@ import { container, ctaClass, ghostCtaClass } from "./styles";
  */
 export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: string }) {
   return (
-    // En el móvil deja sitio a la barra fija de "Reservar cita".
-    <section className="relative isolate flex min-h-[calc(100svh-9.5rem)] items-end overflow-hidden md:min-h-[calc(100svh-4.75rem)]">
+    // Llena la pantalla bajo la cabecera fija; en el móvil deja sitio también a la barra de "Reservar cita".
+    <section className="relative isolate flex min-h-[calc(100svh-8.25rem)] items-end overflow-hidden md:min-h-[calc(100svh-4.75rem)]">
       <Image
         src={image ?? "/videos/corte-escritorio.jpg"}
         alt=""

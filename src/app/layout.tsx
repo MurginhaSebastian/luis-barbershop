@@ -22,21 +22,24 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="es" className={cn("dark font-sans", sans.variable, display.variable)}>
       <body className="flex min-h-dvh flex-col antialiased">
-        <header className={`${container} flex items-center justify-between gap-6 py-4`}>
-          <Link href="/" className="inline-flex min-h-11 items-center font-heading text-xl tracking-wide text-primary">
-            Luis Barbershop
-          </Link>
-          <nav aria-label="Principal" className="flex items-center gap-1">
-            <Suspense fallback={null}>
-              <SectionLinks />
-            </Suspense>
-            <Link
-              href="/reservar"
-              className="ml-2 inline-flex min-h-11 items-center rounded-full border border-primary/60 px-5 text-sm text-primary transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              Reservar
+        {/* Fija: reservar y moverse por la portada quedan siempre a mano. */}
+        <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur">
+          <div className={`${container} flex items-center justify-between gap-6 py-2 md:py-4`}>
+            <Link href="/" className="inline-flex min-h-11 items-center font-heading text-xl tracking-wide text-primary">
+              Luis Barbershop
             </Link>
-          </nav>
+            <nav aria-label="Principal" className="flex items-center gap-1">
+              <Suspense fallback={null}>
+                <SectionLinks />
+              </Suspense>
+              <Link
+                href="/reservar"
+                className="ml-2 inline-flex min-h-11 items-center rounded-full border border-primary/60 px-5 text-sm text-primary transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Reservar
+              </Link>
+            </nav>
+          </div>
         </header>
         <div className="flex-1">{children}</div>
         <Suspense fallback={null}>
