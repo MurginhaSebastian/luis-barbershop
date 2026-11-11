@@ -109,6 +109,14 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `presentation/lib/format.ts` (zona America/Lima).
 
 ### Landing (portada)
+- La portada es un video (`HeroVideo`, `public/videos/`, créditos en su `CREDITS.md`): sin sonido, en bucle,
+  vertical en el móvil (`<source media>`) y sobre una foto que hace de póster (la subida como "Portada" en el
+  panel o un fotograma del video). No arranca solo con movimiento reducido ni ahorro de datos, y siempre lleva
+  botón de pausa (WCAG 2.2.2). Se recodificó en el navegador (MediaRecorder): MP4 fragmentado, 10 s.
+- Bajo la portada, `ShopFacts`: abierto ahora o cuándo abre (`openingStatus` en `core/scheduling/`, con los
+  cierres de toda la barbería; `describeOpening` lo pone en palabras), dirección y precio más bajo.
+- La cabecera es fija (`scroll-padding-top` en `globals.css` evita que tape anclas y foco). En el móvil, las
+  secciones van en `MobileMenu`, un `<details>` que funciona sin JavaScript.
 - Secciones en `src/presentation/components/landing/` (hero, mosaico de servicios, nosotros,
   por qué venir, cómo reservar, productos, testimonios, horario/ubicación, cierre, pie y botón de
   WhatsApp). Los mosaicos enlazan a `/reservar?servicios=<id>`, que solo marca el servicio.
