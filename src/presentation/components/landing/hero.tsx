@@ -20,7 +20,6 @@ export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: s
         fetchPriority="high"
         className="-z-20 object-cover"
       />
-      <HeroVideo />
       {/* Caoba desde abajo y desde la izquierda: el texto se lee sobre cualquier fotograma. */}
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/40 to-transparent" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-background/75 via-background/20 to-transparent" />
@@ -44,6 +43,8 @@ export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: s
           )}
         </div>
       </div>
+      {/* Después del texto: el teclado y el lector de pantalla llegan antes al nombre que al botón de pausa. */}
+      <HeroVideo />
     </section>
   );
 }

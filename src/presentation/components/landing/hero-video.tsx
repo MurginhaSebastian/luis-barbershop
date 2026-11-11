@@ -45,7 +45,7 @@ export function HeroVideo() {
         onPause={() => setPlaying(false)}
         onPlaying={() => setShown(true)}
         className={cn(
-          "absolute inset-0 -z-10 size-full object-cover transition-opacity duration-700",
+          "absolute inset-0 -z-15 size-full object-cover transition-opacity duration-700",
           shown ? "opacity-100" : "opacity-0",
         )}
       >
