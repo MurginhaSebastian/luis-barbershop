@@ -105,6 +105,17 @@ test("el panel se puede instalar y su service worker no queda en caché", async 
   expect(await (await request.get("/")).text()).not.toContain('rel="manifest"');
 });
 
+test("el video se guarda en caché y se sirve por partes, como pide Safari", async ({ request }) => {
+  for (const file of ["/videos/corte-escritorio.mp4", "/videos/corte-movil.mp4"]) {
+    const whole = await request.get(file);
+    expect(whole.headers()["content-type"]).toBe("video/mp4");
+    expect(whole.headers()["cache-control"]).toContain("max-age=604800");
+    const part = await request.get(file, { headers: { Range: "bytes=0-99" } });
+    expect(part.status()).toBe(206);
+    expect((await part.body()).length).toBe(100);
+  }
+});
+
 test.describe("adaptable", () => {
   for (const width of [375, 768, 1024, 1440]) {
     test(`sin scroll horizontal a ${width} px`, async ({ page }) => {

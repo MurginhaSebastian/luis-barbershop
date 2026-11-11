@@ -33,6 +33,9 @@ const serviceWorkerHeaders = [
   { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
 ];
 
+// Video y fotos de ejemplo: una semana en caché. Para cambiarlos al momento, se sube un archivo con otro nombre.
+const mediaCache = [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=86400" }];
+
 // Las fotos subidas a Supabase Storage pasan por el optimizador de Next: así se sirven desde la propia web
 // y la política de contenido no tiene que admitir otro dominio.
 const supabaseHost = process.env.SUPABASE_URL ? new URL(process.env.SUPABASE_URL).hostname : undefined;
@@ -49,8 +52,12 @@ const nextConfig: NextConfig = {
     serverActions: { bodySizeLimit: "6mb" },
   },
   async headers() {
-    const sw = { source: "/sw.js", headers: serviceWorkerHeaders };
-    return process.env.NODE_ENV === "production" ? [{ source: "/:path*", headers: securityHeaders }, sw] : [sw];
+    const always = [
+      { source: "/sw.js", headers: serviceWorkerHeaders },
+      { source: "/videos/:file*", headers: mediaCache },
+      { source: "/images/:file*", headers: mediaCache },
+    ];
+    return process.env.NODE_ENV === "production" ? [{ source: "/:path*", headers: securityHeaders }, ...always] : always;
   },
   cacheComponents: true,
   partialPrefetching: true,
