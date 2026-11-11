@@ -1,5 +1,6 @@
 import type { Barber, Product, Service } from "@/core/entities/catalog";
 import type { BusinessHours } from "@/core/scheduling/availability";
+import { type OpeningStatus, openingStatus } from "@/core/scheduling/opening-status";
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
 import type { IProductRepository } from "@/application/ports/repositories/product-repository";
 import type { IScheduleRepository } from "@/application/ports/repositories/schedule-repository";
@@ -18,6 +19,7 @@ export interface GetCatalogDeps {
   barbers: IBarberRepository;
   products: IProductRepository;
   schedule: IScheduleRepository;
+  now: () => Date;
 }
 
 export class GetCatalogUseCase {
@@ -31,5 +33,16 @@ export class GetCatalogUseCase {
       Promise.all([0, 1, 2, 3, 4, 5, 6].map((weekday) => this.deps.schedule.findBusinessHours(weekday))),
     ]);
     return { services, barbers, products, weeklyHours };
+  }
+
+  /** Abierta ahora o cuándo abre, con los cierres de toda la barbería descontados. */
+  async openingStatus(): Promise<OpeningStatus | null> {
+    const now = this.deps.now();
+    const [weeklyHours, blocks] = await Promise.all([
+      Promise.all([0, 1, 2, 3, 4, 5, 6].map((weekday) => this.deps.schedule.findBusinessHours(weekday))),
+      this.deps.schedule.findBlocksFrom(now),
+    ]);
+    const closures = blocks.filter((b) => b.barberId === null).map((b) => b.slot);
+    return openingStatus(weeklyHours, closures, now);
   }
 }
