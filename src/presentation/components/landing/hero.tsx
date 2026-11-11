@@ -22,8 +22,8 @@ export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: s
       />
       <HeroVideo />
       {/* Caoba desde abajo y desde la izquierda: el texto se lee sobre cualquier fotograma. */}
-      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/55 to-background/10" />
-      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-background/80 via-background/25 to-transparent" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/40 to-transparent" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-background/75 via-background/20 to-transparent" />
 
       <div className={`${container} pt-28 pb-12 md:pb-16`}>
         <h1 className="font-heading">

@@ -33,7 +33,7 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
       <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
         {open ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
         {/* En pantallas muy estrechas solo se ve el icono; el nombre sigue para lectores de pantalla. */}
-        <span className="max-[400px]:sr-only">Menú</span>
+        <span className="max-[369px]:sr-only">Menú</span>
       </summary>
       <nav aria-label="Secciones" className="absolute inset-x-0 top-full border-b border-border bg-background shadow-lg shadow-black/40">
         <ul className="mx-auto w-full max-w-6xl px-4 py-2">
