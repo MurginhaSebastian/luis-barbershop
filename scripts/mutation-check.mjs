@@ -40,6 +40,8 @@ const mutants = [
   ["Avisos: se aceptan endpoints que no son https", "src/core/entities/push.ts", 'url.protocol !== "https:" || ', ""],
   ["Avisos: un fallo pasajero borra el dispositivo", "src/application/use-cases/push/manage-push.ts", "        } catch {\n          // Un dispositivo que falla no impide avisar a los demás.\n          report.failed++;", "        } catch {\n          // Un dispositivo que falla no impide avisar a los demás.\n          await this.deps.pushSubscriptions.remove(subscription.endpoint);\n          report.failed++;"],
   ["Reserva: un aviso fallido revienta tras responder", "src/app/reservar/actions.ts", '        console.error("aviso de reserva", error);\n      }', "        throw error;\n      }"],
+  ["Portada: anuncia abierto en un feriado", "src/core/scheduling/opening-status.ts", "upcoming.push(...withoutClosures(range, closures).filter((part) => part.end > now));", "upcoming.push(...[range].filter((part) => part.end > now));"],
+  ["Portada: a la hora de cierre sigue abierta", "src/core/scheduling/opening-status.ts", "upcoming.push(...withoutClosures(range, closures).filter((part) => part.end > now));", "upcoming.push(...withoutClosures(range, closures).filter((part) => part.end >= now));"],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
 ];
 
