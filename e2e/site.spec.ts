@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, type Page, test } from "@playwright/test";
-import { resetBookings } from "./database";
+import { expect, type Locator, type Page, test } from "@playwright/test";
+import { resetBookings, withE2eDatabase } from "./database";
 import { bookUntilData, chooseBarber, chooseDay, chooseServices } from "./helpers";
 
 test.beforeEach(() => resetBookings());
@@ -11,6 +11,13 @@ async function expectNoSeriousA11yIssues(page: Page, where: string) {
     .filter((v) => v.impact === "serious" || v.impact === "critical")
     .map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
   expect(serious, where).toEqual([]);
+}
+
+/** Que la cabecera fija no tape lo que se acaba de abrir. */
+async function expectBelowHeader(page: Page, target: Locator) {
+  await expect(target).toBeInViewport();
+  const headerBottom = await page.locator("body > header").evaluate((h) => h.getBoundingClientRect().bottom);
+  expect(await target.evaluate((el) => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(headerBottom);
 }
 
 async function expectNoHorizontalScroll(page: Page, where: string) {
@@ -42,7 +49,62 @@ test.describe("portada", () => {
     await page.goto("/reservar");
     await page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Horario" }).click();
     await expect(page).toHaveURL(/#horario$/);
-    await expect(page.getByRole("heading", { name: "Horario" })).toBeInViewport();
+    await expectBelowHeader(page, page.getByRole("heading", { name: "Horario", level: 2 }));
+  });
+
+  test("en el móvil, el menú lleva a su sección y se cierra", async ({ page }, info) => {
+    test.skip(info.project.name !== "movil", "Desde md las secciones están en la cabecera.");
+    await page.goto("/");
+    const menu = page.locator("details", { has: page.locator("summary", { hasText: "Menú" }) });
+    await menu.locator("summary").click();
+    await page.getByRole("navigation", { name: "Secciones" }).getByRole("link", { name: "Horario" }).click();
+    await expect(page).toHaveURL(/#horario$/);
+    await expectBelowHeader(page, page.getByRole("heading", { name: "Horario", level: 2 }));
+    await expect(menu).not.toHaveAttribute("open");
+
+    // Con el teclado: Escape lo cierra y devuelve el foco al botón.
+    await menu.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("navigation", { name: "Secciones" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(menu).not.toHaveAttribute("open");
+    await expect(menu.locator("summary")).toBeFocused();
+  });
+
+  test("en escritorio no hay menú desplegable", async ({ page }, info) => {
+    test.skip(info.project.name === "movil", "Solo aplica desde md.");
+    await page.goto("/");
+    await page.getByRole("heading", { name: "Servicios" }).waitFor();
+    await expect(page.locator("summary", { hasText: "Menú" })).toBeHidden();
+  });
+
+  test("la barra de datos dice si está abierto, dónde y desde cuánto", async ({ page }) => {
+    await withE2eDatabase((db) =>
+      db.query("INSERT INTO site_settings (id, data) VALUES (1, $1)", [
+        { contact: { address: "Av. Prueba 123, Lima", mapsUrl: "https://maps.example.com/?q=prueba" } },
+      ]),
+    );
+    try {
+      await page.goto("/");
+      const facts = page.getByRole("region", { name: "Datos de la barbería" });
+      await expect(facts).toContainText(/Abierto ahora, hasta las \d\d:\d\d|Cerrado/);
+      await expect(facts).toContainText("Av. Prueba 123, Lima");
+      await expect(facts.getByRole("link", { name: "Cómo llegar" })).toHaveAttribute("href", "https://maps.example.com/?q=prueba");
+      // El servicio más barato del ejemplo son las cejas.
+      await expect(facts).toContainText("Desde S/ 10.00");
+    } finally {
+      await withE2eDatabase((db) => db.query("DELETE FROM site_settings"));
+    }
+  });
+
+  test("un cierre de toda la barbería se anuncia como cerrado", async ({ page }) => {
+    await withE2eDatabase((db) =>
+      db.query("INSERT INTO schedule_blocks (barber_id, starts_at, ends_at, reason) VALUES (NULL, now() - interval '1 hour', now() + interval '3 days', 'Feriado')"),
+    );
+    await page.goto("/");
+    const today = page.getByRole("region", { name: "Datos de la barbería" });
+    await expect(today).toContainText("Cerrado");
+    await expect(today).not.toContainText("Abierto");
   });
 
   test("todas las imágenes cargan", async ({ page }) => {
