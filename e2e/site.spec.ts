@@ -202,12 +202,17 @@ test.describe("accesibilidad", () => {
     await expect(page.getByLabel("Nombre")).toBeFocused();
   });
 
-  test("con movimiento reducido el poste de barbero no se anima", async ({ browser }) => {
-    const context = await browser.newContext({ reducedMotion: "reduce" });
+  test("con movimiento reducido el video de la portada no arranca solo", async ({ browser }, testInfo) => {
+    const context = await browser.newContext({ reducedMotion: "reduce", baseURL: testInfo.project.use.baseURL });
     const page = await context.newPage();
-    await page.goto("http://localhost:3100/");
-    const animation = await page.locator(".barber-pole").evaluate((el) => getComputedStyle(el).animationName);
-    expect(animation).toBe("none");
+    await page.goto("/");
+    const play = page.getByRole("button", { name: "Reproducir el video" });
+    await expect(play).toBeVisible();
+    await page.waitForTimeout(1000);
+    expect(await page.locator("video").evaluate((v: HTMLVideoElement) => v.paused && v.readyState === 0)).toBe(true);
+    // Quien quiera verlo, lo pide.
+    await play.click();
+    await expect(page.getByRole("button", { name: "Pausar el video" })).toBeVisible();
     await context.close();
   });
 });

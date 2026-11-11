@@ -1,45 +1,47 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BarberPole } from "@/presentation/components/shop/barber-pole";
+import { HeroVideo } from "./hero-video";
 import { container, ctaClass, ghostCtaClass } from "./styles";
 
-/** Portada a todo el ancho: foto oscurecida con la paleta de la casa y el nombre encima. */
+/**
+ * Portada a pantalla completa: un barbero trabajando en video y, abajo a la izquierda, el nombre y las dos
+ * acciones. La foto (la subida en el panel o un fotograma del video) se ve mientras carga o si no se reproduce.
+ */
 export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: string }) {
   return (
-    <section className="relative isolate overflow-hidden">
+    // En el móvil deja sitio a la barra fija de "Reservar cita".
+    <section className="relative isolate flex min-h-[calc(100svh-9.5rem)] items-end overflow-hidden md:min-h-[calc(100svh-4.75rem)]">
       <Image
-        src={image ?? "/images/hero.jpg"}
+        src={image ?? "/videos/corte-escritorio.jpg"}
         alt=""
         fill
         sizes="100vw"
         loading="eager"
         fetchPriority="high"
-        className="-z-10 object-cover object-[70%_30%]"
+        className="-z-20 object-cover"
       />
-      {/* Degradado caoba: asegura contraste del texto sobre cualquier foto. */}
-      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-background via-background/85 to-background/30" />
-      <div aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-48 bg-gradient-to-t from-background" />
+      <HeroVideo />
+      {/* Caoba desde abajo y desde la izquierda: el texto se lee sobre cualquier fotograma. */}
+      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/55 to-background/10" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-background/80 via-background/25 to-transparent" />
 
-      <div className={`${container} grid gap-8 py-14 md:min-h-[78vh] md:grid-cols-[3rem_1fr] md:gap-12 md:py-20`}>
-        <BarberPole className="h-8 md:h-auto" />
-        <div className="flex max-w-2xl flex-col justify-center">
-          <h1 className="font-heading">
-            <span className="-ml-[0.05em] block text-[clamp(6rem,26vw,17rem)] leading-[0.8] text-primary">Luis</span>
-            <span className="mt-4 block text-[clamp(1.4rem,5vw,2.5rem)] tracking-[0.3em]">Barbershop</span>
-          </h1>
-          <p className="mt-8 max-w-md text-lg leading-relaxed">
-            Cortes a tijera y máquina, fades y afeitado con navaja. Reserva tu hora en un minuto.
-          </p>
-          <div className="mt-10 flex flex-wrap gap-3">
-            <Link href="/reservar" className={ctaClass}>
-              Reservar cita
-            </Link>
-            {whatsappHref && (
-              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={ghostCtaClass}>
-                Escríbenos por WhatsApp
-              </a>
-            )}
-          </div>
+      <div className={`${container} pt-28 pb-12 md:pb-16`}>
+        <h1 className="font-heading">
+          <span className="-ml-[0.05em] block text-[clamp(5rem,20vw,13rem)] leading-[0.8] text-primary">Luis</span>
+          <span className="mt-3 block text-[clamp(1.25rem,4vw,2.25rem)] tracking-[0.3em]">Barbershop</span>
+        </h1>
+        <p className="mt-6 max-w-md text-lg leading-relaxed">
+          Cortes a tijera y máquina, fades y afeitado con navaja. Reserva tu hora en un minuto.
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/reservar" className={ctaClass}>
+            Reservar cita
+          </Link>
+          {whatsappHref && (
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={ghostCtaClass}>
+              Escríbenos por WhatsApp
+            </a>
+          )}
         </div>
       </div>
     </section>
