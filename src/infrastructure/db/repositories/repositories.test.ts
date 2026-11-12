@@ -269,7 +269,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       const failed = results.filter((r) => r.status === "rejected");
       expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
       expect(failed).toHaveLength(9);
-      for (const r of failed) expect((r as PromiseRejectedResult).reason).toBeInstanceOf(SlotUnavailableError);
+      for (const r of failed) expect((r).reason).toBeInstanceOf(SlotUnavailableError);
       expect(await db.select().from(schema.appointments)).toHaveLength(1);
     });
 

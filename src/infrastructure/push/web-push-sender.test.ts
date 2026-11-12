@@ -27,7 +27,7 @@ const message = { title: "Nueva reserva", body: "Pedro · lun 2 nov, 10:00 · Lu
 
 function sender(status: number) {
   const fetchImpl = vi.fn(async () => new Response(null, { status }));
-  return { fetchImpl, sender: new WebPushSender(vapid, fetchImpl as unknown as typeof fetch) };
+  return { fetchImpl, sender: new WebPushSender(vapid, fetchImpl) };
 }
 
 describe("WebPushSender", () => {

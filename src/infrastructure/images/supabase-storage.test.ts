@@ -9,7 +9,7 @@ const PUBLIC = `https://proyecto.supabase.co/storage/v1/object/public/fotos/${NA
 
 function storage(status = 200) {
   const fetchImpl = vi.fn(async () => new Response("{}", { status }));
-  return { fetchImpl, storage: new SupabaseImageStorage(config, fetchImpl as unknown as typeof fetch) };
+  return { fetchImpl, storage: new SupabaseImageStorage(config, fetchImpl) };
 }
 
 describe("SupabaseImageStorage", () => {
