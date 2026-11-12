@@ -30,8 +30,8 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
     window.scrollTo(0, 0);
   });
   await page.waitForLoadState("networkidle");
-  // Queda en test-results/<prueba>/attachments/ (o en el informe HTML) para cada dispositivo.
-  await testInfo.attach(name, { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
+  // Queda en test-results/<prueba>-<dispositivo>/<nombre>.png, con cualquier reportero.
+  await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
 }
 
 function collectErrors(page: Page) {
