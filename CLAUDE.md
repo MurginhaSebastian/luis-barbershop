@@ -21,6 +21,9 @@ npm run test:coverage  # cobertura de la lógica, con mínimo obligatorio
 npm run test:mutation  # rompe reglas críticas a propósito y exige que un test lo detecte
 npm run test:e2e     # Playwright + axe contra el build real (necesita Docker encendido)
 npx playwright test e2e/booking.spec.ts -g "sin preferencia"   # una prueba de navegador
+npm run test:devices # iPhone, iPad, Android, Safari, Firefox y Edge 1920 (capturas en test-results/)
+npm run lighthouse -- http://localhost:3200   # sobre `npm run build && npx next start -p 3200`
+npm run media:video -- <video> --horizontal|--vertical [--inicio s]   # video de portada (ffmpeg)
 ```
 
 Al añadir una regla crítica (seguridad, dinero, agenda), añade su mutante en `scripts/mutation-check.mjs`.
@@ -28,6 +31,13 @@ Detalle de la batería de calidad en `docs/qa-2026-11.md`.
 
 Pruebas de navegador en `e2e/`: usan Edge (`channel: "msedge"`, sin descargar navegadores), `next start`
 en el puerto 3100 y una base aparte, `barbershop_e2e`, que se recrea en cada ejecución.
+`e2e/dispositivos.spec.ts` va aparte (`playwright.devices.config.ts`, puerto 3101): WebKit y Firefox de
+Playwright (`npx playwright install webkit firefox`, una vez) y Edge para Android. Comprueba diseño, video y
+una reserva completa, y guarda capturas para revisarlas; no hay capturas de referencia en el repo.
+
+ESLint no admite avisos (`--max-warnings 0`): reglas recomendadas de `jsx-a11y` y reglas con tipos de
+typescript-eslint para promesas (`no-floating-promises`, `no-misused-promises`). Lighthouse falla bajo
+85 de rendimiento o 95 en lo demás; el SEO del panel no cuenta (noindex a propósito).
 
 Base de datos (Postgres 17 en Docker, puerto 5433; copiar `.env.example` a `.env`):
 
