@@ -46,7 +46,8 @@ export function PushToggle({ publicKey, subscribe, unsubscribe, sendTest }: Push
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    if (publicKey) detectStatus().then(setStatus);
+    // Un fallo inesperado del navegador no deja el bloque en "Comprobando…" para siempre.
+    if (publicKey) detectStatus().then(setStatus, () => setStatus("unsupported"));
   }, [publicKey]);
 
   if (!publicKey) {
