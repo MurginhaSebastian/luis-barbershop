@@ -1,8 +1,8 @@
 # Videos provisionales
 
 Videos de [Mixkit](https://mixkit.co) bajo la Mixkit Stock Video Free License (uso comercial permitido, sin
-atribución obligatoria). Recortados a 10 s, sin sonido y recodificados para la web. Se sustituyen por un
-video real de la barbería en cuanto esté.
+atribución obligatoria). Recortados a 10 s, sin sonido y recodificados con `npm run media:video`. Se
+sustituyen por un video real de la barbería en cuanto esté, con el mismo comando.
 
 | Archivo | Original |
 |---|---|

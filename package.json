@@ -14,6 +14,7 @@
     "check": "eslint && next typegen && tsc --noEmit && vitest run && next build",
     "panel:clave": "node --no-warnings scripts/panel-password.mjs",
     "panel:push": "node scripts/push-keys.mjs",
+    "media:video": "node scripts/video-portada.mjs",
     "db:up": "docker compose up -d --wait",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

@@ -112,7 +112,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - La portada es un video (`HeroVideo`, `public/videos/`, créditos en su `CREDITS.md`): sin sonido, en bucle,
   vertical en el móvil (`<source media>`) y sobre una foto que hace de póster (la subida como "Portada" en el
   panel o un fotograma del video). No arranca solo con movimiento reducido ni ahorro de datos, y siempre lleva
-  botón de pausa (WCAG 2.2.2). Se recodificó en el navegador (MediaRecorder): MP4 fragmentado, 10 s.
+  botón de pausa (WCAG 2.2.2). Los clips salen de `npm run media:video` (ffmpeg): H.264 Main, 10 s,
+  `+faststart`, con autocomprobación; sirve igual para el video real del cliente.
 - Bajo la portada, `ShopFacts`: abierto ahora o cuándo abre (`openingStatus` en `core/scheduling/`, con los
   cierres de toda la barbería; `describeOpening` lo pone en palabras), dirección y precio más bajo.
 - La cabecera es fija (`scroll-padding-top` en `globals.css` evita que tape anclas y foco). En el móvil, las
