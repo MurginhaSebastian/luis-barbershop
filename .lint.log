@@ -1,0 +1,16 @@
+
+C:\Users\xd_05\Documents\CLAUDECODE\luis-barbershop\src\infrastructure\db\repositories\repositories.test.ts
+  272:39  error  This assertion is unnecessary since it does not change the type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+C:\Users\xd_05\Documents\CLAUDECODE\luis-barbershop\src\infrastructure\images\supabase-storage.test.ts
+  12:65  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+C:\Users\xd_05\Documents\CLAUDECODE\luis-barbershop\src\infrastructure\push\web-push-sender.test.ts
+  30:56  error  This assertion is unnecessary since the receiver accepts the original type of the expression  @typescript-eslint/no-unnecessary-type-assertion
+
+C:\Users\xd_05\Documents\CLAUDECODE\luis-barbershop\src\presentation\components\panel\push-toggle.tsx
+  49:20  error  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+✖ 4 problems (4 errors, 0 warnings)
+  3 errors and 0 warnings potentially fixable with the `--fix` option.
+
