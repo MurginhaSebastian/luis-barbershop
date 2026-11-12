@@ -5,6 +5,8 @@ const PORT = 3100;
 
 export default defineConfig({
   testDir: "./e2e",
+  // Las de cada dispositivo tienen su propia configuración (playwright.devices.config.ts).
+  testIgnore: "dispositivos.spec.ts",
   globalSetup: "./e2e/global-setup.ts",
   // Un solo trabajador: las pruebas comparten agenda y se vaciaría entre ellas.
   workers: 1,
