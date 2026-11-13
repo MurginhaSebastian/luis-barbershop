@@ -49,6 +49,8 @@ const mutants = [
   ["WhatsApp: confirma la cita de otro número", "src/application/use-cases/booking/booking-confirmation.ts", "if (appointment?.customerId !== customer.id) continue;", "if (!appointment) continue;"],
   ["WhatsApp: un aviso repetido se atiende dos veces", "src/application/use-cases/booking/booking-confirmation.ts", " || (await this.deps.processedMessages.wasProcessed(message.id))", ""],
   ["WhatsApp: una cita vencida se reabre", "src/application/use-cases/booking/booking-confirmation.ts", "      if (appointment.status === AppointmentStatus.PENDING) {", "      if (appointment.status === AppointmentStatus.PENDING || appointment.status === AppointmentStatus.EXPIRED) {"],
+  ["Webhook: atiende avisos sin la firma de Meta", "src/app/api/whatsapp/route.ts", "  if (!isSignedByMeta(raw, request.headers.get(\"x-hub-signature-256\"), config.appSecret)) {", "  if (false) {"],
+  ["Webhook: atiende mensajes de otro número del negocio", "src/app/api/whatsapp/route.ts", ' && change.value.metadata?.phone_number_id === config.phoneNumberId', ""],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
 ];
 

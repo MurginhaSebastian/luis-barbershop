@@ -70,3 +70,8 @@ export function getLocalImages() {
 export function getVapidPublicKey(): string | null {
   return readVapidKeys(process.env)?.publicKey ?? null;
 }
+
+/** Credenciales de WhatsApp, o null si no está configurado. Las usa el webhook para verificar a Meta. */
+export function getWhatsAppConfig() {
+  return readWhatsAppConfig(process.env);
+}
