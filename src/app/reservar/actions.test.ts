@@ -3,13 +3,20 @@ import { Appointment } from "@/core/entities/appointment";
 import { BookingWindowError, SlotUnavailableError, TooManyActiveAppointmentsError } from "@/core/errors/domain-errors";
 import { createAppointmentAction } from "./actions";
 
-const { execute, notifyNewBooking, afterResponse } = vi.hoisted(() => ({
+const { execute, notifyNewBooking, issue, getSite, afterResponse } = vi.hoisted(() => ({
   execute: vi.fn(),
   notifyNewBooking: vi.fn(),
+  issue: vi.fn(),
+  getSite: vi.fn(),
   afterResponse: [] as (() => Promise<void>)[],
 }));
 vi.mock("@/infrastructure/container", () => ({
-  getUseCases: () => ({ createAppointment: { execute }, managePush: { notifyNewBooking } }),
+  getUseCases: () => ({
+    createAppointment: { execute },
+    managePush: { notifyNewBooking },
+    bookingConfirmation: { issue },
+    manageSite: { get: getSite },
+  }),
 }));
 vi.mock("next/server", () => ({ after: (task: () => Promise<void>) => afterResponse.push(task) }));
 
@@ -30,6 +37,8 @@ const idle = { status: "idle" } as const;
 beforeEach(() => {
   execute.mockReset();
   notifyNewBooking.mockReset();
+  issue.mockReset().mockResolvedValue(null);
+  getSite.mockReset().mockResolvedValue({ contact: {} });
   afterResponse.length = 0;
 });
 afterEach(() => vi.restoreAllMocks());
@@ -131,6 +140,39 @@ describe("createAppointmentAction", () => {
       execute.mockRejectedValue(new SlotUnavailableError());
       await createAppointmentAction(idle, form());
       expect(afterResponse).toEqual([]);
+    });
+  });
+
+  describe("confirmación por WhatsApp", () => {
+    test("con WhatsApp devuelve el código, el plazo y a qué número escribir", async () => {
+      const appointment = booked();
+      execute.mockResolvedValue(appointment);
+      getSite.mockResolvedValue({ contact: { whatsapp: "51900000000" } });
+      issue.mockResolvedValue({ appointmentId: "a1", code: "KRT482", confirmBy: new Date("2026-11-01T17:00:00Z") });
+
+      expect(await createAppointmentAction(idle, form())).toMatchObject({
+        status: "ok",
+        confirmation: { code: "KRT482", confirmBy: "2026-11-01T17:00:00.000Z", whatsapp: "51900000000" },
+      });
+      expect(issue).toHaveBeenCalledWith(appointment, "51900000000");
+    });
+
+    test("sin WhatsApp la reserva no lleva confirmación", async () => {
+      execute.mockResolvedValue(booked());
+      const state = await createAppointmentAction(idle, form());
+      expect(state).toMatchObject({ status: "ok" });
+      expect(state).not.toHaveProperty("confirmation", expect.anything());
+    });
+
+    test("si falla, la reserva sigue hecha y la confirma el barbero", async () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      execute.mockResolvedValue(booked());
+      getSite.mockResolvedValue({ contact: { whatsapp: "51900000000" } });
+      issue.mockRejectedValue(new Error("base caída"));
+      const state = await createAppointmentAction(idle, form());
+      expect(state).toMatchObject({ status: "ok" });
+      expect(state).not.toHaveProperty("confirmation", expect.anything());
+      expect(log).toHaveBeenCalledWith("confirmación por WhatsApp", expect.any(Error));
     });
   });
 });

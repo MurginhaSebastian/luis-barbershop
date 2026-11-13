@@ -6,6 +6,7 @@ import { ManagePushUseCase } from "@/application/use-cases/push/manage-push";
 import { ManageScheduleUseCase } from "@/application/use-cases/admin/manage-schedule";
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
+import { BookingConfirmationUseCase } from "@/application/use-cases/booking/booking-confirmation";
 import { GetCatalogUseCase } from "@/application/use-cases/catalog/get-catalog";
 import { getDb } from "./db/client";
 import { DrizzleAppointmentRepository } from "./db/repositories/appointment-repository";
@@ -18,11 +19,14 @@ import { selectImageStorage } from "./images/select-storage";
 import { SharpImageOptimizer } from "./images/sharp-optimizer";
 import { DrizzlePushSubscriptionRepository } from "./db/repositories/push-subscription-repository";
 import { readVapidKeys, WebPushSender } from "./push/web-push-sender";
+import { DrizzleConfirmationRepository } from "./db/repositories/confirmation-repository";
+import { readWhatsAppConfig, WhatsAppCloudSender } from "./whatsapp/whatsapp-cloud";
 
 /** Raíz de composición: único sitio donde los casos de uso reciben sus implementaciones concretas. */
 export function getUseCases() {
   const db = getDb();
   const vapid = readVapidKeys(process.env);
+  const whatsapp = readWhatsAppConfig(process.env);
   const deps = {
     barbers: new DrizzleBarberRepository(db),
     services: new DrizzleServiceRepository(db),
@@ -35,12 +39,16 @@ export function getUseCases() {
     imageOptimizer: new SharpImageOptimizer(),
     pushSubscriptions: new DrizzlePushSubscriptionRepository(db),
     pushSender: vapid ? new WebPushSender(vapid) : null,
+    confirmations: new DrizzleConfirmationRepository(db),
+    messaging: whatsapp ? new WhatsAppCloudSender(whatsapp) : null,
     now: () => new Date(),
+    randomBytes: (length: number) => crypto.getRandomValues(new Uint8Array(length)),
   };
   return {
     getCatalog: new GetCatalogUseCase(deps),
     getAvailableSlots: new GetAvailableSlotsUseCase(deps),
     createAppointment: new CreateAppointmentUseCase(deps),
+    bookingConfirmation: new BookingConfirmationUseCase(deps),
     getAgenda: new GetAgendaUseCase(deps),
     manageCatalog: new ManageCatalogUseCase(deps),
     manageSchedule: new ManageScheduleUseCase(deps),

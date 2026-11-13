@@ -1,13 +1,24 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { formatLongDate, formatPrice, formatTime } from "@/presentation/lib/format";
 import { ctaClass, ghostCtaClass } from "@/presentation/components/landing/styles";
+import { whatsappLink } from "@/presentation/lib/whatsapp";
+import type { BookingState } from "./booking-state";
+
+type Confirmation = NonNullable<Extract<BookingState, { status: "ok" }>["confirmation"]>;
 
 /** Cierre del flujo: el foco va al título para que el lector de pantalla anuncie el resultado. */
-export function BookingConfirmation(props: { start: string; barberName: string; services: string[]; totalCents: number }) {
+export function BookingConfirmation(props: {
+  start: string;
+  barberName: string;
+  services: string[];
+  totalCents: number;
+  confirmation?: Confirmation;
+}) {
+  const { confirmation } = props;
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     heading.current?.focus({ preventScroll: true });
@@ -37,17 +48,56 @@ export function BookingConfirmation(props: { start: string; barberName: string; 
           </dd>
         </div>
       </dl>
-      <p className="mx-auto mt-6 max-w-sm leading-relaxed">
-        Tu cita queda pendiente hasta que te escribamos por WhatsApp para confirmarla. Pagas en el local.
-      </p>
-      <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Link href="/" className={ctaClass}>
-          Volver al inicio
-        </Link>
-        <Link href="/reservar" className={ghostCtaClass}>
-          Reservar otra cita
-        </Link>
-      </div>
+      {confirmation ? (
+        <>
+          <p className="mx-auto mt-6 max-w-sm leading-relaxed">
+            <strong className="text-foreground">Confírmala por WhatsApp {deadline(confirmation.confirmBy)}.</strong> Si no,
+            la hora se libera para otro cliente. Pagas en el local.
+          </p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Tu código: <span className="font-semibold tracking-widest text-foreground">{confirmation.code}</span>
+          </p>
+          <div className="mt-8 flex flex-col items-center gap-3">
+            <a
+              href={whatsappLink(confirmation.whatsapp, `Confirmo mi cita ${confirmation.code}`)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${ctaClass} gap-2`}
+            >
+              <MessageCircle aria-hidden className="size-5" />
+              Confirmar por WhatsApp
+            </a>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href="/" className={ghostCtaClass}>
+                Volver al inicio
+              </Link>
+              <Link href="/reservar" className={ghostCtaClass}>
+                Reservar otra cita
+              </Link>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="mx-auto mt-6 max-w-sm leading-relaxed">
+            Tu cita queda pendiente hasta que te escribamos por WhatsApp para confirmarla. Pagas en el local.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <Link href="/" className={ctaClass}>
+              Volver al inicio
+            </Link>
+            <Link href="/reservar" className={ghostCtaClass}>
+              Reservar otra cita
+            </Link>
+          </div>
+        </>
+      )}
     </section>
   );
+}
+
+/** "antes de las 12:00" si es hoy; si el plazo pasa de medianoche, también el día. */
+function deadline(iso: string): string {
+  const sameDay = formatLongDate(iso) === formatLongDate(new Date());
+  return sameDay ? `antes de las ${formatTime(iso)}` : `antes del ${formatLongDate(iso)} a las ${formatTime(iso)}`;
 }

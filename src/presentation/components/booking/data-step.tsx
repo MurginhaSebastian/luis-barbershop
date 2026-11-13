@@ -46,6 +46,7 @@ export function DataStep(props: {
         barberName={props.barbers.find((b) => b.id === state.barberId)?.name ?? props.barberName}
         services={props.services.map((s) => s.name)}
         totalCents={state.totalCents}
+        confirmation={state.confirmation}
       />
     );
   }

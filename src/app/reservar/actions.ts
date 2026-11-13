@@ -2,6 +2,7 @@
 
 import { after } from "next/server";
 import { z } from "zod";
+import type { Appointment } from "@/core/entities/appointment";
 import { DomainError, SlotUnavailableError } from "@/core/errors/domain-errors";
 import { getUseCases } from "@/infrastructure/container";
 import type { BookingState } from "@/presentation/components/booking/booking-state";
@@ -23,6 +24,7 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
   try {
     const { createAppointment, managePush } = getUseCases();
     const appointment = await createAppointment.execute({ ...booking, customer: { name, phone } });
+    const confirmation = await requestConfirmation(appointment);
     // Después de responder: el cliente no espera al aviso y un aviso fallido no deshace la reserva.
     after(async () => {
       try {
@@ -37,6 +39,7 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
       start: appointment.slot.start.toISOString(),
       totalCents: appointment.totalCents,
       barberId: appointment.barberId,
+      confirmation: confirmation ?? undefined,
     };
   } catch (error) {
     if (error instanceof DomainError) {
@@ -46,3 +49,20 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
     return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };
   }
 }
+
+/** Código y plazo para confirmar por WhatsApp. Si algo falla, la reserva sigue en pie y la confirma Luis. */
+async function requestConfirmation(appointment: Appointment): Promise<NonNullable<BookingStateOk["confirmation"]> | null> {
+  try {
+    const { bookingConfirmation, manageSite } = getUseCases();
+    const { contact } = await manageSite.get();
+    const issued = await bookingConfirmation.issue(appointment, contact.whatsapp);
+    return issued && contact.whatsapp
+      ? { code: issued.code, confirmBy: issued.confirmBy.toISOString(), whatsapp: contact.whatsapp }
+      : null;
+  } catch (error) {
+    console.error("confirmación por WhatsApp", error);
+    return null;
+  }
+}
+
+type BookingStateOk = Extract<BookingState, { status: "ok" }>;
