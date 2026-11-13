@@ -61,7 +61,7 @@ function makeDeps() {
       },
       findByCode: async (code) => confirmations.filter((c) => c.code === code),
       findOverdue: async (now) => confirmations.filter((c) => c.confirmBy <= now),
-      findByAppointment: async () => null,
+      findByAppointments: async (ids) => confirmations.filter((c) => ids.includes(c.appointmentId)),
     },
     processedMessages: {
       wasProcessed: async (id) => processed.has(id),

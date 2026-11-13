@@ -131,7 +131,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
 
   test("la agenda lee citas, clientes y barberos, y confirmar las saca de pendientes", async () => {
     const booked = await book(utc("15:00"));
-    const getAgenda = new GetAgendaUseCase(deps);
+    const getAgenda = new GetAgendaUseCase({ ...deps, confirmations: new DrizzleConfirmationRepository(db) });
 
     const before = await getAgenda.execute({ date: DATE });
     expect(before.pending.map((i) => i.id)).toEqual([booked.id]);
@@ -229,8 +229,10 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     await deps.appointments.save(first.changeStatus(AppointmentStatus.CONFIRMED));
     await repo.save({ appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") });
     expect(await repo.findOverdue(utc("11:30"))).toEqual([]);
-    expect(await repo.findByAppointment(second.id)).toEqual({ appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") });
-    expect(await repo.findByAppointment("00000000-0000-4000-8000-000000000999")).toBeNull();
+    expect(await repo.findByAppointments([second.id, "00000000-0000-4000-8000-000000000999"])).toEqual([
+      { appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") },
+    ]);
+    expect(await repo.findByAppointments([])).toEqual([]);
   });
 
   test("cambiar estado solo si sigue como se leyó", async () => {

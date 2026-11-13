@@ -63,6 +63,11 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
       </p>
       {item.products.length > 0 && <p className="text-sm text-muted-foreground">Para llevar: {item.products.join(", ")}</p>}
       <p className="mt-1 tabular-nums text-primary">{formatPrice(item.totalCents)}</p>
+      {item.status === "PENDING" && item.confirmBy && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          El cliente puede confirmar por WhatsApp hasta las {formatTime(item.confirmBy)}; si no, la hora se libera sola.
+        </p>
+      )}
 
       {!finished && (
         <div className="mt-4 flex flex-wrap gap-2">

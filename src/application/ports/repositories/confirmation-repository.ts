@@ -7,6 +7,6 @@ export interface IConfirmationRepository {
   findByCode(code: string): Promise<BookingConfirmation[]>;
   /** Las de citas aún pendientes cuyo plazo ya pasó en ese instante. */
   findOverdue(now: Date): Promise<BookingConfirmation[]>;
-  /** La de una cita, si se pidió confirmación. */
-  findByAppointment(appointmentId: string): Promise<BookingConfirmation | null>;
+  /** Las de esas citas (las que no pidieron confirmación no aparecen). */
+  findByAppointments(appointmentIds: readonly string[]): Promise<BookingConfirmation[]>;
 }

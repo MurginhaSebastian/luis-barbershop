@@ -1,5 +1,6 @@
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
+import type { IConfirmationRepository } from "@/application/ports/repositories/confirmation-repository";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
 import { type Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import { shopDayRange } from "@/core/scheduling/availability";
@@ -16,6 +17,8 @@ export interface AgendaItem {
   services: string[];
   products: string[];
   totalCents: number;
+  /** Si está pendiente de confirmar por WhatsApp: hasta cuándo (ISO). Después se libera sola. */
+  confirmBy?: string;
 }
 
 export interface Agenda {
@@ -28,6 +31,7 @@ export interface GetAgendaDeps {
   appointments: IAppointmentRepository;
   customers: ICustomerRepository;
   barbers: IBarberRepository;
+  confirmations: IConfirmationRepository;
   now: () => Date;
 }
 
@@ -40,9 +44,12 @@ export class GetAgendaUseCase {
       this.deps.appointments.findInRange(shopDayRange(date)),
     ]);
     const all = [...pending, ...day];
-    const [customers, barbers] = await Promise.all([
+    const [customers, barbers, confirmations] = await Promise.all([
       this.deps.customers.findByIds([...new Set(all.map((a) => a.customerId))]),
       this.deps.barbers.findByIds([...new Set(all.map((a) => a.barberId))]),
+      this.deps.confirmations.findByAppointments(
+        all.filter((a) => a.status === AppointmentStatus.PENDING).map((a) => a.id),
+      ),
     ]);
 
     const toItems = (appointments: Appointment[]): AgendaItem[] =>
@@ -59,6 +66,9 @@ export class GetAgendaUseCase {
           services: a.services.map((s) => s.name),
           products: a.products.map((p) => `${p.quantity} × ${p.name}`),
           totalCents: a.totalCents,
+          ...(a.status === AppointmentStatus.PENDING && {
+            confirmBy: confirmations.find((c) => c.appointmentId === a.id)?.confirmBy.toISOString(),
+          }),
         }));
 
     return { pending: toItems(pending), day: toItems(day) };

@@ -1,4 +1,4 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, inArray, lte } from "drizzle-orm";
 import type { IConfirmationRepository } from "@/application/ports/repositories/confirmation-repository";
 import type { BookingConfirmation } from "@/core/entities/confirmation";
 import type { Db } from "../client";
@@ -35,11 +35,11 @@ export class DrizzleConfirmationRepository implements IConfirmationRepository {
       .where(and(eq(appointments.status, "PENDING"), lte(bookingConfirmations.confirmBy, now)));
   }
 
-  async findByAppointment(appointmentId: string): Promise<BookingConfirmation | null> {
-    const [row] = await this.db
+  async findByAppointments(appointmentIds: readonly string[]): Promise<BookingConfirmation[]> {
+    if (appointmentIds.length === 0) return [];
+    return this.db
       .select(columns)
       .from(bookingConfirmations)
-      .where(eq(bookingConfirmations.appointmentId, appointmentId));
-    return row ?? null;
+      .where(inArray(bookingConfirmations.appointmentId, [...appointmentIds]));
   }
 }

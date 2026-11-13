@@ -56,6 +56,13 @@ function makeRepos(appointments: Appointment[]) {
       findAll: async () => [],
       save: async () => {},
     },
+    confirmations: {
+      save: async () => {},
+      findByCode: async () => [],
+      findOverdue: async () => [],
+      findByAppointments: async (ids: readonly string[]) =>
+        ids.includes("mañana") ? [{ appointmentId: "mañana", code: "KRT482", confirmBy: new Date("2026-11-02T14:00:00Z") }] : [],
+    },
     now: () => NOW,
   };
 }
@@ -87,7 +94,10 @@ describe("GetAgendaUseCase", () => {
       services: ["Corte"],
       products: ["2 × Cera"],
       totalCents: 8000,
+      confirmBy: "2026-11-02T14:00:00.000Z",
     });
+    // Sin confirmación por WhatsApp no hay plazo.
+    expect(day[1].confirmBy).toBeUndefined();
   });
 
   test("una cita pasada sin confirmar no se queda en la lista de pendientes", async () => {
