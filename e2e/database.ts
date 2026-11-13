@@ -9,6 +9,21 @@ export const E2E_UPLOADS_DIR = ".uploads-e2e";
 // Solo para las pruebas: la base y el servidor de pruebas son locales y efímeros.
 export const PANEL_PASSWORD = "clave-solo-para-pruebas";
 
+/** WhatsApp de pruebas: apunta al servidor falso de e2e/fake-meta.ts, nunca a Meta. */
+export const E2E_WHATSAPP = { appSecret: "secreto-whatsapp-de-pruebas", phoneNumberId: "E2E-PHONE", cronSecret: "secreto-cron-de-pruebas" };
+
+export function e2eWhatsAppEnv() {
+  return {
+    WHATSAPP_TOKEN: "token-de-pruebas",
+    WHATSAPP_PHONE_NUMBER_ID: E2E_WHATSAPP.phoneNumberId,
+    WHATSAPP_APP_SECRET: E2E_WHATSAPP.appSecret,
+    WHATSAPP_VERIFY_TOKEN: "verificacion-de-pruebas",
+    WHATSAPP_API_URL: "http://localhost:3199",
+    CRON_SECRET: E2E_WHATSAPP.cronSecret,
+    SITE_URL: "http://localhost:3100",
+  };
+}
+
 export function e2ePanelEnv() {
   const vapid = webpush.generateVAPIDKeys();
   const salt = "e2e";

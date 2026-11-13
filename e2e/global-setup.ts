@@ -2,6 +2,7 @@ import { readFileSync, rmSync } from "node:fs";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { E2E_UPLOADS_DIR, e2eDatabaseUrl, recreateE2eDatabase, withE2eDatabase } from "./database";
+import { startFakeMeta } from "./fake-meta";
 
 export default async function globalSetup() {
   await recreateE2eDatabase();
@@ -10,4 +11,6 @@ export default async function globalSetup() {
   await migrate(db, { migrationsFolder: "src/infrastructure/db/migrations" });
   await db.$client.end();
   await withE2eDatabase((client) => client.query(readFileSync("src/infrastructure/db/seed.sql", "utf8")));
+  // Lo que devuelve globalSetup se ejecuta al terminar: apaga el WhatsApp de mentira.
+  return startFakeMeta();
 }

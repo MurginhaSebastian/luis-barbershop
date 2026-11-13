@@ -9,6 +9,8 @@ export interface WhatsAppConfig {
   appSecret: string;
   /** Lo eliges tú y lo escribes también en Meta al configurar el webhook. */
   verifyToken: string;
+  /** Solo para pruebas: otra dirección en lugar de la Graph API de Meta. */
+  apiUrl?: string;
 }
 
 const GRAPH_API = "https://graph.facebook.com/v27.0";
@@ -16,7 +18,7 @@ const GRAPH_API = "https://graph.facebook.com/v27.0";
 /** WhatsApp Cloud API por fetch: sin SDK, como el envío de avisos push. */
 export class WhatsAppCloudSender implements IMessagingService {
   constructor(
-    private readonly config: Pick<WhatsAppConfig, "token" | "phoneNumberId">,
+    private readonly config: Pick<WhatsAppConfig, "token" | "phoneNumberId" | "apiUrl">,
     private readonly fetchImpl: typeof fetch = fetch,
   ) {}
 
@@ -37,7 +39,7 @@ export class WhatsAppCloudSender implements IMessagingService {
   }
 
   private async send(message: Record<string, unknown>): Promise<void> {
-    const response = await this.fetchImpl(`${GRAPH_API}/${this.config.phoneNumberId}/messages`, {
+    const response = await this.fetchImpl(`${this.config.apiUrl ?? GRAPH_API}/${this.config.phoneNumberId}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${this.config.token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", ...message }),
@@ -55,8 +57,10 @@ export function readWhatsAppConfig(env: Record<string, string | undefined>): Wha
     WHATSAPP_PHONE_NUMBER_ID: phoneNumberId,
     WHATSAPP_APP_SECRET: appSecret,
     WHATSAPP_VERIFY_TOKEN: verifyToken,
+    WHATSAPP_API_URL: apiUrl,
   } = env;
-  return token && phoneNumberId && appSecret && verifyToken ? { token, phoneNumberId, appSecret, verifyToken } : null;
+  if (!token || !phoneNumberId || !appSecret || !verifyToken) return null;
+  return { token, phoneNumberId, appSecret, verifyToken, ...(apiUrl && { apiUrl }) };
 }
 
 /** ¿El aviso viene de Meta? HMAC-SHA256 del cuerpo tal cual llegó, con el secreto de la app. */

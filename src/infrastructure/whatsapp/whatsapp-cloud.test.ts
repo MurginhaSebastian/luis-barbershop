@@ -34,6 +34,12 @@ describe("WhatsAppCloudSender", () => {
     });
   });
 
+  test("en pruebas puede apuntar a otro servidor", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response("{}"));
+    await new WhatsAppCloudSender({ token: "t", phoneNumberId: "9", apiUrl: "http://localhost:3199" }, fetchImpl).sendText("51900000001", "x");
+    expect(fetchImpl.mock.calls[0][0]).toBe("http://localhost:3199/9/messages");
+  });
+
   test("si Meta rechaza el mensaje, el error dice por qué", async () => {
     const { sender: s } = sender(400, '{"error":{"message":"Template name does not exist"}}');
     await expect(s.sendText("51900000001", "hola")).rejects.toThrow(/400.*Template name does not exist/);
@@ -63,4 +69,5 @@ test("readWhatsAppConfig exige las cuatro variables", () => {
   const env = { WHATSAPP_TOKEN: "t", WHATSAPP_PHONE_NUMBER_ID: "1", WHATSAPP_APP_SECRET: "s", WHATSAPP_VERIFY_TOKEN: "v" };
   expect(readWhatsAppConfig(env)).toEqual({ token: "t", phoneNumberId: "1", appSecret: "s", verifyToken: "v" });
   expect(readWhatsAppConfig({ ...env, WHATSAPP_APP_SECRET: "" })).toBeNull();
+  expect(readWhatsAppConfig({ ...env, WHATSAPP_API_URL: "http://localhost:3199" })?.apiUrl).toBe("http://localhost:3199");
 });
