@@ -43,6 +43,13 @@
       "when": 1794279960863,
       "tag": "0005_push_subscriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794544159844,
+      "tag": "0006_appointment_expired",
+      "breakpoints": true
     }
   ]
 }

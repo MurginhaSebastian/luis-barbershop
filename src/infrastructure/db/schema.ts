@@ -9,6 +9,7 @@ export const appointmentStatus = pgEnum("appointment_status", [
   "COMPLETED",
   "CANCELLED",
   "NO_SHOW",
+  "EXPIRED",
 ]);
 
 export const barbers = pgTable("barbers", {

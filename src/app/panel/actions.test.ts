@@ -70,6 +70,8 @@ describe("changeStatusAction", () => {
   test("rechaza identificadores y estados manipulados", async () => {
     expect((await changeStatusAction("1 OR 1=1", "CONFIRMED")).error).toBeDefined();
     expect((await changeStatusAction(ID, "BORRADO" as "CONFIRMED")).error).toBeDefined();
+    // Vencer lo decide el plazo de confirmación, no el panel.
+    expect((await changeStatusAction(ID, "EXPIRED")).error).toBeDefined();
     expect(mocks.execute).not.toHaveBeenCalled();
   });
 

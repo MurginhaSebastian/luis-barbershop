@@ -16,6 +16,7 @@ const STATUS: Record<AppointmentStatus, { label: string; className: string }> = 
   COMPLETED: { label: "Atendida", className: "border-border text-muted-foreground" },
   CANCELLED: { label: "Cancelada", className: "border-destructive/60 text-destructive" },
   NO_SHOW: { label: "No vino", className: "border-destructive/60 text-destructive" },
+  EXPIRED: { label: "Vencida, sin confirmar", className: "border-border text-muted-foreground" },
 };
 
 const action = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -27,7 +28,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
   const { item } = props;
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
-  const finished = item.status === "CANCELLED" || item.status === "NO_SHOW" || item.status === "COMPLETED";
+  const finished = item.status !== "PENDING" && item.status !== "CONFIRMED";
 
   const change = (status: AppointmentStatus, message?: string) => {
     // Se abre aquí, durante el toque: después del await el navegador lo bloquearía.

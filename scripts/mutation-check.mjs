@@ -42,6 +42,9 @@ const mutants = [
   ["Reserva: un aviso fallido revienta tras responder", "src/app/reservar/actions.ts", '        console.error("aviso de reserva", error);\n      }', "        throw error;\n      }"],
   ["Portada: anuncia abierto en un feriado", "src/core/scheduling/opening-status.ts", "upcoming.push(...withoutClosures(range, closures).filter((part) => part.end > now));", "upcoming.push(...[range].filter((part) => part.end > now));"],
   ["Portada: a la hora de cierre sigue abierta", "src/core/scheduling/opening-status.ts", "upcoming.push(...withoutClosures(range, closures).filter((part) => part.end > now));", "upcoming.push(...withoutClosures(range, closures).filter((part) => part.end >= now));"],
+  ["Confirmación: una cita confirmada puede vencer", "src/core/entities/appointment.ts", '  CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],', '  CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW", "EXPIRED"],'],
+  ["Confirmación: el plazo ignora la hora de la cita", "src/core/entities/confirmation.ts", "      start.getTime() - CONFIRM_BEFORE_START_MINUTES * MINUTE_MS,", "      Infinity,"],
+  ["Panel: se puede vencer una cita a mano", "src/app/panel/actions.ts", '.exclude(["EXPIRED"])', ""],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
 ];
 

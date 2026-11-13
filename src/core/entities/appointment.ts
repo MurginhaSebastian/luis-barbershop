@@ -7,6 +7,8 @@ export const AppointmentStatus = {
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
   NO_SHOW: "NO_SHOW",
+  /** Nadie la confirmó a tiempo: libera el hueco. */
+  EXPIRED: "EXPIRED",
 } as const;
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus];
 
@@ -16,13 +18,14 @@ const BLOCKING_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
   AppointmentStatus.COMPLETED,
 ]);
 
-// Una cita cancelada no se reabre: su hora ya podría ser de otro cliente.
+// Una cita cancelada o vencida no se reabre: su hora ya podría ser de otro cliente. Una confirmada no vence.
 const ALLOWED_CHANGES: Record<AppointmentStatus, readonly AppointmentStatus[]> = {
-  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW"],
+  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "EXPIRED"],
   CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],
+  EXPIRED: [],
 };
 
 /** Foto del servicio al reservar: si luego cambia el precio, la cita conserva el suyo. */
