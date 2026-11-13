@@ -190,6 +190,20 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - En las pruebas de navegador no hay servicio de push: se simula la suscripción y el aviso se entrega por
   CDP (`ServiceWorker.deliverPushMessage`).
 
+### Confirmación por WhatsApp
+- Al reservar, `BookingConfirmationUseCase.issue` da un código (3 letras + 3 cifras, `core/entities/confirmation.ts`)
+  y un plazo: 2 h, o 1 h antes de la cita (`CONFIRM_*` en `booking-policy.ts`). Solo si WhatsApp está
+  configurado (`WHATSAPP_*`) y la barbería tiene número; si no, todo sigue como antes y nada vence.
+- El cliente envía "Confirmo mi cita KRT482" con el enlace `wa.me` de la confirmación. `/api/whatsapp` verifica
+  la firma de Meta sobre el cuerpo original y `handleMessage` busca el código **junto al número** que escribe
+  (el código no es único). Los avisos repetidos se ignoran (`processed_messages`), marcados al final para que
+  un fallo a medias se reintente.
+- `/api/cron/vencer` (con `CRON_SECRET`, cada 5 min) pasa a `EXPIRED` las pendientes vencidas y envía la
+  plantilla `cita_vencida`. `EXPIRED` no ocupa agenda ni se reabre; el panel no puede vencer a mano.
+- **Todo cambio de estado usa `updateStatus(next, expected)`** (compare-and-set): confirmar, vencer y los
+  botones del panel no se pisan entre sí.
+- En pruebas, `WHATSAPP_API_URL` apunta a un WhatsApp falso (`e2e/fake-meta.ts`).
+
 ### Persistencia (Drizzle)
 - Esquema en `src/infrastructure/db/schema.ts`; migraciones SQL versionadas en `db/migrations/`.
   Lo que Drizzle no modela (EXCLUDE, extensiones) va en migraciones `--custom` escritas a mano.
