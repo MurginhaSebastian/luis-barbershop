@@ -34,6 +34,12 @@ function makeRepos(appointments: Appointment[]) {
       save: async (a: Appointment) => {
         appointments.splice(appointments.findIndex((x) => x.id === a.id), 1, a);
       },
+      updateStatus: async (a: Appointment, expected: AppointmentStatus) => {
+        const i = appointments.findIndex((x) => x.id === a.id && x.status === expected);
+        if (i < 0) return false;
+        appointments.splice(i, 1, a);
+        return true;
+      },
     },
     customers: {
       findByIds: async () => [{ id: "c1", name: "María", phone: "51900000001" }],
@@ -113,6 +119,16 @@ describe("ChangeAppointmentStatusUseCase", () => {
     const change = new ChangeAppointmentStatusUseCase(repos);
     await expect(change.execute({ id: "a1", status: AppointmentStatus.COMPLETED })).rejects.toThrow(InvalidStatusChangeError);
     expect(repos.data[0].status).toBe(AppointmentStatus.PENDING);
+  });
+
+  test("si la cita cambió mientras tanto (venció o la confirmó el cliente), no la pisa", async () => {
+    const snapshot = repos.data[0];
+    repos.data[0] = snapshot.changeStatus(AppointmentStatus.EXPIRED);
+    const stale = { ...repos, appointments: { ...repos.appointments, findById: async () => snapshot } };
+    await expect(new ChangeAppointmentStatusUseCase(stale).execute({ id: "a1", status: AppointmentStatus.CONFIRMED })).rejects.toThrow(
+      InvalidStatusChangeError,
+    );
+    expect(repos.data[0].status).toBe(AppointmentStatus.EXPIRED);
   });
 
   test("avisa si la cita no existe", async () => {

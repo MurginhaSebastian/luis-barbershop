@@ -51,6 +51,10 @@ const mutants = [
   ["WhatsApp: una cita vencida se reabre", "src/application/use-cases/booking/booking-confirmation.ts", "      if (appointment.status === AppointmentStatus.PENDING) {", "      if (appointment.status === AppointmentStatus.PENDING || appointment.status === AppointmentStatus.EXPIRED) {"],
   ["Webhook: atiende avisos sin la firma de Meta", "src/app/api/whatsapp/route.ts", "  if (!isSignedByMeta(raw, request.headers.get(\"x-hub-signature-256\"), config.appSecret)) {", "  if (false) {"],
   ["Webhook: atiende mensajes de otro número del negocio", "src/app/api/whatsapp/route.ts", ' && change.value.metadata?.phone_number_id === config.phoneNumberId', ""],
+  ["Vencer: pisa una cita que se acaba de confirmar", "src/infrastructure/db/repositories/appointment-repository.ts", ".where(and(eq(appointments.id, next.id), eq(appointments.status, expected)))", ".where(eq(appointments.id, next.id))"],
+  ["Vencer: intenta vencer citas que no están pendientes", "src/application/use-cases/booking/booking-confirmation.ts", "      if (appointment?.status !== AppointmentStatus.PENDING) continue;", "      if (!appointment) continue;"],
+  ["Panel: un cambio pisa a otro simultáneo", "src/application/use-cases/agenda/change-appointment-status.ts", "    if (!changed) throw new InvalidStatusChangeError();", ""],
+  ["Cron: se puede llamar sin el secreto", "src/app/api/cron/vencer/route.ts", '  if (!secret || !sameSecret(request.headers.get("authorization"), `Bearer ${secret}`)) {', "  if (false) {"],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
 ];
 

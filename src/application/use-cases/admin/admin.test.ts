@@ -56,6 +56,7 @@ function makeRepos() {
         appointments.filter((a) => a.barberId === barberId && a.slot.overlaps(range)),
       findByCustomerFrom: async () => [],
       save: async () => {},
+      updateStatus: async () => false,
     },
     schedule: {
       findBusinessHours: async (weekday: number) => hours.get(weekday) ?? [],

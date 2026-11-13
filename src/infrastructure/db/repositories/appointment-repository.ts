@@ -94,6 +94,15 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     );
   }
 
+  async updateStatus(next: Appointment, expected: AppointmentStatus): Promise<boolean> {
+    const changed = await this.db
+      .update(appointments)
+      .set({ status: next.status })
+      .where(and(eq(appointments.id, next.id), eq(appointments.status, expected)))
+      .returning({ id: appointments.id });
+    return changed.length > 0;
+  }
+
   /** Inserta o actualiza la cita y reemplaza sus líneas, todo en una transacción. */
   async save(appointment: Appointment): Promise<void> {
     const row = {

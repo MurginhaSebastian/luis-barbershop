@@ -86,6 +86,7 @@ function makeRepos() {
       findByCustomerFrom: async (customerId: string, from: Date) =>
         appointments.filter((a) => a.customerId === customerId && a.slot.end > from),
       save: async (a: Appointment) => void appointments.push(a),
+      updateStatus: async () => false,
     },
     now: () => NOW,
   };

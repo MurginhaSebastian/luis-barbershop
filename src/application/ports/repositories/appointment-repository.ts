@@ -13,4 +13,9 @@ export interface IAppointmentRepository {
   findByCustomerFrom(customerId: string, from: Date): Promise<Appointment[]>;
   /** Debe lanzar SlotUnavailableError si otra cita ocupó el hueco entre la comprobación y el guardado. */
   save(appointment: Appointment): Promise<void>;
+  /**
+   * Guarda el nuevo estado solo si la cita sigue en `expected`; false si otro la cambió antes (el cliente
+   * confirmó mientras vencía, o el barbero canceló a la vez). Así un cambio nunca pisa a otro.
+   */
+  updateStatus(next: Appointment, expected: AppointmentStatus): Promise<boolean>;
 }

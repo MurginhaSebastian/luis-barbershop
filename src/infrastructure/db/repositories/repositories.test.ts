@@ -233,6 +233,14 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect(await repo.findByAppointment("00000000-0000-4000-8000-000000000999")).toBeNull();
   });
 
+  test("cambiar estado solo si sigue como se leyó", async () => {
+    const booked = await book(utc("15:00"));
+    expect(await deps.appointments.updateStatus(booked.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.PENDING)).toBe(true);
+    // Ya no está pendiente: vencerla ahora pisaría la confirmación.
+    expect(await deps.appointments.updateStatus(booked.changeStatus(AppointmentStatus.EXPIRED), AppointmentStatus.PENDING)).toBe(false);
+    expect((await deps.appointments.findById(booked.id))?.status).toBe(AppointmentStatus.CONFIRMED);
+  });
+
   test("mensajes atendidos: marcar dos veces no falla", async () => {
     const repo = new DrizzleProcessedMessageRepository(db);
     expect(await repo.wasProcessed("wamid.1")).toBe(false);

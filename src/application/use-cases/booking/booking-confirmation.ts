@@ -36,6 +36,16 @@ export interface IncomingMessage {
   text: string;
 }
 
+export interface ExpiryReport {
+  /** Citas que vencieron y liberaron su hueco. */
+  expired: number;
+  /** Clientes a los que no se pudo avisar (la cita vence igual). */
+  failed: number;
+}
+
+/** Plantilla aprobada en Meta: "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo…". */
+export const EXPIRED_TEMPLATE = "cita_vencida";
+
 export type MessageOutcome =
   | { kind: "confirmed"; appointment: Appointment }
   | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "expired" | "inactive" };
@@ -89,14 +99,53 @@ export class BookingConfirmationUseCase {
       // Pasado el plazo pero aún pendiente (la tarea de vencer no ha pasado): el hueco sigue siendo suyo.
       if (appointment.status === AppointmentStatus.PENDING) {
         const confirmed = appointment.changeStatus(AppointmentStatus.CONFIRMED);
-        await this.deps.appointments.save(confirmed);
-        return { kind: "confirmed", appointment: confirmed };
+        if (await this.deps.appointments.updateStatus(confirmed, AppointmentStatus.PENDING)) {
+          return { kind: "confirmed", appointment: confirmed };
+        }
+        // Venció o la canceló el barbero en ese mismo instante: se responde según cómo quedó.
+        const now = await this.deps.appointments.findById(appointment.id);
+        return now ? this.closedOutcome(now.status) : { kind: "not-found" };
       }
-      if (appointment.status === AppointmentStatus.CONFIRMED) return { kind: "already-confirmed" };
-      if (appointment.status === AppointmentStatus.EXPIRED) return { kind: "expired" };
-      return { kind: "inactive" };
+      return this.closedOutcome(appointment.status);
     }
     return { kind: "not-found" };
+  }
+
+  private closedOutcome(status: AppointmentStatus): MessageOutcome {
+    if (status === AppointmentStatus.CONFIRMED) return { kind: "already-confirmed" };
+    if (status === AppointmentStatus.EXPIRED) return { kind: "expired" };
+    return { kind: "inactive" };
+  }
+
+  /**
+   * Libera las citas pendientes cuyo plazo pasó y avisa a cada cliente con la plantilla aprobada.
+   * Sin WhatsApp no vence nada: nadie habría podido confirmar. Un aviso fallido no impide vencer las demás.
+   */
+  async expireOverdue(): Promise<ExpiryReport> {
+    const report: ExpiryReport = { expired: 0, failed: 0 };
+    const messaging = this.deps.messaging;
+    if (!messaging) return report;
+    for (const { appointmentId } of await this.deps.confirmations.findOverdue(this.deps.now())) {
+      const appointment = await this.deps.appointments.findById(appointmentId);
+      if (appointment?.status !== AppointmentStatus.PENDING) continue;
+      // Solo si sigue pendiente: si el cliente confirmó en este instante, gana su confirmación.
+      if (!(await this.deps.appointments.updateStatus(appointment.changeStatus(AppointmentStatus.EXPIRED), AppointmentStatus.PENDING))) {
+        continue;
+      }
+      report.expired++;
+      try {
+        const [customer] = await this.deps.customers.findByIds([appointment.customerId]);
+        if (!customer) throw new Error(`Cliente ${appointment.customerId} no encontrado`);
+        await messaging.sendTemplate(customer.phone, EXPIRED_TEMPLATE, [
+          appointment.customerName,
+          shopDateTime(appointment.slot.start),
+          this.deps.siteUrl ? `${this.deps.siteUrl}/reservar` : "nuestra web",
+        ]);
+      } catch {
+        report.failed++;
+      }
+    }
+    return report;
   }
 
   private async reply(outcome: MessageOutcome): Promise<string> {
