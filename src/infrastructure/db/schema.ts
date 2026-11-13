@@ -150,3 +150,16 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   auth: text().notNull(),
   createdAt: instant("created_at").notNull().defaultNow(),
 });
+
+/** Código y plazo para confirmar cada cita por WhatsApp. El código no es único: se busca junto al celular. */
+export const bookingConfirmations = pgTable(
+  "booking_confirmations",
+  {
+    appointmentId: uuid("appointment_id")
+      .primaryKey()
+      .references(() => appointments.id, { onDelete: "cascade" }),
+    code: text().notNull(),
+    confirmBy: instant("confirm_by").notNull(),
+  },
+  (t) => [index("booking_confirmations_code_idx").on(t.code), index("booking_confirmations_confirm_by_idx").on(t.confirmBy)],
+);

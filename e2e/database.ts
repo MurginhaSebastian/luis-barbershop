@@ -66,7 +66,7 @@ export function resetBookings(): Promise<void> {
 /** Vuelve al catálogo de ejemplo, para las pruebas que lo editan. */
 export function resetCatalog(): Promise<void> {
   return withE2eDatabase(async (client) => {
-    await client.query("TRUNCATE appointments, customers, schedule_blocks, services, products, barbers, business_hours, site_settings, push_subscriptions CASCADE");
+    await client.query("TRUNCATE appointments, customers, schedule_blocks, services, products, barbers, business_hours, site_settings, push_subscriptions, booking_confirmations CASCADE");
     await client.query(readFileSync("src/infrastructure/db/seed.sql", "utf8"));
   });
 }

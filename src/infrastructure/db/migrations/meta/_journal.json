@@ -50,6 +50,13 @@
       "when": 1794544159844,
       "tag": "0006_appointment_expired",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794544429300,
+      "tag": "0007_booking_confirmations",
+      "breakpoints": true
     }
   ]
 }

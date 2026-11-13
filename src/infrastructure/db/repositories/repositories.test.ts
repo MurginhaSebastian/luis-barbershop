@@ -11,6 +11,7 @@ import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { InvalidSettingsError } from "@/core/errors/domain-errors";
 import { DrizzleSiteSettingsRepository } from "./site-settings-repository";
 import { DrizzlePushSubscriptionRepository } from "./push-subscription-repository";
+import { DrizzleConfirmationRepository } from "./confirmation-repository";
 import { DrizzleServiceRepository as ServiceRepo } from "./catalog-repositories";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
@@ -73,7 +74,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings, push_subscriptions CASCADE`);
+    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings, push_subscriptions, booking_confirmations CASCADE`);
     await db.insert(schema.barbers).values({ id: BARBER, name: "Barbero A" });
     await db.insert(schema.services).values({ id: CORTE, name: "Corte", durationMinutes: 30, priceCents: 3000 });
     await db.insert(schema.products).values({ id: CERA, name: "Cera", priceCents: 2500 });
@@ -207,6 +208,28 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect((await repo.findAll()).find((s) => s.endpoint === sub.endpoint)?.auth).toBe("b".repeat(22));
     await repo.remove(sub.endpoint);
     expect((await repo.findAll()).map((s) => s.endpoint)).toEqual(["https://push.example/2"]);
+  });
+
+  test("confirmaciones: por código, y vencidas solo si la cita sigue pendiente", async () => {
+    const repo = new DrizzleConfirmationRepository(db);
+    const first = await book(utc("15:00"));
+    const second = await book(utc("16:00"), "900000002");
+    await repo.save({ appointmentId: first.id, code: "KRT482", confirmBy: utc("10:00") });
+    await repo.save({ appointmentId: second.id, code: "KRT482", confirmBy: utc("11:00") });
+
+    // Mismo código para dos clientes: se devuelven ambos y decide quien llama.
+    expect((await repo.findByCode("KRT482")).map((c) => c.appointmentId).sort()).toEqual([first.id, second.id].sort());
+    expect(await repo.findByCode("AAA222")).toEqual([]);
+
+    expect((await repo.findOverdue(utc("10:30"))).map((c) => c.appointmentId)).toEqual([first.id]);
+    expect(await repo.findOverdue(utc("09:59"))).toEqual([]);
+
+    // Confirmada ya no vence; volver a guardar sustituye el plazo.
+    await deps.appointments.save(first.changeStatus(AppointmentStatus.CONFIRMED));
+    await repo.save({ appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") });
+    expect(await repo.findOverdue(utc("11:30"))).toEqual([]);
+    expect(await repo.findByAppointment(second.id)).toEqual({ appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") });
+    expect(await repo.findByAppointment("00000000-0000-4000-8000-000000000999")).toBeNull();
   });
 
   describe("ajustes de la web", () => {
