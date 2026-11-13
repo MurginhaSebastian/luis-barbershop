@@ -20,6 +20,7 @@ import { SharpImageOptimizer } from "./images/sharp-optimizer";
 import { DrizzlePushSubscriptionRepository } from "./db/repositories/push-subscription-repository";
 import { readVapidKeys, WebPushSender } from "./push/web-push-sender";
 import { DrizzleConfirmationRepository } from "./db/repositories/confirmation-repository";
+import { DrizzleProcessedMessageRepository } from "./db/repositories/processed-message-repository";
 import { readWhatsAppConfig, WhatsAppCloudSender } from "./whatsapp/whatsapp-cloud";
 
 /** Raíz de composición: único sitio donde los casos de uso reciben sus implementaciones concretas. */
@@ -40,6 +41,8 @@ export function getUseCases() {
     pushSubscriptions: new DrizzlePushSubscriptionRepository(db),
     pushSender: vapid ? new WebPushSender(vapid) : null,
     confirmations: new DrizzleConfirmationRepository(db),
+    processedMessages: new DrizzleProcessedMessageRepository(db),
+    siteUrl: process.env.SITE_URL?.replace(/\/$/, ""),
     messaging: whatsapp ? new WhatsAppCloudSender(whatsapp) : null,
     now: () => new Date(),
     randomBytes: (length: number) => crypto.getRandomValues(new Uint8Array(length)),

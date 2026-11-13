@@ -131,6 +131,15 @@ describe("aviso de reserva nueva", () => {
     expect(t.send).not.toHaveBeenCalled();
   });
 
+  test("avisa cuando el cliente confirma por WhatsApp, sin su celular", async () => {
+    await push.subscribe(sub(1));
+    expect(await push.notifyConfirmed(appointment)).toEqual({ sent: 1, removed: 0, failed: 0 });
+    const { message } = t.sent[0];
+    expect(message.title).toBe("Cita confirmada");
+    expect(message.body).toMatch(/Pedro confirmó por WhatsApp.*10:00.*Luis/);
+    expect(JSON.stringify(message)).not.toMatch(/51\d{9}|9\d{8}/);
+  });
+
   test("la prueba manual usa el mismo camino", async () => {
     await push.subscribe(sub(1));
     expect(await push.sendTest()).toEqual({ sent: 1, removed: 0, failed: 0 });

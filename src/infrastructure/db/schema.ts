@@ -163,3 +163,9 @@ export const bookingConfirmations = pgTable(
   },
   (t) => [index("booking_confirmations_code_idx").on(t.code), index("booking_confirmations_confirm_by_idx").on(t.confirmBy)],
 );
+
+/** Mensajes de WhatsApp ya atendidos, para no repetir la respuesta cuando Meta reintenta el aviso. */
+export const processedMessages = pgTable("processed_messages", {
+  messageId: text("message_id").primaryKey(),
+  processedAt: instant("processed_at").notNull().defaultNow(),
+});

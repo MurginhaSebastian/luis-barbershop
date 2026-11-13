@@ -2,6 +2,7 @@ import type { IPushSender, IPushSubscriptionRepository, PushMessage } from "@/ap
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
 import type { Appointment } from "@/core/entities/appointment";
 import { assertValidSubscription, type PushSubscription } from "@/core/entities/push";
+import { shopDateTime } from "@/application/shop-time";
 
 export interface ManagePushDeps {
   pushSubscriptions: IPushSubscriptionRepository;
@@ -15,16 +16,6 @@ export interface DeliveryReport {
   removed: number;
   failed: number;
 }
-
-const when = new Intl.DateTimeFormat("es-PE", {
-  timeZone: "America/Lima",
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
 
 /** Avisos push al panel del barbero cuando entra una reserva. */
 export class ManagePushUseCase {
@@ -53,7 +44,17 @@ export class ManagePushUseCase {
     const services = appointment.services.map((s) => s.name).join(", ");
     return this.broadcast({
       title: "Nueva reserva",
-      body: `${appointment.customerName} · ${when.format(appointment.slot.start)} · ${barber?.name ?? "barbero"}\n${services}`,
+      body: `${appointment.customerName} · ${shopDateTime(appointment.slot.start)} · ${barber?.name ?? "barbero"}\n${services}`,
+      url: "/panel",
+    });
+  }
+
+  /** El cliente confirmó por WhatsApp: Luis ya no tiene que escribirle. */
+  async notifyConfirmed(appointment: Appointment): Promise<DeliveryReport> {
+    const [barber] = await this.deps.barbers.findByIds([appointment.barberId]);
+    return this.broadcast({
+      title: "Cita confirmada",
+      body: `${appointment.customerName} confirmó por WhatsApp · ${shopDateTime(appointment.slot.start)} · ${barber?.name ?? "barbero"}`,
       url: "/panel",
     });
   }

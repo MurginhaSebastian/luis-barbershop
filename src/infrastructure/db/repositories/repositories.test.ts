@@ -12,6 +12,7 @@ import { InvalidSettingsError } from "@/core/errors/domain-errors";
 import { DrizzleSiteSettingsRepository } from "./site-settings-repository";
 import { DrizzlePushSubscriptionRepository } from "./push-subscription-repository";
 import { DrizzleConfirmationRepository } from "./confirmation-repository";
+import { DrizzleProcessedMessageRepository } from "./processed-message-repository";
 import { DrizzleServiceRepository as ServiceRepo } from "./catalog-repositories";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
@@ -74,7 +75,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings, push_subscriptions, booking_confirmations CASCADE`);
+    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings, push_subscriptions, booking_confirmations, processed_messages CASCADE`);
     await db.insert(schema.barbers).values({ id: BARBER, name: "Barbero A" });
     await db.insert(schema.services).values({ id: CORTE, name: "Corte", durationMinutes: 30, priceCents: 3000 });
     await db.insert(schema.products).values({ id: CERA, name: "Cera", priceCents: 2500 });
@@ -230,6 +231,15 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect(await repo.findOverdue(utc("11:30"))).toEqual([]);
     expect(await repo.findByAppointment(second.id)).toEqual({ appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") });
     expect(await repo.findByAppointment("00000000-0000-4000-8000-000000000999")).toBeNull();
+  });
+
+  test("mensajes atendidos: marcar dos veces no falla", async () => {
+    const repo = new DrizzleProcessedMessageRepository(db);
+    expect(await repo.wasProcessed("wamid.1")).toBe(false);
+    await repo.markProcessed("wamid.1");
+    await repo.markProcessed("wamid.1");
+    expect(await repo.wasProcessed("wamid.1")).toBe(true);
+    expect(await repo.wasProcessed("wamid.2")).toBe(false);
   });
 
   describe("ajustes de la web", () => {
