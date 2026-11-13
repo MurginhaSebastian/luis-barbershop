@@ -45,6 +45,7 @@ const mutants = [
   ["Confirmación: una cita confirmada puede vencer", "src/core/entities/appointment.ts", '  CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],', '  CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW", "EXPIRED"],'],
   ["Confirmación: el plazo ignora la hora de la cita", "src/core/entities/confirmation.ts", "      start.getTime() - CONFIRM_BEFORE_START_MINUTES * MINUTE_MS,", "      Infinity,"],
   ["Panel: se puede vencer una cita a mano", "src/app/panel/actions.ts", '.exclude(["EXPIRED"])', ""],
+  ["WhatsApp: se acepta cualquier firma", "src/infrastructure/whatsapp/whatsapp-cloud.ts", "return !!received && received.length === expected.length && timingSafeEqual(received, expected);", "return true;"],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
 ];
 
