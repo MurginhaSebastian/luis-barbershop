@@ -199,7 +199,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   (el código no es único). Los avisos repetidos se ignoran (`processed_messages`), marcados al final para que
   un fallo a medias se reintente.
 - `/api/cron/vencer` (con `CRON_SECRET`, cada 5 min) pasa a `EXPIRED` las pendientes vencidas y envía la
-  plantilla `cita_vencida`. `EXPIRED` no ocupa agenda ni se reabre; el panel no puede vencer a mano.
+  plantilla `cita_vencida` (2 variables: nombre y fecha; el enlace va en un botón fijo, porque Meta rechaza
+  plantillas que terminan en variable). `EXPIRED` no ocupa agenda ni se reabre; el panel no puede vencer a mano.
 - **Todo cambio de estado usa `updateStatus(next, expected)`** (compare-and-set): confirmar, vencer y los
   botones del panel no se pisan entre sí.
 - En pruebas, `WHATSAPP_API_URL` apunta a un WhatsApp falso (`e2e/fake-meta.ts`).

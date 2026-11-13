@@ -192,11 +192,8 @@ describe("vencer las que nadie confirmó", () => {
     expect(await at(LATE).expireOverdue()).toEqual({ expired: 1, failed: 0 });
     expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
     expect(t.appointments.get("a1")?.blocksSchedule()).toBe(false);
-    expect(t.sendTemplate).toHaveBeenCalledWith(PEDRO.phone, "cita_vencida", [
-      "Pedro",
-      expect.stringMatching(/16:00/),
-      "https://barberia.example/reservar",
-    ]);
+    // Dos variables: el enlace va en un botón fijo de la plantilla (Meta no admite terminar en variable).
+    expect(t.sendTemplate).toHaveBeenCalledWith(PEDRO.phone, "cita_vencida", ["Pedro", expect.stringMatching(/16:00/)]);
   });
 
   test("antes del plazo no vence nada", async () => {

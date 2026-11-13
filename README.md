@@ -118,9 +118,10 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 3. Inventa un `WHATSAPP_VERIFY_TOKEN` largo. En *WhatsApp > Configuration > Webhook* pon la URL
    `https://<tu-dominio>/api/whatsapp` y ese token, y suscríbete al campo **messages**. En local, expón el
    puerto con `ngrok http 3000` y usa su dirección.
-4. Crea y espera la aprobación de la plantilla **`cita_vencida`** (categoría utilidad, idioma español):
-   "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo. Puedes reservar otra hora
-   aquí: {{3}}".
+4. Crea y espera la aprobación de la plantilla **`cita_vencida`** (categoría utilidad, idioma *Spanish*, `es`):
+   cuerpo "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo. Cuando quieras, reserva
+   otra hora." y un botón de URL "Reservar" con la dirección fija `https://<tu-dominio>/reservar`. Meta
+   rechaza las plantillas que empiezan o terminan en una variable.
 5. En `/panel/web`, el WhatsApp de la barbería debe ser **el mismo número** conectado a la API: es al que
    escriben los clientes para confirmar.
 6. Programa `GET /api/cron/vencer` cada 5 minutos con la cabecera `Authorization: Bearer <CRON_SECRET>`

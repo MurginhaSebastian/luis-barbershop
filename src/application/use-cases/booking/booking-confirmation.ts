@@ -43,7 +43,10 @@ export interface ExpiryReport {
   failed: number;
 }
 
-/** Plantilla aprobada en Meta: "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo…". */
+/**
+ * Plantilla aprobada en Meta: "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo…", con un
+ * botón de enlace fijo a /reservar. Meta rechaza plantillas que empiezan o terminan en una variable.
+ */
 export const EXPIRED_TEMPLATE = "cita_vencida";
 
 export type MessageOutcome =
@@ -136,11 +139,7 @@ export class BookingConfirmationUseCase {
       try {
         const [customer] = await this.deps.customers.findByIds([appointment.customerId]);
         if (!customer) throw new Error(`Cliente ${appointment.customerId} no encontrado`);
-        await messaging.sendTemplate(customer.phone, EXPIRED_TEMPLATE, [
-          appointment.customerName,
-          shopDateTime(appointment.slot.start),
-          this.deps.siteUrl ? `${this.deps.siteUrl}/reservar` : "nuestra web",
-        ]);
+        await messaging.sendTemplate(customer.phone, EXPIRED_TEMPLATE, [appointment.customerName, shopDateTime(appointment.slot.start)]);
       } catch {
         report.failed++;
       }
