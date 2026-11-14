@@ -44,6 +44,7 @@ export function getUseCases() {
     processedMessages: new DrizzleProcessedMessageRepository(db),
     siteUrl: process.env.SITE_URL?.replace(/\/$/, ""),
     messaging: whatsapp ? new WhatsAppCloudSender(whatsapp) : null,
+    confirmationNumber: whatsapp?.displayNumber ?? null,
     now: () => new Date(),
     randomBytes: (length: number) => crypto.getRandomValues(new Uint8Array(length)),
   };

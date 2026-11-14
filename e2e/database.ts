@@ -10,7 +10,12 @@ export const E2E_UPLOADS_DIR = ".uploads-e2e";
 export const PANEL_PASSWORD = "clave-solo-para-pruebas";
 
 /** WhatsApp de pruebas: apunta al servidor falso de e2e/fake-meta.ts, nunca a Meta. */
-export const E2E_WHATSAPP = { appSecret: "secreto-whatsapp-de-pruebas", phoneNumberId: "E2E-PHONE", cronSecret: "secreto-cron-de-pruebas" };
+export const E2E_WHATSAPP = {
+  appSecret: "secreto-whatsapp-de-pruebas",
+  phoneNumberId: "E2E-PHONE",
+  cronSecret: "secreto-cron-de-pruebas",
+  displayNumber: "51911111111",
+};
 
 export function e2eWhatsAppEnv() {
   return {
@@ -18,6 +23,7 @@ export function e2eWhatsAppEnv() {
     WHATSAPP_PHONE_NUMBER_ID: E2E_WHATSAPP.phoneNumberId,
     WHATSAPP_APP_SECRET: E2E_WHATSAPP.appSecret,
     WHATSAPP_VERIFY_TOKEN: "verificacion-de-pruebas",
+    WHATSAPP_DISPLAY_NUMBER: E2E_WHATSAPP.displayNumber,
     WHATSAPP_API_URL: "http://localhost:3199",
     CRON_SECRET: E2E_WHATSAPP.cronSecret,
     SITE_URL: "http://localhost:3100",

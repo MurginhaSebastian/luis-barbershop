@@ -53,12 +53,10 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
 /** Código y plazo para confirmar por WhatsApp. Si algo falla, la reserva sigue en pie y la confirma Luis. */
 async function requestConfirmation(appointment: Appointment): Promise<NonNullable<BookingStateOk["confirmation"]> | null> {
   try {
-    const { bookingConfirmation, manageSite } = getUseCases();
-    const { contact } = await manageSite.get();
-    const issued = await bookingConfirmation.issue(appointment, contact.whatsapp);
-    return issued && contact.whatsapp
-      ? { code: issued.code, confirmBy: issued.confirmBy.toISOString(), whatsapp: contact.whatsapp }
-      : null;
+    const { bookingConfirmation } = getUseCases();
+    const issued = await bookingConfirmation.issue(appointment);
+    const whatsapp = bookingConfirmation.confirmationNumber;
+    return issued && whatsapp ? { code: issued.code, confirmBy: issued.confirmBy.toISOString(), whatsapp } : null;
   } catch (error) {
     console.error("confirmación por WhatsApp", error);
     return null;

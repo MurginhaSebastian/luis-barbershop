@@ -6,7 +6,8 @@ import { BookingConfirmationUseCase, type BookingConfirmationDeps } from "./book
 
 const lima = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-05:00`);
 const NOW = lima("2026-11-09", "10:00");
-const SHOP = "51900000000";
+/** El número conectado a la API: aparte del WhatsApp de Luis. */
+const CONFIRMATION_NUMBER = "51911111111";
 const PEDRO: Customer = { id: "c1", name: "Pedro", phone: "51900000001" };
 const ANA: Customer = { id: "c2", name: "Ana", phone: "51900000002" };
 
@@ -70,6 +71,7 @@ function makeDeps() {
       },
     },
     messaging: { sendText, sendTemplate },
+    confirmationNumber: CONFIRMATION_NUMBER,
     siteUrl: "https://barberia.example",
     now: () => NOW,
     randomBytes: (n) => new Uint8Array(n),
@@ -86,21 +88,25 @@ beforeEach(() => {
 });
 
 describe("pedir confirmación al reservar", () => {
-  test("guarda un código y el plazo de 2 h", async () => {
-    const issued = await useCase.issue(book("a1", PEDRO), SHOP);
+  test("guarda un código y el plazo de 2 h, para escribir al número de confirmación", async () => {
+    const issued = await useCase.issue(book("a1", PEDRO));
     expect(issued).toEqual({ appointmentId: "a1", code: "AAA222", confirmBy: lima("2026-11-09", "12:00") });
     expect(t.confirmations).toEqual([issued]);
+    expect(useCase.confirmationNumber).toBe(CONFIRMATION_NUMBER);
   });
 
   test("sin WhatsApp configurado no hay plazo: la cita espera al barbero", async () => {
     const off = new BookingConfirmationUseCase({ ...t.deps, messaging: null });
     expect(off.enabled).toBe(false);
-    expect(await off.issue(book("a1", PEDRO), SHOP)).toBeNull();
+    expect(off.confirmationNumber).toBeNull();
+    expect(await off.issue(book("a1", PEDRO))).toBeNull();
     expect(t.confirmations).toEqual([]);
   });
 
   test("sin un número al que escribir tampoco", async () => {
-    expect(await useCase.issue(book("a1", PEDRO), undefined)).toBeNull();
+    const noNumber = new BookingConfirmationUseCase({ ...t.deps, confirmationNumber: null });
+    expect(noNumber.enabled).toBe(false);
+    expect(await noNumber.issue(book("a1", PEDRO))).toBeNull();
     expect(t.confirmations).toEqual([]);
   });
 });

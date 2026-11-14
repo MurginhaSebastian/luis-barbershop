@@ -65,9 +65,17 @@ describe("isSignedByMeta", () => {
   });
 });
 
-test("readWhatsAppConfig exige las cuatro variables", () => {
-  const env = { WHATSAPP_TOKEN: "t", WHATSAPP_PHONE_NUMBER_ID: "1", WHATSAPP_APP_SECRET: "s", WHATSAPP_VERIFY_TOKEN: "v" };
-  expect(readWhatsAppConfig(env)).toEqual({ token: "t", phoneNumberId: "1", appSecret: "s", verifyToken: "v" });
+test("readWhatsAppConfig exige las cinco variables y deja el número en cifras", () => {
+  const env = {
+    WHATSAPP_TOKEN: "t",
+    WHATSAPP_PHONE_NUMBER_ID: "1",
+    WHATSAPP_APP_SECRET: "s",
+    WHATSAPP_VERIFY_TOKEN: "v",
+    WHATSAPP_DISPLAY_NUMBER: "+51 911 111 111",
+  };
+  expect(readWhatsAppConfig(env)).toEqual({ token: "t", phoneNumberId: "1", appSecret: "s", verifyToken: "v", displayNumber: "51911111111" });
   expect(readWhatsAppConfig({ ...env, WHATSAPP_APP_SECRET: "" })).toBeNull();
+  // Sin número no hay a quién escribir para confirmar.
+  expect(readWhatsAppConfig({ ...env, WHATSAPP_DISPLAY_NUMBER: "" })).toBeNull();
   expect(readWhatsAppConfig({ ...env, WHATSAPP_API_URL: "http://localhost:3199" })?.apiUrl).toBe("http://localhost:3199");
 });

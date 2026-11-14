@@ -9,6 +9,8 @@ export interface WhatsAppConfig {
   appSecret: string;
   /** Lo eliges tú y lo escribes también en Meta al configurar el webhook. */
   verifyToken: string;
+  /** El número conectado a la API, solo cifras: a él escriben los clientes para confirmar. No es el de Luis. */
+  displayNumber: string;
   /** Solo para pruebas: otra dirección en lugar de la Graph API de Meta. */
   apiUrl?: string;
 }
@@ -50,7 +52,7 @@ export class WhatsAppCloudSender implements IMessagingService {
   }
 }
 
-/** Sin las cuatro variables no hay WhatsApp: las citas se confirman a mano, como antes. */
+/** Sin estas cinco variables no hay WhatsApp: las citas se confirman a mano, como antes. */
 export function readWhatsAppConfig(env: Record<string, string | undefined>): WhatsAppConfig | null {
   const {
     WHATSAPP_TOKEN: token,
@@ -59,8 +61,9 @@ export function readWhatsAppConfig(env: Record<string, string | undefined>): Wha
     WHATSAPP_VERIFY_TOKEN: verifyToken,
     WHATSAPP_API_URL: apiUrl,
   } = env;
-  if (!token || !phoneNumberId || !appSecret || !verifyToken) return null;
-  return { token, phoneNumberId, appSecret, verifyToken, ...(apiUrl && { apiUrl }) };
+  const displayNumber = env.WHATSAPP_DISPLAY_NUMBER?.replace(/\D/g, "");
+  if (!token || !phoneNumberId || !appSecret || !verifyToken || !displayNumber) return null;
+  return { token, phoneNumberId, appSecret, verifyToken, displayNumber, ...(apiUrl && { apiUrl }) };
 }
 
 /** ¿El aviso viene de Meta? HMAC-SHA256 del cuerpo tal cual llegó, con el secreto de la app. */

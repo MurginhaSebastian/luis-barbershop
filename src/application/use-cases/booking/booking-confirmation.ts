@@ -23,6 +23,8 @@ export interface BookingConfirmationDeps {
   processedMessages: IProcessedMessageRepository;
   /** null: WhatsApp sin configurar. Las citas se confirman a mano desde el panel y no vencen. */
   messaging: IMessagingService | null;
+  /** Número conectado a la API, al que el cliente escribe para confirmar. Aparte del WhatsApp de Luis. */
+  confirmationNumber: string | null;
   /** Dirección pública de la web, para enlazar a la reserva en los mensajes. */
   siteUrl?: string;
   now: () => Date;
@@ -58,15 +60,20 @@ export class BookingConfirmationUseCase {
   constructor(private readonly deps: BookingConfirmationDeps) {}
 
   get enabled(): boolean {
-    return this.deps.messaging !== null;
+    return this.deps.messaging !== null && !!this.deps.confirmationNumber;
+  }
+
+  /** A qué número escribe el cliente para confirmar (null si no hay confirmación por WhatsApp). */
+  get confirmationNumber(): string | null {
+    return this.enabled ? this.deps.confirmationNumber : null;
   }
 
   /**
    * Da código y plazo a una cita recién reservada. Sin WhatsApp o sin un número al que escribir no hay plazo:
    * vencerla sería castigar al cliente por algo que no podía hacer.
    */
-  async issue(appointment: Appointment, shopWhatsapp: string | undefined): Promise<BookingConfirmation | null> {
-    if (!this.enabled || !shopWhatsapp) return null;
+  async issue(appointment: Appointment): Promise<BookingConfirmation | null> {
+    if (!this.enabled) return null;
     const confirmation: BookingConfirmation = {
       appointmentId: appointment.id,
       code: confirmationCode(this.deps.randomBytes(CONFIRMATION_CODE_BYTES)),

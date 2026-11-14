@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { GET, POST } from "./route";
 
-const CONFIG = { token: "t", phoneNumberId: "PHONE1", appSecret: "secreto", verifyToken: "verificame" };
+const CONFIG = { token: "t", phoneNumberId: "PHONE1", appSecret: "secreto", verifyToken: "verificame", displayNumber: "51911111111" };
 
 const mocks = vi.hoisted(() => ({
   config: null as null | typeof CONFIG,

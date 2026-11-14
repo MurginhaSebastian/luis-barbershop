@@ -7,18 +7,13 @@ import { bookUntilData, fillData, newPhone } from "./helpers";
 // La reserva de punta a punta con WhatsApp: la web habla con un "Meta" falso (e2e/fake-meta.ts) y aquí se
 // hace de Meta para entregar el mensaje del cliente al webhook, firmado como lo firmaría Meta.
 
-const SHOP_WHATSAPP = "51900000000";
+// El número conectado a la API: aparte del WhatsApp de Luis, que no hace falta para confirmar.
+const CONFIRMATION_NUMBER = E2E_WHATSAPP.displayNumber;
 
 test.beforeEach(async () => {
   await resetBookings();
   await clearMeta();
-  await withE2eDatabase((db) =>
-    db.query("INSERT INTO site_settings (id, data) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data", [
-      { contact: { whatsapp: SHOP_WHATSAPP } },
-    ]),
-  );
 });
-test.afterEach(() => withE2eDatabase((db) => db.query("DELETE FROM site_settings")));
 
 /** Reserva y devuelve la hora elegida, el celular y el código que muestra la web. */
 async function bookAndReadCode(page: Page) {
@@ -28,7 +23,7 @@ async function bookAndReadCode(page: Page) {
   await page.getByRole("button", { name: "Reservar cita" }).click();
   await expect(page.getByRole("heading", { name: "Reserva registrada" })).toBeVisible();
   const href = decodeURIComponent((await page.getByRole("link", { name: "Confirmar por WhatsApp" }).getAttribute("href")) ?? "");
-  expect(href).toMatch(new RegExp(`^https://wa\\.me/${SHOP_WHATSAPP}\\?text=Confirmo mi cita [A-Z]{3}\\d{3}$`));
+  expect(href).toMatch(new RegExp(`^https://wa\\.me/${CONFIRMATION_NUMBER}\\?text=Confirmo mi cita [A-Z]{3}\\d{3}$`));
   return { hour, phone: `51${phone}`, code: href.slice(-6) };
 }
 
@@ -55,7 +50,7 @@ test("el cliente confirma por WhatsApp y la cita queda confirmada", async ({ pag
             field: "messages",
             value: {
               messaging_product: "whatsapp",
-              metadata: { display_phone_number: SHOP_WHATSAPP, phone_number_id: E2E_WHATSAPP.phoneNumberId },
+              metadata: { display_phone_number: CONFIRMATION_NUMBER, phone_number_id: E2E_WHATSAPP.phoneNumberId },
               messages: [{ from: phone, id: `wamid.${code}`, timestamp: "1762900000", type: "text", text: { body: `Confirmo mi cita ${code}` } }],
             },
           },
