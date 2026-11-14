@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import type { BookingConfirmation } from "@/core/entities/confirmation";
 import type { Customer } from "@/core/entities/customer";
+import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "@/core/entities/site";
 import { BookingConfirmationUseCase, type BookingConfirmationDeps } from "./booking-confirmation";
 
 const lima = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-05:00`);
@@ -26,6 +27,7 @@ function makeDeps() {
   const appointments = new Map<string, Appointment>();
   const confirmations: BookingConfirmation[] = [];
   const processed = new Set<string>();
+  const site: { settings: SiteSettings } = { settings: { ...DEFAULT_SITE_SETTINGS, contact: { whatsapp: "51900000000" } } };
   const sendText = vi.fn<(phone: string, text: string) => Promise<void>>(async () => {});
   const sendTemplate = vi.fn<(phone: string, template: string, parameters: readonly string[]) => Promise<void>>(async () => {});
   const deps: BookingConfirmationDeps = {
@@ -70,13 +72,14 @@ function makeDeps() {
         processed.add(id);
       },
     },
+    siteSettings: { get: async () => site.settings, save: async () => {} },
     messaging: { sendText, sendTemplate },
     confirmationNumber: CONFIRMATION_NUMBER,
     siteUrl: "https://barberia.example",
     now: () => NOW,
     randomBytes: (n) => new Uint8Array(n),
   };
-  return { deps, appointments, confirmations, sendText, sendTemplate };
+  return { deps, appointments, confirmations, sendText, sendTemplate, site };
 }
 
 let t: ReturnType<typeof makeDeps>;
@@ -169,9 +172,16 @@ describe("confirmar por WhatsApp", () => {
     expect((await useCase.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("inactive");
   });
 
-  test("un mensaje sin código recibe las instrucciones", async () => {
+  test("una consulta sin código se manda al WhatsApp de la barbería", async () => {
     expect((await useCase.handleMessage(message("Hola, ¿tienen hora el sábado?"))).kind).toBe("no-code");
     expect(replied()[0].text).toContain("Confirmo mi cita");
+    expect(replied()[0].text).toContain("escríbenos a +51900000000");
+  });
+
+  test("sin WhatsApp de contacto, la consulta se manda a la web", async () => {
+    t.site.settings = { ...DEFAULT_SITE_SETTINGS, contact: {} };
+    await useCase.handleMessage(message("Hola, ¿tienen hora el sábado?"));
+    expect(replied()[0].text).toContain("https://barberia.example/reservar");
   });
 
   test("un número que nunca reservó no encuentra nada", async () => {

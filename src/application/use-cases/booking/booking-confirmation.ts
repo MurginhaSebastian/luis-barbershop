@@ -4,6 +4,7 @@ import type { IBarberRepository } from "@/application/ports/repositories/barber-
 import type { IConfirmationRepository } from "@/application/ports/repositories/confirmation-repository";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
 import type { IProcessedMessageRepository } from "@/application/ports/repositories/processed-message-repository";
+import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import { shopDateTime } from "@/application/shop-time";
 import { type Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import {
@@ -21,6 +22,8 @@ export interface BookingConfirmationDeps {
   barbers: IBarberRepository;
   confirmations: IConfirmationRepository;
   processedMessages: IProcessedMessageRepository;
+  /** De aquí sale el WhatsApp de Luis, para quien escribe al número automático con una consulta. */
+  siteSettings: ISiteSettingsRepository;
   /** null: WhatsApp sin configurar. Las citas se confirman a mano desde el panel y no vencen. */
   messaging: IMessagingService | null;
   /** Número conectado a la API, al que el cliente escribe para confirmar. Aparte del WhatsApp de Luis. */
@@ -171,8 +174,12 @@ export class BookingConfirmationUseCase {
       case "not-found":
         return "No encontramos una reserva con ese código para este número. Escríbenos desde el celular con el que reservaste y revisa el código.";
       case "no-code":
-      case "ignored":
-        return `Por aquí confirmamos las citas: envía el mensaje con tu código, por ejemplo "Confirmo mi cita KRT482". ${book}`;
+      case "ignored": {
+        // Este número solo confirma: las consultas van al WhatsApp de Luis, que las lee él.
+        const { whatsapp } = (await this.deps.siteSettings.get()).contact;
+        const ask = whatsapp ? `Para consultas escríbenos a +${whatsapp}.` : book;
+        return `Este número solo confirma citas: envía tu código, por ejemplo "Confirmo mi cita KRT482". ${ask}`;
+      }
     }
   }
 }
