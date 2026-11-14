@@ -193,7 +193,10 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 ### Confirmación por WhatsApp
 - Al reservar, `BookingConfirmationUseCase.issue` da un código (3 letras + 3 cifras, `core/entities/confirmation.ts`)
   y un plazo: 2 h, o 1 h antes de la cita (`CONFIRM_*` en `booking-policy.ts`). Solo si WhatsApp está
-  configurado (`WHATSAPP_*`) y la barbería tiene número; si no, todo sigue como antes y nada vence.
+  configurado (`WHATSAPP_*`); si no, todo sigue como antes y nada vence.
+- El enlace de confirmar apunta a `WHATSAPP_DISPLAY_NUMBER` (el número de la API, un chip aparte), **no** a
+  `contact.whatsapp`: el de Luis sigue en su app para las consultas, y quien escriba sin código al número
+  automático recibe ese contacto.
 - El cliente envía "Confirmo mi cita KRT482" con el enlace `wa.me` de la confirmación. `/api/whatsapp` verifica
   la firma de Meta sobre el cuerpo original y `handleMessage` busca el código **junto al número** que escribe
   (el código no es único). Los avisos repetidos se ignoran (`processed_messages`), marcados al final para que

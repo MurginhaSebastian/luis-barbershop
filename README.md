@@ -71,6 +71,7 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 | `SUPABASE_BUCKET` | Bucket público de las fotos | |
 | `IMAGE_STORAGE` | `local` guarda las fotos en disco | Sin Supabase, solo en un servidor con disco persistente. |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | Confirmación por WhatsApp | Ver [Configurar WhatsApp](#configurar-whatsapp). Sin ellas las citas se confirman a mano y no vencen. |
+| `WHATSAPP_DISPLAY_NUMBER` | Número al que escriben para confirmar | El conectado a la API, solo cifras con 51. Un chip aparte: **no** es el WhatsApp de Luis. |
 | `CRON_SECRET` | Liberar citas sin confirmar | La tarea `GET /api/cron/vencer` lo exige; se llama cada 5 minutos. |
 | `SITE_URL` | Enlaces en los mensajes | La dirección pública, con `https://`. |
 
@@ -110,8 +111,9 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 
 ## Configurar WhatsApp
 
-1. En [developers.facebook.com](https://developers.facebook.com) crea una app de tipo **Business** y añade el
-   producto **WhatsApp**. Para probar, Meta da un número de prueba.
+1. Consigue un chip **solo para confirmar citas**, distinto del WhatsApp de Luis: un número conectado a la API
+   ya no se puede usar en la app de WhatsApp. En [developers.facebook.com](https://developers.facebook.com)
+   crea una app de tipo **Business** y añade el producto **WhatsApp**. Para probar, Meta da un número de prueba.
 2. En *WhatsApp > API Setup* copia el **Phone number ID** a `WHATSAPP_PHONE_NUMBER_ID`, y en *Configuración
    de la app > Básica* el **App secret** a `WHATSAPP_APP_SECRET`. Para producción, crea un usuario del
    sistema en Meta Business con un **token permanente** (`WHATSAPP_TOKEN`).
@@ -122,8 +124,9 @@ npm run dev          # http://localhost:3000 (panel en /panel)
    cuerpo "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo. Cuando quieras, reserva
    otra hora." y un botón de URL "Reservar" con la dirección fija `https://<tu-dominio>/reservar`. Meta
    rechaza las plantillas que empiezan o terminan en una variable.
-5. En `/panel/web`, el WhatsApp de la barbería debe ser **el mismo número** conectado a la API: es al que
-   escriben los clientes para confirmar.
+5. Pon ese número en `WHATSAPP_DISPLAY_NUMBER` (solo cifras, con 51): es al que escriben los clientes para
+   confirmar. El WhatsApp de Luis se queda en `/panel/web` para el botón flotante, y quien escriba al número
+   automático con una consulta recibe ese número de Luis.
 6. Programa `GET /api/cron/vencer` cada 5 minutos con la cabecera `Authorization: Bearer <CRON_SECRET>`
    (Vercel Cron, Railway o cron-job.org).
 
