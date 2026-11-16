@@ -2,7 +2,10 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Client } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { BotToolExecutor } from "@/application/use-cases/assistant/bot-tool-executor";
+import { BookingConfirmationUseCase } from "@/application/use-cases/booking/booking-confirmation";
+import { ConfirmationCycleUseCase } from "@/application/use-cases/booking/confirmation-cycle";
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
 import { ManageCatalogUseCase } from "@/application/use-cases/admin/manage-catalog";
 import { ManageScheduleUseCase } from "@/application/use-cases/admin/manage-schedule";
@@ -382,5 +385,77 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     const first = await book(utc("15:00"));
     await deps.appointments.save(Appointment.restore({ ...first, status: AppointmentStatus.CANCELLED }));
     await expect(book(utc("15:00"), "900000002")).resolves.toBeInstanceOf(Appointment);
+  });
+
+  describe("asistente y ciclo de confirmaciones", () => {
+    const report = { sent: 0, removed: 0, failed: 0 };
+    function world() {
+      const clock = { now: NOW };
+      const sendTemplate = vi.fn(async () => {});
+      const base = {
+        ...deps,
+        now: () => clock.now,
+        confirmations: new DrizzleConfirmationRepository(db),
+        processedMessages: new DrizzleProcessedMessageRepository(db),
+        siteSettings: new DrizzleSiteSettingsRepository(db),
+        messaging: { sendText: async () => {}, sendTemplate },
+        confirmationNumber: "51911111111",
+        randomBytes: (n: number) => crypto.getRandomValues(new Uint8Array(n)),
+      };
+      const bot = new BotToolExecutor({
+        ...base,
+        availability: new GetAvailableSlotsUseCase(base),
+        booking: new CreateAppointmentUseCase(base),
+        confirmation: new BookingConfirmationUseCase(base),
+        push: { notifyNewBooking: async () => report, notifyConfirmed: async () => report, notifyCancelled: async () => report },
+      });
+      const cycle = new ConfirmationCycleUseCase({ ...base, alerts: { notifyAtRisk: async () => report } });
+      const at = (hhmm: string) => {
+        clock.now = utc(hhmm);
+        return cycle.run();
+      };
+      return { bot, at, sendTemplate };
+    }
+    const statuses = async () => (await db.select({ status: schema.appointments.status }).from(schema.appointments)).map((r) => r.status);
+
+    test("una reserva del asistente con 2 h o más entra en el ciclo: -35, -15 y 0 min, sin repetir el aviso", async () => {
+      const { bot, at, sendTemplate } = world();
+      const booked = await bot.executeTool(
+        {
+          name: "reservar_cita",
+          arguments: { customerName: "Cliente Bot", serviceIds: [CORTE], barberId: BARBER, startTime: "2026-11-02T10:00:00-05:00" },
+        },
+        { verifiedPhone: "51900000077", now: NOW },
+      );
+      expect(booked).toMatchObject({ ok: true, data: { appointment: { status: "PENDING" } } });
+
+      // 10:00 en Lima = 15:00 UTC. Correr el ciclo dos veces en el mismo minuto, o cada minuto, no repite el aviso.
+      expect(await at("14:30")).toEqual({ reminded: 1, atRisk: 0, expired: 0, failed: 0 });
+      expect(await at("14:30")).toEqual({ reminded: 0, atRisk: 0, expired: 0, failed: 0 });
+      expect(await at("14:31")).toMatchObject({ reminded: 0 });
+      expect(sendTemplate).toHaveBeenCalledTimes(1);
+      expect(sendTemplate).toHaveBeenCalledWith("51900000077", "recordatorio_cita", expect.any(Array), [
+        expect.stringMatching(/^Confirmo mi cita [A-Z]{3}\d{3}$/),
+        expect.stringMatching(/^Cancelar [A-Z]{3}\d{3}$/),
+      ]);
+      const [{ sentAt }] = await db.select({ sentAt: schema.appointments.reminderSentAt }).from(schema.appointments);
+      expect(sentAt).toEqual(utc("14:30"));
+
+      expect(await at("14:45")).toMatchObject({ atRisk: 1 });
+      expect(await statuses()).toEqual(["AT_RISK"]);
+      expect(await at("15:00")).toMatchObject({ expired: 1 });
+      expect(await statuses()).toEqual(["EXPIRED"]);
+    });
+
+    test("pendientes o confirmadas cuya hora ya pasó no pasan solas a vencida ni a no vino: las decide Luis", async () => {
+      const { at } = world();
+      const pending = await book(utc("15:00"));
+      await new DrizzleConfirmationRepository(db).save({ appointmentId: pending.id, code: "KRT482", confirmBy: utc("14:45") });
+      const confirmed = await book(utc("16:00"), "900000002");
+      await deps.appointments.updateStatus(confirmed.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.PENDING);
+
+      expect(await at("17:30")).toEqual({ reminded: 0, atRisk: 0, expired: 0, failed: 0 });
+      expect((await statuses()).sort()).toEqual(["CONFIRMED", "PENDING"]);
+    });
   });
 });
