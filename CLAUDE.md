@@ -166,6 +166,11 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Confirmar y cancelar abren WhatsApp con el mensaje escrito (`presentation/lib/whatsapp.ts`). El
   `window.open` va antes de cualquier `await`, o el navegador lo bloquea. La agenda se refresca sola cada
   minuto (`AutoRefresh`).
+- La agenda del día es una línea de tiempo (`AgendaDay`, `presentation/lib/timeline.ts`): cada cita mide
+  `PX_PER_MINUTE` por minuto con mínimo de 64 px, las que se cruzan se apilan en su franja (nunca
+  `position: absolute`) y entre franjas se ve el hueco libre. Filtro por barbero con botones `aria-pressed`;
+  canceladas y vencidas van aparte. Colores por estado: tokens `--status-*` de `globals.css`, sólidos y con el
+  texto por encima de 4.5:1 (axe lo vigila); la etiqueta siempre dice el estado en palabras.
 - Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`): acciones en
   `app/panel/admin-actions.ts`, formato en `admin-schema.ts` y reglas en `core/catalog/rules.ts`. Los casos de
   uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple.
@@ -226,6 +231,24 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - **Todo cambio de estado usa `updateStatus(next, expected)`** (compare-and-set): confirmar, vencer y los
   botones del panel no se pisan entre sí.
 - En pruebas, `WHATSAPP_API_URL` apunta a un WhatsApp falso (`e2e/fake-meta.ts`).
+- El webhook entrega al puerto `AiAssistantPort` (`application/ports/assistant.ts`) el texto escrito, el
+  `payload` de un botón de plantilla (`type: "button"`) o el `id` de un botón o lista interactivos
+  (`type: "interactive"`). `selectAssistant` (`infrastructure/assistant/`) elige quién lo atiende: sin
+  `AI_PROVIDER`, `BookingConfirmationUseCase` (código y palabras clave). Un `AI_PROVIDER` sin adaptador avisa y
+  usa ese, nunca rompe la web.
+
+### Asistente de IA (preparado, sin LLM conectado)
+- `BotToolExecutor.executeTool(llamada, { verifiedPhone, now })` (`application/use-cases/assistant/`) ejecuta las
+  5 herramientas de `bot-tools.ts`: `listar_catalogo_y_mis_citas`, `consultar_huecos_dinamicos`, `reservar_cita`,
+  `confirmar_asistencia` y `cancelar_cita`. `botToolDefinitions()` las da en JSON Schema para el LLM.
+- **Ningún esquema lleva el celular**: lo pone el servidor (`verifiedPhone`, el remitente firmado por Meta). Lo
+  que el modelo mande de más se descarta. Una cita de otro número responde igual que una que no existe.
+- `reservar_cita` hace lo mismo que la reserva web: `issue()` si nace pendiente (sin código, el ciclo no la ve),
+  aviso push y `notifyReleased` a los desplazados. Los avisos fallidos van en `failedNotices`, no al modelo.
+- Sin `appointmentId` y con varias citas, `MULTIPLE_APPOINTMENTS_FOUND`: el modelo pregunta, no adivina. Si otro
+  tomó la hora en riesgo, `SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER` con las 3 siguientes horas libres.
+- Esquemas sin `.transform()` (si no, `z.toJSONSchema` falla) y horas como `shopIso` (`…-05:00`), que
+  `reservar_cita` acepta tal cual.
 
 ### Persistencia (Drizzle)
 - Esquema en `src/infrastructure/db/schema.ts`; migraciones SQL versionadas en `db/migrations/`.

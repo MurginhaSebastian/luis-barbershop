@@ -19,7 +19,10 @@ la web desde un panel propio. Precios en soles, horario de Lima.
 - Botón de WhatsApp y enlaces a redes, si la barbería los configura.
 
 **Para el barbero** (`/panel`, con una clave)
-- Agenda del día y citas por confirmar, con hasta cuándo puede confirmar cada cliente; también puede
+- Agenda del día como línea de tiempo: cada cita mide según su duración ("10:00 – 10:45 · 45 min"), las que
+  se cruzan se apilan, se ven los huecos libres y se puede filtrar por barbero. Colores por estado: separado
+  por confirmar (ámbar), confirmada (verde) y en riesgo (naranja, borde punteado).
+- Citas por confirmar de cualquier día, con hasta cuándo puede confirmar cada cliente; también puede
   confirmar o cancelar a mano (abre WhatsApp con el mensaje escrito).
 - Aviso push en el celular o la PC cuando alguien reserva, confirma o cancela por WhatsApp, y cuando una cita
   queda en riesgo.
@@ -78,6 +81,7 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 | `IMAGE_STORAGE` | `local` guarda las fotos en disco | Sin Supabase, solo en un servidor con disco persistente. |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | Confirmación por WhatsApp | Ver [Configurar WhatsApp](#configurar-whatsapp). Sin ellas las citas se confirman a mano y nunca quedan en riesgo. |
 | `WHATSAPP_DISPLAY_NUMBER` | Número al que escriben para confirmar | El conectado a la API, solo cifras con 51. Un chip aparte: **no** es el WhatsApp de Luis. |
+| `AI_PROVIDER` | Asistente de IA (aún sin conectar) | Vacío: responde el asistente básico (código y palabras clave). Las herramientas para el LLM ya existen (`BotToolExecutor`). |
 | `CRON_SECRET` | Ciclo de confirmaciones | La tarea `GET /api/cron/vencer` lo exige; se llama cada 5 minutos (aviso de -35 min, en riesgo a -15, vencida a su hora). |
 | `SITE_URL` | Enlaces en los mensajes | La dirección pública, con `https://`. |
 
