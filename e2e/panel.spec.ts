@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
-import { PANEL_PASSWORD, resetBookings, withE2eDatabase } from "./database";
+import { PANEL_PASSWORD, resetBookings, seedAgendaDay as seedDay, withE2eDatabase } from "./database";
 import { bookUntilData, fillData } from "./helpers";
 
 test.beforeEach(async ({ context }) => {
@@ -209,36 +209,6 @@ test.describe("agenda", () => {
 });
 
 test.describe("línea de tiempo del día", () => {
-  const LUIS = "10000000-0000-4000-8000-000000000001";
-  const INVITADO = "10000000-0000-4000-8000-000000000002";
-  const CORTE = "20000000-0000-4000-8000-000000000001";
-
-  /** Mañana: una cita en riesgo y la que tomó su hora (se cruzan), una larga y otra de otro barbero. */
-  const seedDay = () =>
-    withE2eDatabase(async (db) => {
-      const { rows } = await db.query("SELECT to_char((now() AT TIME ZONE 'America/Lima')::date + 1, 'YYYY-MM-DD') AS day");
-      const day = rows[0].day as string;
-      const add = async (n: number, name: string, barber: string, from: string, minutes: number, status: string) => {
-        const customer = `30000000-0000-4000-8000-00000000000${n}`;
-        const appointment = `40000000-0000-4000-8000-00000000000${n}`;
-        const start = new Date(`${day}T${from}:00-05:00`);
-        await db.query("INSERT INTO customers (id, name, phone) VALUES ($1, $2, $3)", [customer, name, `5190000010${n}`]);
-        await db.query(
-          "INSERT INTO appointments (id, barber_id, customer_id, customer_name, starts_at, ends_at, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-          [appointment, barber, customer, name, start, new Date(start.getTime() + minutes * 60_000), status],
-        );
-        await db.query(
-          "INSERT INTO appointment_services (appointment_id, position, service_id, name, duration_minutes, price_cents) VALUES ($1, 0, $2, 'Corte clásico', $3, 3000)",
-          [appointment, CORTE, minutes],
-        );
-      };
-      await add(1, "Cliente en riesgo", LUIS, "10:00", 45, "AT_RISK");
-      await add(2, "Cazador de huecos", LUIS, "10:00", 30, "CONFIRMED");
-      await add(3, "Cliente largo", LUIS, "11:30", 120, "PENDING");
-      await add(4, "Cliente de invitado", INVITADO, "10:00", 30, "CONFIRMED");
-      return day;
-    });
-
   test("en 320 px: las citas que se cruzan se apilan, miden según su duración y se filtra por barbero", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     const day = await seedDay();

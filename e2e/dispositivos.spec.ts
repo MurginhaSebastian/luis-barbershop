@@ -1,5 +1,5 @@
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
-import { resetBookings } from "./database";
+import { PANEL_PASSWORD, resetBookings, seedAgendaDay } from "./database";
 import { bookUntilData, fillData } from "./helpers";
 
 // Se ejecuta con `npm run test:devices` (playwright.devices.config.ts), una vez por dispositivo.
@@ -73,6 +73,32 @@ test("reserva completa de principio a fin", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "Reserva registrada" })).toBeVisible();
   await expectSoundLayout(page);
   await capture(page, testInfo, "reserva-confirmada");
+  expect(errors).toEqual([]);
+});
+
+test("agenda del panel: la línea de tiempo cabe y nada se tapa", async ({ page, browserName }, testInfo) => {
+  // La cookie del panel es Secure en producción (next start) y WebKit no la guarda en http://localhost; con
+  // HTTPS sí. El diseño en 320 px lo cubren Galaxy S9+ y Pixel.
+  test.skip(browserName === "webkit", "WebKit no guarda cookies Secure en http://localhost");
+  const errors = collectErrors(page);
+  const day = await seedAgendaDay();
+  await page.goto("/panel/entrar");
+  await page.getByLabel("Clave").fill(PANEL_PASSWORD);
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("heading", { name: "Agenda", level: 1 })).toBeVisible();
+  await page.goto(`/panel?dia=${day}`);
+  const timeline = page.getByRole("list", { name: "Línea de tiempo del día" });
+  await expect(timeline.getByRole("article")).toHaveCount(4);
+  const boxes = await timeline.getByRole("article").evaluateAll((cards) => cards.map((c) => c.getBoundingClientRect().toJSON()));
+  for (const [i, a] of boxes.entries()) {
+    for (const b of boxes.slice(i + 1)) {
+      const apart = a.bottom <= b.top || b.bottom <= a.top || a.right <= b.left || b.right <= a.left;
+      expect(apart, "dos citas se tapan").toBe(true);
+    }
+  }
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow, "desplazamiento horizontal").toBeLessThanOrEqual(0);
+  await capture(page, testInfo, "panel-agenda");
   expect(errors).toEqual([]);
 });
 
