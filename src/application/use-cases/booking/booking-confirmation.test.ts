@@ -28,7 +28,6 @@ const book = (id: string, customer: Customer) =>
 function makeDeps() {
   const appointments = new Map<string, Appointment>();
   const confirmations: BookingConfirmation[] = [];
-  const processed = new Set<string>();
   const site: { settings: SiteSettings } = { settings: { ...DEFAULT_SITE_SETTINGS, contact: { whatsapp: "51900000000" } } };
   const sendText = vi.fn<(phone: string, text: string) => Promise<void>>(async () => {});
   const sendTemplate = vi.fn<(phone: string, template: string, parameters: readonly string[]) => Promise<void>>(async () => {});
@@ -68,12 +67,6 @@ function makeDeps() {
       },
       findByCode: async (code) => confirmations.filter((c) => c.code === code),
       findByAppointments: async (ids) => confirmations.filter((c) => ids.includes(c.appointmentId)),
-    },
-    processedMessages: {
-      wasProcessed: async (id) => processed.has(id),
-      markProcessed: async (id) => {
-        processed.add(id);
-      },
     },
     siteSettings: { get: async () => site.settings, save: async () => {} },
     messaging: { sendText, sendTemplate },
@@ -152,14 +145,7 @@ describe("confirmar por WhatsApp", () => {
     expect(t.appointments.get("a2")?.status).toBe(AppointmentStatus.CONFIRMED);
   });
 
-  test("un aviso repetido por Meta no se atiende dos veces", async () => {
-    await pending("a1", PEDRO);
-    await useCase.handleMessage(message("Confirmo mi cita KRT482"));
-    expect((await useCase.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("ignored");
-    expect(t.sendText).toHaveBeenCalledTimes(1);
-  });
-
-  test("si responder falla, el mensaje no queda atendido y el reintento lo resuelve igual", async () => {
+  test("si responder falla, el reintento da el mismo resultado sin confirmar dos veces", async () => {
     await pending("a1", PEDRO);
     t.sendText.mockRejectedValueOnce(new Error("WhatsApp caído"));
     await expect(useCase.handleMessage(message("Confirmo mi cita KRT482"))).rejects.toThrow();

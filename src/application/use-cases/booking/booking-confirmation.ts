@@ -4,7 +4,6 @@ import type { IAppointmentRepository } from "@/application/ports/repositories/ap
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
 import type { IConfirmationRepository } from "@/application/ports/repositories/confirmation-repository";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
-import type { IProcessedMessageRepository } from "@/application/ports/repositories/processed-message-repository";
 import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import { shopDateTime } from "@/application/shop-time";
 import { type Appointment, AppointmentStatus } from "@/core/entities/appointment";
@@ -26,7 +25,6 @@ export interface BookingConfirmationDeps {
   customers: ICustomerRepository;
   barbers: IBarberRepository;
   confirmations: IConfirmationRepository;
-  processedMessages: IProcessedMessageRepository;
   /** De aquí sale el WhatsApp de Luis, para quien escribe al número automático con una consulta. */
   siteSettings: ISiteSettingsRepository;
   /** null: WhatsApp sin configurar. Las citas se confirman a mano desde el panel y no vencen. */
@@ -76,15 +74,14 @@ export class BookingConfirmationUseCase implements AiAssistantPort {
 
   /**
    * Atiende un mensaje del cliente y le responde. Solo confirma si el código es de una cita de ese mismo número.
-   * Se marca como atendido al final: si algo falla a medias, Meta reintenta y el resultado es el mismo.
+   * Que no se atienda dos veces lo garantiza HandleIncomingMessageUseCase, que lo reclama antes.
    */
   async handleMessage(message: IncomingMessage): Promise<MessageOutcome> {
     const messaging = this.deps.messaging;
-    if (!messaging || (await this.deps.processedMessages.wasProcessed(message.id))) return { kind: "ignored" };
+    if (!messaging) return { kind: "ignored" };
     const phone = normalizePhone(message.from);
     const outcome = await this.confirmFrom(phone, message.text);
     await messaging.sendText(phone, await this.reply(outcome));
-    await this.deps.processedMessages.markProcessed(message.id);
     return outcome;
   }
 

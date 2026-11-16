@@ -6,15 +6,17 @@ import { processedMessages } from "../schema";
 export class DrizzleProcessedMessageRepository implements IProcessedMessageRepository {
   constructor(private readonly db: Db) {}
 
-  async wasProcessed(messageId: string): Promise<boolean> {
-    const [row] = await this.db
-      .select({ id: processedMessages.messageId })
-      .from(processedMessages)
-      .where(eq(processedMessages.messageId, messageId));
-    return !!row;
+  async claim(messageId: string): Promise<boolean> {
+    // La clave primaria decide: de dos inserciones simultáneas solo una devuelve fila.
+    const rows = await this.db
+      .insert(processedMessages)
+      .values({ messageId })
+      .onConflictDoNothing()
+      .returning({ id: processedMessages.messageId });
+    return rows.length > 0;
   }
 
-  async markProcessed(messageId: string): Promise<void> {
-    await this.db.insert(processedMessages).values({ messageId }).onConflictDoNothing();
+  async release(messageId: string): Promise<void> {
+    await this.db.delete(processedMessages).where(eq(processedMessages.messageId, messageId));
   }
 }

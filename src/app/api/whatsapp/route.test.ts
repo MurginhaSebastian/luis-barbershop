@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/infrastructure/container", () => ({
   getWhatsAppConfig: () => mocks.config,
   getUseCases: () => ({
-    assistant: { handleMessage: mocks.handleMessage },
+    incomingMessages: { execute: mocks.handleMessage },
     managePush: { notifyConfirmed: mocks.notifyConfirmed, notifyCancelled: mocks.notifyCancelled },
   }),
 }));

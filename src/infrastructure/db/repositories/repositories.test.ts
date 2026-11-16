@@ -299,13 +299,15 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect((await deps.appointments.findById(booked.id))?.status).toBe(AppointmentStatus.CONFIRMED);
   });
 
-  test("mensajes atendidos: marcar dos veces no falla", async () => {
+  test("mensajes atendidos: de dos reclamos simultáneos del mismo aviso, solo uno lo consigue", async () => {
     const repo = new DrizzleProcessedMessageRepository(db);
-    expect(await repo.wasProcessed("wamid.1")).toBe(false);
-    await repo.markProcessed("wamid.1");
-    await repo.markProcessed("wamid.1");
-    expect(await repo.wasProcessed("wamid.1")).toBe(true);
-    expect(await repo.wasProcessed("wamid.2")).toBe(false);
+    const claims = await Promise.all(Array.from({ length: 5 }, () => repo.claim("wamid.1")));
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect(await repo.claim("wamid.2")).toBe(true);
+    // Soltado (falló al atenderlo), el reintento de Meta lo vuelve a reclamar.
+    await repo.release("wamid.1");
+    expect(await repo.claim("wamid.1")).toBe(true);
+    expect(await repo.claim("wamid.1")).toBe(false);
   });
 
   describe("ajustes de la web", () => {
@@ -396,7 +398,6 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
         ...deps,
         now: () => clock.now,
         confirmations: new DrizzleConfirmationRepository(db),
-        processedMessages: new DrizzleProcessedMessageRepository(db),
         siteSettings: new DrizzleSiteSettingsRepository(db),
         messaging: { sendText: async () => {}, sendTemplate },
         confirmationNumber: "51911111111",

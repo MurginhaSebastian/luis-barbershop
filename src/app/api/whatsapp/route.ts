@@ -88,10 +88,11 @@ export async function POST(request: Request) {
       return m.from && text ? [{ id: m.id, from: m.from, text }] : [];
     });
 
-  const { assistant, managePush } = getUseCases();
+  const { incomingMessages, managePush } = getUseCases();
   try {
     for (const message of messages) {
-      const outcome = await assistant.handleMessage(message);
+      // Reclamado al empezar: un aviso repetido por Meta mientras este sigue en curso no se atiende dos veces.
+      const outcome = await incomingMessages.execute(message);
       if (outcome.kind === "confirmed" || outcome.kind === "cancelled") {
         const { kind, appointment } = outcome;
         after(() =>

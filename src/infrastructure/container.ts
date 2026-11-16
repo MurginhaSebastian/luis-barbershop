@@ -1,4 +1,5 @@
 import { BotToolExecutor } from "@/application/use-cases/assistant/bot-tool-executor";
+import { HandleIncomingMessageUseCase } from "@/application/use-cases/assistant/handle-incoming-message";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { ManageCatalogUseCase } from "@/application/use-cases/admin/manage-catalog";
@@ -60,8 +61,11 @@ export function getUseCases() {
     getAvailableSlots,
     createAppointment,
     bookingConfirmation,
-    /** Atiende lo que escriben al número automático (AiAssistantPort). */
-    assistant: selectAssistant(process.env, bookingConfirmation),
+    /** Lo que escriben al número automático: se reclama cada mensaje y lo atiende el asistente elegido. */
+    incomingMessages: new HandleIncomingMessageUseCase({
+      processedMessages: deps.processedMessages,
+      assistant: selectAssistant(process.env, bookingConfirmation),
+    }),
     // Lo usará el adaptador del LLM; hoy nadie lo llama.
     botTools: new BotToolExecutor({
       ...deps,

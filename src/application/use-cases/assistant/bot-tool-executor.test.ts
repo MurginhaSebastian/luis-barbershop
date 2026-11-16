@@ -119,7 +119,6 @@ function makeWorld() {
       findByCode: async (code: string) => confirmations.filter((c) => c.code === code),
       findByAppointments: async (ids: readonly string[]) => confirmations.filter((c) => ids.includes(c.appointmentId)),
     },
-    processedMessages: { wasProcessed: async () => false, markProcessed: async () => {} },
     siteSettings: { get: async () => DEFAULT_SITE_SETTINGS, save: async () => {} },
     messaging: { sendText: async () => {}, sendTemplate },
     confirmationNumber: "51911111111",
