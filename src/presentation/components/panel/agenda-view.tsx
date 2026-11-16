@@ -52,7 +52,7 @@ export function AgendaView(props: { agenda: Agenda; date: string; today: string;
         {day.length === 0 ? (
           <p className="mt-4 text-muted-foreground">No hay citas este día.</p>
         ) : (
-          <AgendaDay items={day} changeStatus={props.changeStatus} />
+          <AgendaDay items={day} open={props.agenda.open} blocks={props.agenda.blocks} changeStatus={props.changeStatus} />
         )}
       </section>
     </div>

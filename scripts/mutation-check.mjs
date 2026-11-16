@@ -55,6 +55,7 @@ const mutants = [
   ["WhatsApp: una cita vencida se reabre", "src/application/use-cases/booking/booking-confirmation.ts", "if (status !== AppointmentStatus.PENDING && status !== AppointmentStatus.AT_RISK) return this.closedOutcome(appointment);", "if (status === AppointmentStatus.CANCELLED) return this.closedOutcome(appointment);"],
   ["WhatsApp: \"no podré ir\" confirma la cita", "src/application/use-cases/booking/booking-confirmation.ts", "return wantsToCancel(text) ? this.cancel(appointment) : this.confirm(appointment);", "return this.confirm(appointment);"],
   ["Vencida: una pendiente vence sin pasar por en riesgo", "src/core/entities/appointment.ts", '  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "AT_RISK"],', '  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "AT_RISK", "EXPIRED"],'],
+  ["Panel: un bloqueo sale como libre", "src/presentation/lib/timeline.ts", "for (const block of blocks) {", "for (const block of blocks.slice(0, 0)) {"],
   ["Bot: actúa sobre la cita de otro número", "src/application/use-cases/assistant/bot-tool-executor.ts", "return appointment && customer && appointment.customerId === customer.id", "return appointment"],
   ["Bot: con varias citas adivina cuál", "src/application/use-cases/assistant/bot-tool-executor.ts", "if (candidates.length > 1) {", "if (candidates.length > 9) {"],
   ["Bot: una reserva pendiente queda sin código (fuera del ciclo)", "src/application/use-cases/assistant/bot-tool-executor.ts", "() => this.deps.confirmation.issue(appointment).then(() => ({ failed: 0 })),", ""],

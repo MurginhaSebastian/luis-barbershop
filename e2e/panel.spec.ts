@@ -227,6 +227,16 @@ test.describe("línea de tiempo del día", () => {
     // Dos horas miden más que media hora.
     expect((await card("Cliente largo").boundingBox())!.height).toBeGreaterThan(hunter.height);
     await expect(region.getByText(/^Libre 10:45 – 11:30 · 45 min$/)).toBeVisible();
+    // Un bloqueo de toda la barbería dentro de ese hueco: lo libre se acorta y nunca lo incluye.
+    await withE2eDatabase((db) =>
+      db.query("INSERT INTO schedule_blocks (barber_id, starts_at, ends_at) VALUES (NULL, $1, $2)", [
+        `${day}T10:45:00-05:00`,
+        `${day}T11:15:00-05:00`,
+      ]),
+    );
+    await page.reload();
+    await expect(region.getByText(/^Libre 11:15 – 11:30 · 15 min$/)).toBeVisible();
+    await expect(region.getByText(/^Libre 10:45/)).toHaveCount(0);
 
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);

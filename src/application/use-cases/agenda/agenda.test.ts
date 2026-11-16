@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from "vitest";
 import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
-import type { TimeSlot } from "@/core/entities/time-slot";
+import { TimeSlot } from "@/core/entities/time-slot";
 import { InvalidStatusChangeError, NotFoundError } from "@/core/errors/domain-errors";
 import { ChangeAppointmentStatusUseCase } from "./change-appointment-status";
 import { GetAgendaUseCase } from "./get-agenda";
@@ -55,9 +55,17 @@ function makeRepos(appointments: Appointment[]) {
         { id: "b2", name: "Antiguo", active: false },
       ],
       findById: async () => null,
-      findAllActive: async () => [],
+      findAllActive: async () => [{ id: "b1", name: "Luis", active: true }],
       findAll: async () => [],
       save: async () => {},
+    },
+    schedule: {
+      findBusinessHours: async (weekday: number) => (weekday === 1 ? [{ openMinute: 600, closeMinute: 840 }] : []),
+      findBlocks: async () => [TimeSlot.create(new Date("2026-11-02T17:00:00Z"), new Date("2026-11-02T18:00:00Z"))],
+      saveBusinessHours: async () => {},
+      findBlocksFrom: async () => [],
+      addBlock: async () => {},
+      removeBlock: async () => {},
     },
     confirmations: {
       save: async () => {},
@@ -113,6 +121,12 @@ describe("GetAgendaUseCase", () => {
     const repos = makeRepos([book("riesgo", "2026-11-02T15:00:00Z").changeStatus(AppointmentStatus.AT_RISK)]);
     const { pending } = await new GetAgendaUseCase(repos).execute({ date: "2026-11-03" });
     expect(pending.map((i) => [i.id, i.status])).toEqual([["riesgo", AppointmentStatus.AT_RISK]]);
+  });
+
+  test("da el horario y los bloqueos del día, para no mostrar libre lo que no lo está", async () => {
+    const { open, blocks } = await new GetAgendaUseCase(makeRepos([])).execute({ date: "2026-11-02" });
+    expect(open).toEqual([{ start: "2026-11-02T15:00:00.000Z", end: "2026-11-02T19:00:00.000Z" }]);
+    expect(blocks).toEqual([{ barberName: "Luis", start: "2026-11-02T17:00:00.000Z", end: "2026-11-02T18:00:00.000Z" }]);
   });
 
   test("muestra el barbero aunque ya no esté activo", async () => {

@@ -2,8 +2,9 @@ import type { IAppointmentRepository } from "@/application/ports/repositories/ap
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
 import type { IConfirmationRepository } from "@/application/ports/repositories/confirmation-repository";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
+import type { IScheduleRepository } from "@/application/ports/repositories/schedule-repository";
 import { type Appointment, AppointmentStatus } from "@/core/entities/appointment";
-import { shopDayRange } from "@/core/scheduling/availability";
+import { shopDayRange, shopInstant, shopWeekday } from "@/core/scheduling/availability";
 
 /** Lo que el barbero necesita ver de una cita, en datos planos para la pantalla. */
 export interface AgendaItem {
@@ -21,10 +22,20 @@ export interface AgendaItem {
   confirmBy?: string;
 }
 
+/** Un tramo del día, en ISO. */
+export interface Interval {
+  start: string;
+  end: string;
+}
+
 export interface Agenda {
   /** Todas las citas futuras que aún nadie ha confirmado, de cualquier día. */
   pending: AgendaItem[];
   day: AgendaItem[];
+  /** Tramos de apertura del día elegido. */
+  open: Interval[];
+  /** Bloqueos de ese día por barbero activo (los de toda la barbería aparecen en cada uno). */
+  blocks: (Interval & { barberName: string })[];
 }
 
 export interface GetAgendaDeps {
@@ -32,6 +43,7 @@ export interface GetAgendaDeps {
   customers: ICustomerRepository;
   barbers: IBarberRepository;
   confirmations: IConfirmationRepository;
+  schedule: IScheduleRepository;
   now: () => Date;
 }
 
@@ -72,6 +84,25 @@ export class GetAgendaUseCase {
           }),
         }));
 
-    return { pending: toItems([...pending, ...atRisk]), day: toItems(day) };
+    const [hours, activeBarbers] = await Promise.all([
+      this.deps.schedule.findBusinessHours(shopWeekday(date)),
+      this.deps.barbers.findAllActive(),
+    ]);
+    const range = shopDayRange(date);
+    const blocks = await Promise.all(
+      activeBarbers.map(async (barber) =>
+        (await this.deps.schedule.findBlocks(barber.id, range)).map((b) => ({
+          barberName: barber.name,
+          start: b.start.toISOString(),
+          end: b.end.toISOString(),
+        })),
+      ),
+    );
+    return {
+      pending: toItems([...pending, ...atRisk]),
+      day: toItems(day),
+      open: hours.map((h) => ({ start: shopInstant(date, h.openMinute).toISOString(), end: shopInstant(date, h.closeMinute).toISOString() })),
+      blocks: blocks.flat(),
+    };
   }
 }

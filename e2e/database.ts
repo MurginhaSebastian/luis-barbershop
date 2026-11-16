@@ -92,13 +92,16 @@ export function resetCatalog(): Promise<void> {
   });
 }
 
-/** Mañana: una cita en riesgo y la que tomó su hora (se cruzan), una larga y otra de otro barbero. */
+/** El próximo día abierto: una cita en riesgo y la que tomó su hora (se cruzan), una larga y otra de otro barbero. */
 export function seedAgendaDay(): Promise<string> {
   const LUIS = "10000000-0000-4000-8000-000000000001";
   const INVITADO = "10000000-0000-4000-8000-000000000002";
   const CORTE = "20000000-0000-4000-8000-000000000001";
   return withE2eDatabase(async (db) => {
-    const { rows } = await db.query("SELECT to_char((now() AT TIME ZONE 'America/Lima')::date + 1, 'YYYY-MM-DD') AS day");
+    // El próximo día abierto (lunes a sábado en los datos de ejemplo), para que el horario cuente.
+    const { rows } = await db.query(
+      "SELECT to_char(d, 'YYYY-MM-DD') AS day FROM generate_series((now() AT TIME ZONE 'America/Lima')::date + 1, (now() AT TIME ZONE 'America/Lima')::date + 2, '1 day') AS d WHERE extract(isodow FROM d) < 7 LIMIT 1",
+    );
     const day = rows[0].day as string;
     const add = async (n: number, name: string, barber: string, from: string, minutes: number, status: string) => {
       const customer = `30000000-0000-4000-8000-00000000000${n}`;

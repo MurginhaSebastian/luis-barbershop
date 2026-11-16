@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import type { AgendaItem } from "@/application/use-cases/agenda/get-agenda";
+import type { Agenda, AgendaItem } from "@/application/use-cases/agenda/get-agenda";
 import { formatTime } from "@/presentation/lib/format";
-import { blockHeight, dayTimeline, gapHeight, isOperational } from "@/presentation/lib/timeline";
+import { blockHeight, dayTimeline, freeTime, gapHeight, isOperational } from "@/presentation/lib/timeline";
 import { cn } from "@/presentation/lib/utils";
 import { AgendaCard, type ChangeStatusAction } from "./agenda-card";
 
@@ -14,13 +14,18 @@ const filterClass =
  * La agenda de un día como línea de tiempo: cada cita mide según su duración y las que se cruzan se apilan en su
  * franja. Con varios barberos, un filtro (botones con aria-pressed, sin scroll horizontal en 320 px).
  */
-export function AgendaDay(props: { items: AgendaItem[]; changeStatus: ChangeStatusAction }) {
+export function AgendaDay(props: Pick<Agenda, "open" | "blocks"> & { items: AgendaItem[]; changeStatus: ChangeStatusAction }) {
   const barbers = [...new Set(props.items.map((i) => i.barberName))];
   const [chosen, setChosen] = useState<string | null>(null);
   // Al cambiar de día, un barbero sin citas ese día vuelve a "Todos".
   const barber = chosen && barbers.includes(chosen) ? chosen : null;
   const shown = props.items.filter((i) => !barber || i.barberName === barber);
-  const rows = dayTimeline(shown.filter((i) => isOperational(i.status)));
+  // Con "Todos" cuenta cualquier bloqueo: mejor no anunciar libre una hora en la que alguien no atiende.
+  const free = freeTime(props.open, props.blocks.filter((b) => !barber || b.barberName === barber));
+  const rows = dayTimeline(
+    shown.filter((i) => isOperational(i.status)),
+    free,
+  );
   const closed = shown.filter((i) => !isOperational(i.status));
 
   return (
