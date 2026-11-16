@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import type { BookingConfirmation } from "@/core/entities/confirmation";
 import type { Customer } from "@/core/entities/customer";
+import { SlotUnavailableError } from "@/core/errors/domain-errors";
 import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "@/core/entities/site";
 import { BookingConfirmationUseCase, type BookingConfirmationDeps, EXPIRED_TEMPLATE } from "./booking-confirmation";
 
@@ -164,12 +165,46 @@ describe("confirmar por WhatsApp", () => {
     expect((await useCase.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("already-confirmed");
   });
 
-  test("una cita vencida no se reabre: se le ofrece reservar otra hora", async () => {
+  test("una cita vencida no se reabre: se le ofrecen las horas libres de ese día con sus servicios", async () => {
     await pending("a1", PEDRO);
     t.appointments.set("a1", book("a1", PEDRO).changeStatus(AppointmentStatus.EXPIRED));
-    expect((await useCase.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("expired");
+    expect((await useCase.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("slot-taken");
     expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
-    expect(replied()[0].text).toContain("https://barberia.example/reservar");
+    expect(replied()[0].text).toContain("https://barberia.example/reservar?paso=3&servicios=s1&barbero=b1&dia=2026-11-12");
+  });
+
+  describe("en riesgo (faltan 15 min o menos y no había confirmado)", () => {
+    const atRisk = async () => {
+      await pending("a1", PEDRO);
+      t.appointments.set("a1", book("a1", PEDRO).changeStatus(AppointmentStatus.AT_RISK));
+    };
+
+    test("escenario A: confirma a los -10 min y nadie tomó su hora: vuelve a estar confirmada", async () => {
+      await atRisk();
+      const outcome = await useCase.handleMessage(message("Confirmo mi cita KRT482"));
+      expect(outcome.kind).toBe("confirmed");
+      expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.CONFIRMED);
+    });
+
+    test("si otro cliente ya tomó su hora (la cita venció), recibe SLOT_ALREADY_TAKEN y las horas libres", async () => {
+      await atRisk();
+      // El cazador de huecos reservó mientras tanto: al guardar, la cita ya no está en riesgo.
+      const taken = book("a1", PEDRO).changeStatus(AppointmentStatus.AT_RISK).changeStatus(AppointmentStatus.EXPIRED);
+      const stale = t.appointments.get("a1")!;
+      t.appointments.set("a1", taken);
+      expect((await useCase.confirm(stale)).kind).toBe("slot-taken");
+      expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
+    });
+
+    test("si la base rechaza el solape (23P01), también es SLOT_ALREADY_TAKEN y la cita no cambia", async () => {
+      await atRisk();
+      t.deps.appointments.updateStatus = async () => {
+        throw new SlotUnavailableError();
+      };
+      expect((await useCase.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("slot-taken");
+      expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.AT_RISK);
+      expect(replied()[0].text).toMatch(/ya no está disponible.*reservar\?paso=3/);
+    });
   });
 
   test("una cancelada tampoco", async () => {
@@ -259,7 +294,7 @@ describe("vencer las que nadie confirmó", () => {
     expect(t.sendTemplate).not.toHaveBeenCalled();
   });
 
-  test("si vence justo cuando el cliente escribe, se le dice que venció", async () => {
+  test("si vence justo cuando el cliente escribe, se le ofrece otra hora", async () => {
     await pending("a1", PEDRO);
     const snapshot = t.appointments.get("a1")!;
     t.appointments.set("a1", snapshot.changeStatus(AppointmentStatus.EXPIRED));
@@ -271,7 +306,7 @@ describe("vencer las que nadie confirmó", () => {
         findById: async (id) => (reads++ === 0 ? snapshot : (t.appointments.get(id) ?? null)),
       },
     });
-    expect((await racing.handleMessage({ id: "wamid.7", from: PEDRO.phone, text: "Confirmo mi cita KRT482" })).kind).toBe("expired");
+    expect((await racing.handleMessage({ id: "wamid.7", from: PEDRO.phone, text: "Confirmo mi cita KRT482" })).kind).toBe("slot-taken");
     expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
   });
 

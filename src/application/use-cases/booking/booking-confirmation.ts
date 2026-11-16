@@ -15,6 +15,8 @@ import {
   confirmationDeadline,
 } from "@/core/entities/confirmation";
 import { normalizePhone } from "@/core/entities/customer";
+import { SlotUnavailableError } from "@/core/errors/domain-errors";
+import { shopDateOf } from "@/core/scheduling/availability";
 
 export interface BookingConfirmationDeps {
   appointments: IAppointmentRepository;
@@ -56,7 +58,9 @@ export const EXPIRED_TEMPLATE = "cita_vencida";
 
 export type MessageOutcome =
   | { kind: "confirmed"; appointment: Appointment }
-  | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "expired" | "inactive" };
+  /** SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER: no confirmó a tiempo y su hora ya es de otro (o venció). */
+  | { kind: "slot-taken"; appointment: Appointment }
+  | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "inactive" };
 
 /** El cliente confirma su cita por WhatsApp; si no lo hace a tiempo, el hueco se libera. */
 export class BookingConfirmationUseCase {
@@ -109,26 +113,45 @@ export class BookingConfirmationUseCase {
 
     for (const candidate of await this.deps.confirmations.findByCode(code)) {
       const appointment = await this.deps.appointments.findById(candidate.appointmentId);
-      if (appointment?.customerId !== customer.id) continue;
-      // Pasado el plazo pero aún pendiente (la tarea de vencer no ha pasado): el hueco sigue siendo suyo.
-      if (appointment.status === AppointmentStatus.PENDING) {
-        const confirmed = appointment.changeStatus(AppointmentStatus.CONFIRMED);
-        if (await this.deps.appointments.updateStatus(confirmed, AppointmentStatus.PENDING)) {
-          return { kind: "confirmed", appointment: confirmed };
-        }
-        // Venció o la canceló el barbero en ese mismo instante: se responde según cómo quedó.
-        const now = await this.deps.appointments.findById(appointment.id);
-        return now ? this.closedOutcome(now.status) : { kind: "not-found" };
-      }
-      return this.closedOutcome(appointment.status);
+      if (appointment?.customerId === customer.id) return this.confirm(appointment);
     }
     return { kind: "not-found" };
   }
 
-  private closedOutcome(status: AppointmentStatus): MessageOutcome {
-    if (status === AppointmentStatus.CONFIRMED) return { kind: "already-confirmed" };
-    if (status === AppointmentStatus.EXPIRED) return { kind: "expired" };
+  /**
+   * El cliente confirma su cita (por WhatsApp hoy; el asistente con IA la llamará igual). Pendiente o en riesgo
+   * ("salvado por la campana") pasa a CONFIRMED solo si sigue así al guardar: nunca pisa otro cambio.
+   */
+  async confirm(appointment: Appointment): Promise<MessageOutcome> {
+    const { status } = appointment;
+    if (status !== AppointmentStatus.PENDING && status !== AppointmentStatus.AT_RISK) return this.closedOutcome(appointment);
+    const confirmed = appointment.changeStatus(AppointmentStatus.CONFIRMED);
+    try {
+      if (await this.deps.appointments.updateStatus(confirmed, status)) return { kind: "confirmed", appointment: confirmed };
+    } catch (error) {
+      // En riesgo, otro cliente tomó la hora sin desplazarla (justo cuando pasaba a riesgo): ya no cabe.
+      if (error instanceof SlotUnavailableError) return { kind: "slot-taken", appointment };
+      throw error;
+    }
+    // Otro la tomó, venció o la canceló el barbero en ese mismo instante: se responde según cómo quedó.
+    const now = await this.deps.appointments.findById(appointment.id);
+    return now ? this.closedOutcome(now) : { kind: "not-found" };
+  }
+
+  private closedOutcome(appointment: Appointment): MessageOutcome {
+    if (appointment.status === AppointmentStatus.CONFIRMED) return { kind: "already-confirmed" };
+    if (appointment.status === AppointmentStatus.EXPIRED) return { kind: "slot-taken", appointment };
     return { kind: "inactive" };
+  }
+
+  /** La web en el paso de elegir hora, con sus mismos servicios, barbero y día: ahí ve las horas libres. */
+  private rebookLink(appointment: Appointment): string | null {
+    if (!this.deps.siteUrl) return null;
+    const params = new URLSearchParams({ paso: "3" });
+    for (const s of appointment.services) params.append("servicios", s.serviceId);
+    params.append("barbero", appointment.barberId);
+    params.append("dia", shopDateOf(appointment.slot.start));
+    return `${this.deps.siteUrl}/reservar?${params}`;
   }
 
   /**
@@ -181,8 +204,11 @@ export class BookingConfirmationUseCase {
       }
       case "already-confirmed":
         return "Tu cita ya estaba confirmada. ¡Te esperamos!";
-      case "expired":
-        return `Esa reserva venció porque no se confirmó a tiempo y la hora quedó libre. ${book}`;
+      case "slot-taken": {
+        const link = this.rebookLink(outcome.appointment);
+        const next = link ? `Mira las horas libres que quedan aquí: ${link}` : book;
+        return `Lo sentimos: como no se confirmó a tiempo, tu hora del ${shopDateTime(outcome.appointment.slot.start)} ya no está disponible. ${next}`;
+      }
       case "inactive":
         return `Esa cita ya no está activa. ${book}`;
       case "not-found":
