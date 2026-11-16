@@ -1,3 +1,4 @@
+import { BotToolExecutor } from "@/application/use-cases/assistant/bot-tool-executor";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
 import { ManageCatalogUseCase } from "@/application/use-cases/admin/manage-catalog";
@@ -50,11 +51,22 @@ export function getUseCases() {
     randomBytes: (length: number) => crypto.getRandomValues(new Uint8Array(length)),
   };
   const managePush = new ManagePushUseCase(deps);
+  const getAvailableSlots = new GetAvailableSlotsUseCase(deps);
+  const createAppointment = new CreateAppointmentUseCase(deps);
+  const bookingConfirmation = new BookingConfirmationUseCase(deps);
   return {
     getCatalog: new GetCatalogUseCase(deps),
-    getAvailableSlots: new GetAvailableSlotsUseCase(deps),
-    createAppointment: new CreateAppointmentUseCase(deps),
-    bookingConfirmation: new BookingConfirmationUseCase(deps),
+    getAvailableSlots,
+    createAppointment,
+    bookingConfirmation,
+    // Lo usará el adaptador del LLM; hoy nadie lo llama.
+    botTools: new BotToolExecutor({
+      ...deps,
+      availability: getAvailableSlots,
+      booking: createAppointment,
+      confirmation: bookingConfirmation,
+      push: managePush,
+    }),
     getAgenda: new GetAgendaUseCase(deps),
     manageCatalog: new ManageCatalogUseCase(deps),
     manageSchedule: new ManageScheduleUseCase(deps),

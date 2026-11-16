@@ -6,6 +6,10 @@ import { z } from "zod";
 
 const serviceIds = z.array(z.uuid()).min(1).max(5).describe("Ids de los servicios elegidos (de listar_catalogo_y_mis_citas).");
 const barberId = z.uuid().nullable().optional().describe("Id del barbero; vacío o null = sin preferencia.");
+const appointmentId = z
+  .uuid()
+  .optional()
+  .describe("Id de la cita (de listar_catalogo_y_mis_citas). Vacío: la única cita activa del cliente.");
 
 export const BOT_TOOLS = {
   listar_catalogo_y_mis_citas: {
@@ -21,6 +25,27 @@ export const BOT_TOOLS = {
       date: z.iso.date().describe("Día en formato YYYY-MM-DD, en el calendario de Lima."),
       barberId,
     }),
+  },
+  reservar_cita: {
+    description:
+      "Reserva para quien escribe en este chat. Con menos de 2 h de antelación nace confirmada; si no, queda pendiente y se le pedirá confirmar 35 min antes.",
+    schema: z.object({
+      customerName: z.string().trim().min(2).max(60).describe("Nombre de quien viene a la cita."),
+      serviceIds,
+      barberId,
+      startTime: z.iso
+        .datetime({ offset: true })
+        .describe("Una hora de inicio tal como la devolvió consultar_huecos_dinamicos (con -05:00)."),
+    }),
+  },
+  confirmar_asistencia: {
+    description: "Confirma que el cliente vendrá. Sirve también si su cita está en riesgo, mientras nadie haya tomado la hora.",
+    schema: z.object({ appointmentId }),
+  },
+  cancelar_cita: {
+    description:
+      "Cancela una cita del cliente: con 35 min o más de antelación, o con menos si aún no la había confirmado.",
+    schema: z.object({ appointmentId }),
   },
 } as const;
 

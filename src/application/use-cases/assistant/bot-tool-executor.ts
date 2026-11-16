@@ -6,10 +6,15 @@ import type { IServiceRepository } from "@/application/ports/repositories/servic
 import { shopDateTime, shopIso, shopTime } from "@/application/shop-time";
 import { type Appointment, AppointmentStatus, totalDuration } from "@/core/entities/appointment";
 import { normalizePhone } from "@/core/entities/customer";
+import { shopDateOf } from "@/core/scheduling/availability";
+import { CUSTOMER_CANCEL_MIN_MINUTES } from "@/core/scheduling/booking-policy";
 import type { TimeSlot } from "@/core/entities/time-slot";
 import { DomainError } from "@/core/errors/domain-errors";
 import { loadBookableServices } from "../booking/availability";
+import type { BookingConfirmationUseCase } from "../booking/booking-confirmation";
+import type { CreateAppointmentUseCase } from "../booking/create-appointment";
 import type { GetAvailableSlotsUseCase } from "../booking/get-available-slots";
+import type { ManagePushUseCase } from "../push/manage-push";
 import { BOT_TOOLS, type BotToolName, isBotTool } from "./bot-tools";
 
 export interface ToolCall {
@@ -24,11 +29,26 @@ export interface ToolContext {
   now: Date;
 }
 
-export type ToolError = "UNKNOWN_TOOL" | "INVALID_ARGUMENTS" | "DOMAIN_ERROR";
+export type ToolError =
+  | "UNKNOWN_TOOL"
+  | "INVALID_ARGUMENTS"
+  | "DOMAIN_ERROR"
+  /** No existe o es de otro número: la misma respuesta, para no revelar que existe. */
+  | "APPOINTMENT_NOT_FOUND"
+  | "NO_ACTIVE_APPOINTMENTS"
+  /** Tiene varias citas y no dijo cuál: el modelo debe preguntarle (vienen en data.appointments). */
+  | "MULTIPLE_APPOINTMENTS_FOUND"
+  /** Estaba en riesgo y otro cliente tomó la hora: en data.nextSlots, las siguientes libres de ese día. */
+  | "SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER"
+  | "CANCELLATION_TOO_LATE"
+  | "APPOINTMENT_NOT_ACTIVE";
 
-/** Siempre JSON plano: ids y datos de las citas del propio cliente, nunca de otros. */
+/**
+ * Siempre JSON plano: ids y datos de las citas del propio cliente, nunca de otros. `failedNotices`: avisos al
+ * barbero o a otros clientes que no salieron; la operación vale igual (el adaptador lo registra, no el modelo).
+ */
 export type ToolResult =
-  | { ok: true; data: unknown }
+  | { ok: true; data: unknown; failedNotices?: number }
   | { ok: false; error: ToolError; message: string; data?: unknown };
 
 export interface BotToolDeps {
@@ -37,11 +57,17 @@ export interface BotToolDeps {
   customers: ICustomerRepository;
   appointments: IAppointmentRepository;
   availability: Pick<GetAvailableSlotsUseCase, "execute">;
+  booking: Pick<CreateAppointmentUseCase, "execute">;
+  confirmation: Pick<BookingConfirmationUseCase, "issue" | "confirm" | "cancel" | "notifyReleased">;
+  push: Pick<ManagePushUseCase, "notifyNewBooking" | "notifyConfirmed" | "notifyCancelled">;
 }
+
+type Args<T extends BotToolName> = z.infer<(typeof BOT_TOOLS)[T]["schema"]>;
 
 const ACTIVE: readonly AppointmentStatus[] = [AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED, AppointmentStatus.AT_RISK];
 
 const fail = (error: ToolError, message: string, data?: unknown): ToolResult => ({ ok: false, error, message, ...(data !== undefined && { data }) });
+const done = (data: unknown, failedNotices: number): ToolResult => ({ ok: true, data, ...(failedNotices > 0 && { failedNotices }) });
 
 /**
  * Ejecuta las herramientas que pide el asistente de IA con las mismas reglas que la web. Valida los argumentos
@@ -67,7 +93,120 @@ export class BotToolExecutor {
       case "listar_catalogo_y_mis_citas":
         return this.catalogAndMine(context);
       case "consultar_huecos_dinamicos":
-        return this.freeSlots(args as z.infer<(typeof BOT_TOOLS)[typeof name]["schema"]>);
+        return this.freeSlots(args as Args<typeof name>);
+      case "reservar_cita":
+        return this.book(args as Args<typeof name>, context);
+      case "confirmar_asistencia":
+        return this.confirm(args as Args<typeof name>, context);
+      case "cancelar_cita":
+        return this.cancel(args as Args<typeof name>, context);
+    }
+  }
+
+  /** Lo mismo que la reserva web (app/reservar/actions.ts): código si nace pendiente, y los mismos avisos. */
+  private async book(args: Args<"reservar_cita">, context: ToolContext): Promise<ToolResult> {
+    const { appointment, displaced } = await this.deps.booking.execute({
+      barberId: args.barberId ?? null,
+      serviceIds: args.serviceIds,
+      customer: { name: args.customerName, phone: context.verifiedPhone },
+      start: new Date(args.startTime),
+    });
+    const failed = await notices([
+      // Sin código, el ciclo de -35 / -15 min no la vería: quedaría pendiente para siempre.
+      () => this.deps.confirmation.issue(appointment).then(() => ({ failed: 0 })),
+      () => this.deps.push.notifyNewBooking(appointment),
+      () => this.deps.confirmation.notifyReleased(displaced),
+    ]);
+    const [view] = await this.views([appointment]);
+    const next =
+      appointment.status === AppointmentStatus.CONFIRMED
+        ? "Quedó confirmada: faltan menos de 2 horas."
+        : "Quedó pendiente: 35 minutos antes le escribiremos por WhatsApp para que confirme.";
+    return done({ appointment: view, next }, failed);
+  }
+
+  private async confirm(args: Args<"confirmar_asistencia">, context: ToolContext): Promise<ToolResult> {
+    const target = await this.target(context, args.appointmentId, [AppointmentStatus.PENDING, AppointmentStatus.AT_RISK], [
+      // Si la que tenía ya venció (otro tomó su hora), se le dice eso en vez de "no tienes citas".
+      AppointmentStatus.EXPIRED,
+    ]);
+    if ("result" in target) return target.result;
+    const outcome = await this.deps.confirmation.confirm(target.appointment);
+    if (outcome.kind === "confirmed") {
+      const failed = await notices([() => this.deps.push.notifyConfirmed(outcome.appointment)]);
+      const [view] = await this.views([outcome.appointment]);
+      return done({ appointment: view }, failed);
+    }
+    if (outcome.kind === "already-confirmed") {
+      return done({ appointmentId: target.appointment.id, status: AppointmentStatus.CONFIRMED, note: "Ya estaba confirmada." }, 0);
+    }
+    if (outcome.kind === "slot-taken") {
+      return fail("SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER", "No confirmó a tiempo y otro cliente tomó esa hora.", {
+        nextSlots: await this.nextSlots(target.appointment, context.now),
+      });
+    }
+    return fail("APPOINTMENT_NOT_ACTIVE", "Esa cita ya no está activa.");
+  }
+
+  private async cancel(args: Args<"cancelar_cita">, context: ToolContext): Promise<ToolResult> {
+    const target = await this.target(context, args.appointmentId, ACTIVE);
+    if ("result" in target) return target.result;
+    const outcome = await this.deps.confirmation.cancel(target.appointment);
+    if (outcome.kind === "cancelled") {
+      const failed = await notices([() => this.deps.push.notifyCancelled(outcome.appointment)]);
+      return done({ appointmentId: outcome.appointment.id, status: AppointmentStatus.CANCELLED }, failed);
+    }
+    if (outcome.kind === "too-late") {
+      return fail(
+        "CANCELLATION_TOO_LATE",
+        `Ya estaba confirmada y faltan menos de ${CUSTOMER_CANCEL_MIN_MINUTES} minutos: debe avisar directamente a la barbería.`,
+      );
+    }
+    return fail("APPOINTMENT_NOT_ACTIVE", "Esa cita ya no está activa.");
+  }
+
+  /**
+   * La cita sobre la que actuar, siempre del celular verificado. Con id, debe ser suya; sin id, la única en esos
+   * estados (o, si no hay ninguna, la única en `orElse`). Con varias no se adivina: el modelo pregunta.
+   */
+  private async target(
+    context: ToolContext,
+    appointmentId: string | undefined,
+    statuses: readonly AppointmentStatus[],
+    orElse: readonly AppointmentStatus[] = [],
+  ): Promise<{ appointment: Appointment } | { result: ToolResult }> {
+    const customer = await this.deps.customers.findByPhone(normalizePhone(context.verifiedPhone));
+    if (appointmentId) {
+      const appointment = await this.deps.appointments.findById(appointmentId);
+      return appointment && customer && appointment.customerId === customer.id
+        ? { appointment }
+        : { result: fail("APPOINTMENT_NOT_FOUND", "No encontramos esa cita entre las de este número.") };
+    }
+    const upcoming = customer ? await this.deps.appointments.findByCustomerFrom(customer.id, context.now) : [];
+    const pick = (wanted: readonly AppointmentStatus[]) =>
+      upcoming.filter((a) => wanted.includes(a.status)).toSorted((a, b) => a.slot.start.getTime() - b.slot.start.getTime());
+    const candidates = pick(statuses).length > 0 ? pick(statuses) : pick(orElse);
+    if (candidates.length === 0) return { result: fail("NO_ACTIVE_APPOINTMENTS", "Este número no tiene citas activas.") };
+    if (candidates.length > 1) {
+      return {
+        result: fail("MULTIPLE_APPOINTMENTS_FOUND", "Tiene varias citas: pregúntale cuál.", { appointments: await this.views(candidates) }),
+      };
+    }
+    return { appointment: candidates[0] };
+  }
+
+  /** Las 3 siguientes horas libres de ese día, con los mismos servicios y barbero ([] si ya no se ofrecen). */
+  private async nextSlots(appointment: Appointment, now: Date) {
+    try {
+      const slots = await this.deps.availability.execute({
+        barberId: appointment.barberId,
+        serviceIds: appointment.services.map((s) => s.serviceId),
+        date: shopDateOf(appointment.slot.start),
+      });
+      return slots.filter((s) => s.start > now).slice(0, 3).map(slotView);
+    } catch (error) {
+      if (error instanceof DomainError) return [];
+      throw error;
     }
   }
 
@@ -125,3 +264,9 @@ export class BotToolExecutor {
 }
 
 const slotView = (slot: TimeSlot) => ({ startTime: shopIso(slot.start), time: shopTime(slot.start) });
+
+/** Avisos tras la operación: un aviso fallido no la deshace; se cuentan para registrarlos. */
+async function notices(tasks: (() => Promise<{ failed: number }>)[]): Promise<number> {
+  const results = await Promise.allSettled(tasks.map((task) => task()));
+  return results.reduce((sum, r) => sum + (r.status === "rejected" ? 1 : r.value.failed), 0);
+}

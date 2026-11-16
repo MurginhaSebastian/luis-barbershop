@@ -1,11 +1,15 @@
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
 import { shopIso } from "@/application/shop-time";
 import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import type { Barber, Service } from "@/core/entities/catalog";
+import type { BookingConfirmation } from "@/core/entities/confirmation";
 import type { Customer } from "@/core/entities/customer";
 import { SlotUnavailableError } from "@/core/errors/domain-errors";
 import type { TimeSlot } from "@/core/entities/time-slot";
+import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
+import { BookingConfirmationUseCase } from "../booking/booking-confirmation";
+import { CreateAppointmentUseCase } from "../booking/create-appointment";
 import { GetAvailableSlotsUseCase } from "../booking/get-available-slots";
 import { BotToolExecutor, type ToolContext } from "./bot-tool-executor";
 import { botToolDefinitions } from "./bot-tools";
@@ -38,6 +42,15 @@ function makeWorld() {
   ];
   const appointments = new Map<string, Appointment>();
   const reminded = new Set<string>();
+  const confirmations: BookingConfirmation[] = [];
+  const clock = { now: NOW };
+  const sendTemplate = vi.fn<(phone: string, template: string, parameters: readonly string[]) => Promise<void>>(async () => {});
+  const report = { sent: 1, removed: 0, failed: 0 };
+  const push = {
+    notifyNewBooking: vi.fn<(a: Appointment) => Promise<typeof report>>(async () => report),
+    notifyConfirmed: vi.fn<(a: Appointment) => Promise<typeof report>>(async () => report),
+    notifyCancelled: vi.fn<(a: Appointment) => Promise<typeof report>>(async () => report),
+  };
 
   const appointmentRepo: IAppointmentRepository = {
     findById: async (key) => appointments.get(key) ?? null,
@@ -101,7 +114,17 @@ function makeWorld() {
       removeBlock: async () => {},
     },
     appointments: appointmentRepo,
-    now: () => NOW,
+    confirmations: {
+      save: async (c: BookingConfirmation) => void confirmations.push(c),
+      findByCode: async (code: string) => confirmations.filter((c) => c.code === code),
+      findByAppointments: async (ids: readonly string[]) => confirmations.filter((c) => ids.includes(c.appointmentId)),
+    },
+    processedMessages: { wasProcessed: async () => false, markProcessed: async () => {} },
+    siteSettings: { get: async () => DEFAULT_SITE_SETTINGS, save: async () => {} },
+    messaging: { sendText: async () => {}, sendTemplate },
+    confirmationNumber: "51911111111",
+    now: () => clock.now,
+    randomBytes: (n: number) => new Uint8Array(n),
   };
   const book = (key: string, phone: string, start: Date, status: AppointmentStatus = AppointmentStatus.PENDING) => {
     const customer = customers.find((c) => c.phone === phone)!;
@@ -117,17 +140,32 @@ function makeWorld() {
     });
     appointments.set(key, Appointment.restore({ ...a, status }));
   };
-  return { deps, appointments, reminded, book };
+  const executor = () => {
+    const availability = new GetAvailableSlotsUseCase(deps);
+    return new BotToolExecutor({
+      ...deps,
+      availability,
+      booking: new CreateAppointmentUseCase(deps),
+      confirmation: new BookingConfirmationUseCase(deps),
+      push,
+    });
+  };
+  return { deps, appointments, reminded, confirmations, clock, sendTemplate, push, book, executor };
 }
 
 let w: ReturnType<typeof makeWorld>;
 let bot: BotToolExecutor;
-const me: ToolContext = { verifiedPhone: ME, now: NOW };
-const call = (name: string, args: unknown = {}, context = me) => bot.executeTool({ name, arguments: args }, context);
+// Un solo reloj para el contexto y para los casos de uso: si no, la regla de 35 min y "futuras" no coinciden.
+const me = (): ToolContext => ({ verifiedPhone: ME, now: w.clock.now });
+const call = (name: string, args: unknown = {}, context = me()) => bot.executeTool({ name, arguments: args }, context);
+const at = (hhmm: string) => {
+  w.clock.now = lima(hhmm);
+};
+const statusOf = (key: string) => w.appointments.get(key)?.status;
 
 beforeEach(() => {
   w = makeWorld();
-  bot = new BotToolExecutor({ ...w.deps, availability: new GetAvailableSlotsUseCase(w.deps) });
+  bot = w.executor();
 });
 
 describe("listar_catalogo_y_mis_citas", () => {
@@ -214,6 +252,137 @@ describe("lo que manda el modelo no es de fiar", () => {
     const definitions = botToolDefinitions();
     expect(definitions.map((d) => d.name)).toContain("consultar_huecos_dinamicos");
     expect(JSON.stringify(definitions)).not.toMatch(/phone|celular|telefono/i);
+  });
+});
+
+describe("reservar_cita", () => {
+  const reserve = (startTime: string, extra: Record<string, unknown> = {}) =>
+    call("reservar_cita", { customerName: "Pedro", serviceIds: [CORTE], barberId: LUIS, startTime, ...extra });
+
+  test("una hora devuelta por consultar_huecos_dinamicos se puede reservar tal cual, con el celular del chat", async () => {
+    const free = await call("consultar_huecos_dinamicos", { serviceIds: [CORTE], date: "2026-11-12", barberId: LUIS });
+    const startTime = (free as { data: { slots: { startTime: string }[] } }).data.slots[2].startTime; // 11:00
+    const result = await reserve(startTime);
+    expect(result).toMatchObject({
+      ok: true,
+      data: { appointment: { startTime: "2026-11-12T11:00:00-05:00", status: "PENDING", barberName: "Luis" }, next: expect.stringContaining("35 minutos") },
+    });
+    const [booked] = [...w.appointments.values()];
+    expect(booked.customerId).toBe(id(21)); // Pedro: el dueño de ME
+    // Nace pendiente con código: así entra en el ciclo de -35 / -15 min.
+    expect(w.confirmations.map((c) => c.appointmentId)).toEqual([booked.id]);
+    expect(w.push.notifyNewBooking).toHaveBeenCalledWith(booked);
+  });
+
+  test("con menos de 2 h nace confirmada y sin código", async () => {
+    at("09:30");
+    expect(await reserve("2026-11-12T11:00:00-05:00")).toMatchObject({ ok: true, data: { appointment: { status: "CONFIRMED" } } });
+    expect(w.confirmations).toEqual([]);
+  });
+
+  test("tomar una hora en riesgo la vence y avisa a su cliente, como en la web", async () => {
+    w.book(id(31), OTHER, lima("10:00"), AppointmentStatus.AT_RISK);
+    at("09:50");
+    expect(await reserve("2026-11-12T10:00:00-05:00")).toMatchObject({ ok: true, data: { appointment: { status: "CONFIRMED" } } });
+    expect(statusOf(id(31))).toBe(AppointmentStatus.EXPIRED);
+    expect(w.sendTemplate).toHaveBeenCalledWith(OTHER, "cita_vencida", ["Otro", expect.stringContaining("10:00")]);
+  });
+
+  test("un celular que mande el modelo se ignora: vale el del chat", async () => {
+    expect(await reserve("2026-11-12T11:00:00-05:00", { customerPhone: OTHER })).toMatchObject({ ok: true });
+    expect([...w.appointments.values()][0].customerId).toBe(id(21)); // Pedro, el dueño de ME
+  });
+
+  test("si un aviso falla, la reserva vale igual y se cuenta", async () => {
+    w.push.notifyNewBooking.mockRejectedValueOnce(new Error("push caído"));
+    expect(await reserve("2026-11-12T11:00:00-05:00")).toMatchObject({ ok: true, failedNotices: 1 });
+  });
+
+  test("una hora ocupada es un error de negocio", async () => {
+    w.book(id(31), OTHER, lima("11:00"));
+    expect(await reserve("2026-11-12T11:00:00-05:00")).toMatchObject({ ok: false, error: "DOMAIN_ERROR" });
+  });
+
+  test("una hora sin desfase o un nombre vacío se rechazan", async () => {
+    expect(await reserve("12/11/2026 11:00")).toMatchObject({ ok: false, error: "INVALID_ARGUMENTS" });
+    expect(await reserve("2026-11-12T11:00:00-05:00", { customerName: " " })).toMatchObject({ ok: false, error: "INVALID_ARGUMENTS" });
+  });
+});
+
+describe("confirmar_asistencia", () => {
+  test("con una sola cita pendiente, confirma esa y avisa al barbero", async () => {
+    w.book(id(31), ME, lima("11:00"));
+    expect(await call("confirmar_asistencia")).toMatchObject({ ok: true, data: { appointment: { id: id(31), status: "CONFIRMED" } } });
+    expect(statusOf(id(31))).toBe(AppointmentStatus.CONFIRMED);
+    expect(w.push.notifyConfirmed).toHaveBeenCalled();
+  });
+
+  test("la cita de otro número se rechaza igual que una que no existe", async () => {
+    w.book(id(31), OTHER, lima("11:00"));
+    const foreign = await call("confirmar_asistencia", { appointmentId: id(31) });
+    const missing = await call("confirmar_asistencia", { appointmentId: id(99) });
+    expect(foreign).toEqual(missing);
+    expect(foreign).toMatchObject({ ok: false, error: "APPOINTMENT_NOT_FOUND" });
+    expect(statusOf(id(31))).toBe(AppointmentStatus.PENDING);
+  });
+
+  test("con dos citas y sin decir cuál, no adivina: devuelve ambas para preguntar", async () => {
+    w.book(id(31), ME, lima("11:00"));
+    w.book(id(32), ME, lima("12:00"));
+    const result = await call("confirmar_asistencia");
+    expect(result).toMatchObject({ ok: false, error: "MULTIPLE_APPOINTMENTS_FOUND" });
+    expect((result as { data: { appointments: { id: string }[] } }).data.appointments.map((a) => a.id)).toEqual([id(31), id(32)]);
+    expect([statusOf(id(31)), statusOf(id(32))]).toEqual([AppointmentStatus.PENDING, AppointmentStatus.PENDING]);
+    // Diciendo cuál, sí.
+    expect(await call("confirmar_asistencia", { appointmentId: id(32) })).toMatchObject({ ok: true });
+  });
+
+  test("en riesgo y sin que nadie tomara la hora: salvado por la campana", async () => {
+    w.book(id(31), ME, lima("10:00"), AppointmentStatus.AT_RISK);
+    at("09:50");
+    expect(await call("confirmar_asistencia")).toMatchObject({ ok: true, data: { appointment: { status: "CONFIRMED" } } });
+  });
+
+  test("si otro ya tomó su hora, lo dice y ofrece las 3 siguientes libres de ese día", async () => {
+    w.book(id(31), ME, lima("10:00"), AppointmentStatus.EXPIRED);
+    w.book(id(32), OTHER, lima("10:00"), AppointmentStatus.CONFIRMED);
+    at("09:50");
+    const result = await call("confirmar_asistencia");
+    expect(result).toMatchObject({ ok: false, error: "SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER" });
+    const { nextSlots } = (result as { data: { nextSlots: { time: string }[] } }).data;
+    expect(nextSlots.map((s) => s.time)).toEqual(["10:30", "11:00", "11:30"]);
+  });
+
+  test("sin citas activas lo dice", async () => {
+    expect(await call("confirmar_asistencia")).toMatchObject({ ok: false, error: "NO_ACTIVE_APPOINTMENTS" });
+  });
+});
+
+describe("cancelar_cita", () => {
+  test("una cita que nació confirmada (sin código) se cancela con 35 min o más", async () => {
+    w.book(id(31), ME, lima("11:00"), AppointmentStatus.CONFIRMED);
+    at("10:25");
+    expect(await call("cancelar_cita")).toMatchObject({ ok: true, data: { appointmentId: id(31), status: "CANCELLED" } });
+    expect(w.push.notifyCancelled).toHaveBeenCalled();
+  });
+
+  test("confirmada y con menos de 35 min, no: debe avisar a la barbería", async () => {
+    w.book(id(31), ME, lima("11:00"), AppointmentStatus.CONFIRMED);
+    at("10:30");
+    expect(await call("cancelar_cita")).toMatchObject({ ok: false, error: "CANCELLATION_TOO_LATE" });
+    expect(statusOf(id(31))).toBe(AppointmentStatus.CONFIRMED);
+  });
+
+  test("con varias citas activas y sin decir cuál, pregunta", async () => {
+    w.book(id(31), ME, lima("11:00"));
+    w.book(id(32), ME, lima("12:00"), AppointmentStatus.CONFIRMED);
+    expect(await call("cancelar_cita")).toMatchObject({ ok: false, error: "MULTIPLE_APPOINTMENTS_FOUND" });
+  });
+
+  test("no cancela la cita de otro número", async () => {
+    w.book(id(31), OTHER, lima("11:00"));
+    expect(await call("cancelar_cita", { appointmentId: id(31) })).toMatchObject({ ok: false, error: "APPOINTMENT_NOT_FOUND" });
+    expect(statusOf(id(31))).toBe(AppointmentStatus.PENDING);
   });
 });
 
