@@ -8,13 +8,14 @@ const mocks = vi.hoisted(() => ({
   config: null as null | typeof CONFIG,
   handleMessage: vi.fn(),
   notifyConfirmed: vi.fn(),
+  notifyCancelled: vi.fn(),
   afterResponse: [] as (() => unknown)[],
 }));
 vi.mock("@/infrastructure/container", () => ({
   getWhatsAppConfig: () => mocks.config,
   getUseCases: () => ({
     bookingConfirmation: { handleMessage: mocks.handleMessage },
-    managePush: { notifyConfirmed: mocks.notifyConfirmed },
+    managePush: { notifyConfirmed: mocks.notifyConfirmed, notifyCancelled: mocks.notifyCancelled },
   }),
 }));
 vi.mock("next/server", () => ({ after: (task: () => unknown) => mocks.afterResponse.push(task) }));
@@ -122,6 +123,16 @@ describe("avisos de Meta (POST)", () => {
     expect(mocks.notifyConfirmed).not.toHaveBeenCalled();
     await mocks.afterResponse[0]();
     expect(mocks.notifyConfirmed).toHaveBeenCalledWith(appointment);
+  });
+
+  test("al cancelar, también avisa al barbero: la hora quedó libre", async () => {
+    const appointment = { id: "a1" };
+    mocks.handleMessage.mockResolvedValue({ kind: "cancelled", appointment });
+    mocks.notifyCancelled.mockResolvedValue({ sent: 1, removed: 0, failed: 0 });
+    await post(textMessage("Cancelar KRT482"));
+    await mocks.afterResponse[0]();
+    expect(mocks.notifyCancelled).toHaveBeenCalledWith(appointment);
+    expect(mocks.notifyConfirmed).not.toHaveBeenCalled();
   });
 
   test("si algo falla responde 500 para que Meta reintente", async () => {

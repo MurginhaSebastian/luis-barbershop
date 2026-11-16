@@ -1,5 +1,5 @@
 import { InvalidAppointmentError, InvalidStatusChangeError } from "../errors/domain-errors";
-import { BORN_CONFIRMED_UNDER_MINUTES } from "../scheduling/booking-policy";
+import { BORN_CONFIRMED_UNDER_MINUTES, CUSTOMER_CANCEL_MIN_MINUTES } from "../scheduling/booking-policy";
 import { MINUTE_MS, TimeSlot } from "./time-slot";
 
 export const AppointmentStatus = {
@@ -93,6 +93,16 @@ export class Appointment {
   changeStatus(status: AppointmentStatus): Appointment {
     if (!ALLOWED_CHANGES[this.status].includes(status)) throw new InvalidStatusChangeError();
     return Appointment.restore({ ...this, status });
+  }
+
+  /**
+   * ¿Puede cancelarla el propio cliente? Con 35 min o más de antelación, sí. Con menos, solo si aún no la había
+   * confirmado (responde "no podré ir" al aviso de -35 min); una confirmada, ya no: debe avisar a la barbería.
+   */
+  customerCanCancel(now: Date): boolean {
+    const minutesLeft = (this.slot.start.getTime() - now.getTime()) / MINUTE_MS;
+    if (minutesLeft >= CUSTOMER_CANCEL_MIN_MINUTES) return ALLOWED_CHANGES[this.status].includes(AppointmentStatus.CANCELLED);
+    return (this.status === AppointmentStatus.PENDING || this.status === AppointmentStatus.AT_RISK) && minutesLeft > 0;
   }
 
   blocksSchedule(): boolean {

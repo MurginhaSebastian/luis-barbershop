@@ -70,8 +70,13 @@ export async function POST(request: Request) {
   try {
     for (const message of messages) {
       const outcome = await bookingConfirmation.handleMessage(message);
-      if (outcome.kind === "confirmed") {
-        after(() => managePush.notifyConfirmed(outcome.appointment).catch((error) => console.error("aviso de confirmación", error)));
+      if (outcome.kind === "confirmed" || outcome.kind === "cancelled") {
+        const { kind, appointment } = outcome;
+        after(() =>
+          (kind === "confirmed" ? managePush.notifyConfirmed(appointment) : managePush.notifyCancelled(appointment)).catch(
+            (error) => console.error(`aviso al barbero (${kind})`, error),
+          ),
+        );
       }
     }
   } catch (error) {

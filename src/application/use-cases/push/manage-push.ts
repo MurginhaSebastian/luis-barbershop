@@ -59,6 +59,16 @@ export class ManagePushUseCase {
     });
   }
 
+  /** El cliente canceló por WhatsApp: la hora quedó libre. */
+  async notifyCancelled(appointment: Appointment): Promise<DeliveryReport> {
+    const [barber] = await this.deps.barbers.findByIds([appointment.barberId]);
+    return this.broadcast({
+      title: "Cita cancelada",
+      body: `${appointment.customerName} canceló por WhatsApp · ${shopDateTime(appointment.slot.start)} · ${barber?.name ?? "barbero"}`,
+      url: "/panel",
+    });
+  }
+
   private async broadcast(message: PushMessage): Promise<DeliveryReport> {
     const report: DeliveryReport = { sent: 0, removed: 0, failed: 0 };
     const sender = this.deps.pushSender;

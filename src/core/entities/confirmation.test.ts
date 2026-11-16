@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { InvalidStatusChangeError } from "../errors/domain-errors";
 import { Appointment } from "./appointment";
-import { codeInMessage, confirmationCode, confirmationDeadline } from "./confirmation";
+import { codeInMessage, confirmationCode, confirmationDeadline, wantsToCancel } from "./confirmation";
 
 const lima = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-05:00`);
 
@@ -57,6 +57,15 @@ describe("codeInMessage", () => {
     ["MARTES"],
   ])("no encuentra código en %j", (text) => {
     expect(codeInMessage(text)).toBeNull();
+  });
+});
+
+describe("wantsToCancel", () => {
+  test.each(["CANCELAR KRT482", "Quiero cancelar mi cita KRT482", "No podré ir, KRT482", "no voy KRT482", "anula KRT482"])("%s cancela", (text) => {
+    expect(wantsToCancel(text)).toBe(true);
+  });
+  test.each(["Confirmo mi cita KRT482", "Sí, voy KRT482", "KRT482", "Notificado KRT482"])("%s no cancela", (text) => {
+    expect(wantsToCancel(text)).toBe(false);
   });
 });
 

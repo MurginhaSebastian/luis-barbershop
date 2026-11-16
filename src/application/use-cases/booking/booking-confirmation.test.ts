@@ -207,6 +207,32 @@ describe("confirmar por WhatsApp", () => {
     });
   });
 
+  describe("cancelar", () => {
+    const START = lima("2026-11-12", "16:00");
+    const minutesBefore = (m: number) => new BookingConfirmationUseCase({ ...t.deps, now: () => new Date(START.getTime() - m * 60_000) });
+
+    test("con 35 min o más cancela y libera la hora", async () => {
+      await pending("a1", PEDRO);
+      const outcome = await minutesBefore(35).handleMessage(message("Cancelar KRT482"));
+      expect(outcome.kind).toBe("cancelled");
+      expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.CANCELLED);
+      expect(replied()[0].text).toMatch(/cancelamos tu cita.*16:00/);
+    });
+
+    test("responder 'no podré ir' al aviso de -35 min cancela aunque falten menos de 35", async () => {
+      await pending("a1", PEDRO);
+      expect((await minutesBefore(20).handleMessage(message("No podré ir KRT482"))).kind).toBe("cancelled");
+    });
+
+    test("confirmada y con menos de 35 min, no se cancela sola: que avise a la barbería", async () => {
+      await pending("a1", PEDRO);
+      t.appointments.set("a1", book("a1", PEDRO).changeStatus(AppointmentStatus.CONFIRMED));
+      expect((await minutesBefore(30).handleMessage(message("Cancelar KRT482"))).kind).toBe("too-late");
+      expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.CONFIRMED);
+      expect(replied()[0].text).toMatch(/menos de 35 minutos.*\+51900000000/);
+    });
+  });
+
   test("una cancelada tampoco", async () => {
     await pending("a1", PEDRO);
     t.appointments.set("a1", book("a1", PEDRO).changeStatus(AppointmentStatus.CANCELLED));

@@ -32,6 +32,14 @@ export function confirmationCode(randomBytes: Uint8Array): string {
   return pick(LETTERS, a) + pick(LETTERS, b) + pick(LETTERS, c) + pick(DIGITS, d) + pick(DIGITS, e) + pick(DIGITS, f);
 }
 
+// "Cancelar KRT482" (el botón del aviso), "no podré ir", "no voy", "anula mi cita"…
+const CANCEL_IN_TEXT = /cancel|anul|\bno\s+(podr|voy|ir\b|asist)/i;
+
+/** ¿El mensaje pide cancelar en vez de confirmar? */
+export function wantsToCancel(text: string): boolean {
+  return CANCEL_IN_TEXT.test(text);
+}
+
 /** El código que trae un mensaje como "Confirmo mi cita KRT482" (o "krt-482"), o null si no trae ninguno. */
 export function codeInMessage(text: string): string | null {
   const match = CODE_IN_TEXT.exec(text.toUpperCase());

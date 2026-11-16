@@ -75,6 +75,19 @@ describe("Appointment", () => {
     expect(bookedMinutesBefore(3 * 24 * 60)).toBe(AppointmentStatus.PENDING);
   });
 
+  test("el cliente cancela con 35 min o más; con menos, solo si aún no había confirmado", () => {
+    const minutesBefore = (m: number) => new Date(base.start.getTime() - m * 60_000);
+    const pending = Appointment.book(base);
+    const confirmed = pending.changeStatus(AppointmentStatus.CONFIRMED);
+    const atRisk = pending.changeStatus(AppointmentStatus.AT_RISK);
+    expect(confirmed.customerCanCancel(minutesBefore(35))).toBe(true);
+    expect(confirmed.customerCanCancel(minutesBefore(34))).toBe(false);
+    expect(pending.customerCanCancel(minutesBefore(20))).toBe(true); // responde "no podré ir" al aviso de -35 min
+    expect(atRisk.customerCanCancel(minutesBefore(10))).toBe(true);
+    expect(pending.customerCanCancel(minutesBefore(0))).toBe(false); // ya es la hora
+    expect(pending.changeStatus(AppointmentStatus.CANCELLED).customerCanCancel(minutesBefore(60))).toBe(false);
+  });
+
   test("sigue el recorrido de una cita", () => {
     const { CONFIRMED, COMPLETED } = AppointmentStatus;
     const done = Appointment.book(base).changeStatus(CONFIRMED).changeStatus(COMPLETED);

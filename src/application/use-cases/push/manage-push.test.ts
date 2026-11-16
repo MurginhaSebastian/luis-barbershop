@@ -141,6 +141,12 @@ describe("aviso de reserva nueva", () => {
     expect(JSON.stringify(message)).not.toMatch(/51\d{9}|9\d{8}/);
   });
 
+  test("avisa cuando el cliente cancela por WhatsApp: la hora quedó libre", async () => {
+    await push.subscribe(sub(1));
+    await push.notifyCancelled(appointment);
+    expect(t.sent[0].message).toMatchObject({ title: "Cita cancelada", body: expect.stringMatching(/Pedro canceló.*10:00/) });
+  });
+
   test("la prueba manual usa el mismo camino", async () => {
     await push.subscribe(sub(1));
     expect(await push.sendTest()).toEqual({ sent: 1, removed: 0, failed: 0 });

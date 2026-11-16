@@ -12,11 +12,13 @@ import {
   CONFIRMATION_CODE_BYTES,
   codeInMessage,
   confirmationCode,
+  wantsToCancel,
   confirmationDeadline,
 } from "@/core/entities/confirmation";
 import { normalizePhone } from "@/core/entities/customer";
 import { SlotUnavailableError } from "@/core/errors/domain-errors";
 import { shopDateOf } from "@/core/scheduling/availability";
+import { CUSTOMER_CANCEL_MIN_MINUTES } from "@/core/scheduling/booking-policy";
 
 export interface BookingConfirmationDeps {
   appointments: IAppointmentRepository;
@@ -57,7 +59,9 @@ export interface ExpiryReport {
 export const EXPIRED_TEMPLATE = "cita_vencida";
 
 export type MessageOutcome =
-  | { kind: "confirmed"; appointment: Appointment }
+  | { kind: "confirmed" | "cancelled"; appointment: Appointment }
+  /** Confirmada y faltan menos de 35 min: no se cancela sola, hay que avisar a la barbería. */
+  | { kind: "too-late"; appointment: Appointment }
   /** SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER: no confirmó a tiempo y su hora ya es de otro (o venció). */
   | { kind: "slot-taken"; appointment: Appointment }
   | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "inactive" };
@@ -113,7 +117,8 @@ export class BookingConfirmationUseCase {
 
     for (const candidate of await this.deps.confirmations.findByCode(code)) {
       const appointment = await this.deps.appointments.findById(candidate.appointmentId);
-      if (appointment?.customerId === customer.id) return this.confirm(appointment);
+      if (appointment?.customerId !== customer.id) continue;
+      return wantsToCancel(text) ? this.cancel(appointment) : this.confirm(appointment);
     }
     return { kind: "not-found" };
   }
@@ -134,6 +139,21 @@ export class BookingConfirmationUseCase {
       throw error;
     }
     // Otro la tomó, venció o la canceló el barbero en ese mismo instante: se responde según cómo quedó.
+    const now = await this.deps.appointments.findById(appointment.id);
+    return now ? this.closedOutcome(now) : { kind: "not-found" };
+  }
+
+  /**
+   * El cliente cancela su cita (como confirmar: WhatsApp hoy, el asistente mañana). La regla de los 35 min la
+   * decide `customerCanCancel`; si no puede, "too-late". Nunca pisa otro cambio.
+   */
+  async cancel(appointment: Appointment): Promise<MessageOutcome> {
+    const { status } = appointment;
+    const active = status === AppointmentStatus.PENDING || status === AppointmentStatus.CONFIRMED || status === AppointmentStatus.AT_RISK;
+    if (!active) return this.closedOutcome(appointment);
+    if (!appointment.customerCanCancel(this.deps.now())) return { kind: "too-late", appointment };
+    const cancelled = appointment.changeStatus(AppointmentStatus.CANCELLED);
+    if (await this.deps.appointments.updateStatus(cancelled, status)) return { kind: "cancelled", appointment: cancelled };
     const now = await this.deps.appointments.findById(appointment.id);
     return now ? this.closedOutcome(now) : { kind: "not-found" };
   }
@@ -202,6 +222,13 @@ export class BookingConfirmationUseCase {
         const [barber] = await this.deps.barbers.findByIds([appointment.barberId]);
         return `¡Listo, ${appointment.customerName}! Tu cita del ${shopDateTime(appointment.slot.start)} con ${barber?.name ?? "tu barbero"} quedó confirmada. Te esperamos en Luis Barbershop.`;
       }
+      case "cancelled":
+        return `Listo, cancelamos tu cita del ${shopDateTime(outcome.appointment.slot.start)}. Gracias por avisar: la hora queda libre para otro cliente. ${book}`;
+      case "too-late": {
+        const { whatsapp } = (await this.deps.siteSettings.get()).contact;
+        const call = whatsapp ? `Si no puedes venir, avísanos al +${whatsapp}.` : "Si no puedes venir, avísanos en la barbería.";
+        return `Tu cita del ${shopDateTime(outcome.appointment.slot.start)} ya está confirmada y faltan menos de ${CUSTOMER_CANCEL_MIN_MINUTES} minutos: no se puede cancelar por aquí. ${call}`;
+      }
       case "already-confirmed":
         return "Tu cita ya estaba confirmada. ¡Te esperamos!";
       case "slot-taken": {
@@ -218,7 +245,7 @@ export class BookingConfirmationUseCase {
         // Este número solo confirma: las consultas van al WhatsApp de Luis, que las lee él.
         const { whatsapp } = (await this.deps.siteSettings.get()).contact;
         const ask = whatsapp ? `Para consultas escríbenos a +${whatsapp}.` : book;
-        return `Este número solo confirma citas: envía tu código, por ejemplo "Confirmo mi cita KRT482". ${ask}`;
+        return `Este número solo confirma o cancela citas: envía tu código, por ejemplo "Confirmo mi cita KRT482" o "Cancelar KRT482". ${ask}`;
       }
     }
   }
