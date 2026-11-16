@@ -80,6 +80,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   pisan algo ocupado o caen fuera de la ventana; las constantes del negocio están en
   `booking-policy.ts`. Las fechas de día son `"YYYY-MM-DD"` locales y los horarios, minutos desde
   medianoche local; `shopDayRange`/`shopDateOf` convierten a instantes UTC.
+- Además de la rejilla de `SLOT_STEP_MINUTES`, el final de cada cita o bloqueo es un inicio válido
+  ("time-slot packing"): tras una cita de 45 min, la siguiente puede empezar a esa hora si cabe.
 - "Sin preferencia" es `barberId: null` en los casos de uso: `findFreeSlotsByBarber` da los huecos de
   cada barbero activo; la reserva asigna al que tiene más huecos ese día y, si otra reserva gana el
   hueco al guardar, prueba con el siguiente.
@@ -87,12 +89,21 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `customerName` tal como se escribió, porque un celular puede usarlo más de una persona.
 - `TimeSlot` es semiabierto `[start, end)`: citas consecutivas no se solapan.
 - Qué estados ocupan agenda lo decide `Appointment.blocksSchedule()`, no los repositorios
-  (`findByBarberInRange` devuelve citas en cualquier estado).
+  (`findByBarberInRange` devuelve citas en cualquier estado): solo `PENDING` y `CONFIRMED`.
+- Estados (spec en español → enum): pendiente `PENDING`, confirmada `CONFIRMED`, en riesgo `AT_RISK`,
+  atendida `COMPLETED`, cancelada `CANCELLED`, no vino `NO_SHOW`, vencida `EXPIRED`. Las transiciones están en
+  `ALLOWED_CHANGES` (`core/entities/appointment.ts`).
+- `Appointment.book` decide el estado al nacer: con menos de `BORN_CONFIRMED_UNDER_MINUTES` (120) de antelación,
+  `CONFIRMED`; si no, `PENDING`. La antelación mínima es de 5 min, para poder tomar horas en riesgo.
+- Reservar sobre una cita `AT_RISK` de otro cliente la desplaza: `save(cita, displacing)` la pasa a `EXPIRED`
+  en la misma transacción y, si su cliente confirmó justo antes, falla con `SlotUnavailableError`.
+  `CreateAppointmentUseCase` devuelve `{ appointment, displaced }` y la acción avisa a los desplazados.
 - `CreateAppointmentUseCase` acepta una hora solo si es uno de los huecos de `findFreeSlots`
   (`application/use-cases/booking/availability.ts`), compartido con `GetAvailableSlotsUseCase`.
   Esa comprobación no es atómica: la garantía real es la restricción `appointments_no_overlap`
-  (`EXCLUDE USING gist`, migración `0001`), y `DrizzleAppointmentRepository.save` traduce su
-  violación (`23P01`) a `SlotUnavailableError`. Sus estados deben coincidir con `BLOCKING_STATUSES`.
+  (`EXCLUDE USING gist`, migraciones `0001` y `0009`), y `DrizzleAppointmentRepository.save` y `updateStatus`
+  traducen su violación (`23P01`) a `SlotUnavailableError`. Sus estados deben coincidir con `BLOCKING_STATUSES`.
+  Toda escritura que pueda entrar en la restricción toma antes el candado del barbero (`lockBarber`).
 
 ### Web (Next 16 con `cacheComponents: true`)
 - `src/infrastructure/container.ts` (`getUseCases()`) es la raíz de composición: el único sitio
@@ -149,8 +160,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   Código en `infrastructure/auth/`; las cookies en `app/panel/session.ts`.
 - **`requirePanelSession()` va en cada página y en cada Server Action del panel**: proteger la página no
   protege sus acciones. La sesión se comprueba tras `connection()`, porque compara con la hora actual.
-- `GetAgendaUseCase` devuelve datos planos (`AgendaItem`): las citas futuras sin confirmar de cualquier
-  día y la agenda del día elegido. Qué cambios de estado se permiten lo decide
+- `GetAgendaUseCase` devuelve datos planos (`AgendaItem`): las citas futuras sin confirmar (pendientes y en
+  riesgo) de cualquier día y la agenda del día elegido. Qué cambios de estado se permiten lo decide
   `Appointment.changeStatus()`; una cita cancelada no se reabre.
 - Confirmar y cancelar abren WhatsApp con el mensaje escrito (`presentation/lib/whatsapp.ts`). El
   `window.open` va antes de cualquier `await`, o el navegador lo bloquea. La agenda se refresca sola cada
@@ -191,9 +202,9 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   CDP (`ServiceWorker.deliverPushMessage`).
 
 ### Confirmación por WhatsApp
-- Al reservar, `BookingConfirmationUseCase.issue` da un código (3 letras + 3 cifras, `core/entities/confirmation.ts`)
-  y un plazo: 2 h, o 1 h antes de la cita (`CONFIRM_*` en `booking-policy.ts`). Solo si WhatsApp está
-  configurado (`WHATSAPP_*`); si no, todo sigue como antes y nada vence.
+- Al reservar una cita `PENDING`, `BookingConfirmationUseCase.issue` da un código (3 letras + 3 cifras,
+  `core/entities/confirmation.ts`) y un plazo (`confirmBy`): 15 min antes de la cita. Solo si WhatsApp está
+  configurado (`WHATSAPP_*`); si no, todo sigue como antes y nada queda en riesgo ni vence.
 - El enlace de confirmar apunta a `WHATSAPP_DISPLAY_NUMBER` (el número de la API, un chip aparte), **no** a
   `contact.whatsapp`: el de Luis sigue en su app para las consultas, y quien escriba sin código al número
   automático recibe ese contacto.
@@ -201,9 +212,17 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   la firma de Meta sobre el cuerpo original y `handleMessage` busca el código **junto al número** que escribe
   (el código no es único). Los avisos repetidos se ignoran (`processed_messages`), marcados al final para que
   un fallo a medias se reintente.
-- `/api/cron/vencer` (con `CRON_SECRET`, cada 5 min) pasa a `EXPIRED` las pendientes vencidas y envía la
-  plantilla `cita_vencida` (2 variables: nombre y fecha; el enlace va en un botón fijo, porque Meta rechaza
-  plantillas que terminan en variable). `EXPIRED` no ocupa agenda ni se reabre; el panel no puede vencer a mano.
+- `BookingConfirmationUseCase.confirm` y `cancel` son lo que usará el futuro asistente con IA. Confirmar sirve
+  desde `PENDING` o `AT_RISK`; si otro tomó la hora, `slot-taken` (SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER) y la
+  respuesta enlaza a las horas libres. Cancelar sigue `Appointment.customerCanCancel` (35 min, o sin confirmar);
+  "Cancelar KRT482", "no voy"… cancelan (`wantsToCancel`).
+- `/api/cron/vencer` (con `CRON_SECRET`, cada 5 min) corre `ConfirmationCycleUseCase`: a -35 min, plantilla
+  `recordatorio_cita` con botones de respuesta rápida que devuelven "Confirmo mi cita X" / "Cancelar X" (el
+  webhook los recibe como `type: "button"`); a -15 min, `AT_RISK` y aviso push; a su hora, `EXPIRED`. Solo citas
+  con código; `reminder_sent_at` se marca antes de enviar y se libera si falla.
+- Al cliente desplazado se le envía `cita_vencida` (2 variables: nombre y fecha; el enlace va en un botón fijo,
+  porque Meta rechaza plantillas que terminan en variable). `EXPIRED` no ocupa agenda ni se reabre; el panel no
+  puede vencer ni poner en riesgo a mano.
 - **Todo cambio de estado usa `updateStatus(next, expected)`** (compare-and-set): confirmar, vencer y los
   botones del panel no se pisan entre sí.
 - En pruebas, `WHATSAPP_API_URL` apunta a un WhatsApp falso (`e2e/fake-meta.ts`).
@@ -229,8 +248,8 @@ Barbería en Perú: precios en soles (céntimos enteros), agenda en America/Lima
 de verano). Varios barberos con un horario de barbería común y bloqueos por barbero (o de toda la
 barbería). El cliente reserva sin cuenta (nombre + teléfono, se reconoce por teléfono); una cita
 puede llevar varios servicios (se suman duración y precio) y productos que se pagan en el local.
-La cita nace `PENDING` y ya ocupa el hueco. Inicios cada 30 min, con antelación mínima y máximo de
-días configurables en el dominio.
+La cita nace `PENDING` (o `CONFIRMED` si faltan menos de 2 h) y ya ocupa el hueco. Inicios cada 30 min y al
+terminar cada cita, con antelación mínima y máximo de días configurables en el dominio.
 
 ## Git
 

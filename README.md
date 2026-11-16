@@ -8,15 +8,21 @@ la web desde un panel propio. Precios en soles, horario de Lima.
 **Para el cliente**
 - Portada con video, servicios con precio y duración, horario, ubicación y un aviso de si está abierto ahora.
 - Reserva en 4 pasos, sin cuenta: servicios (uno o varios), barbero o "sin preferencia", día y hora libres,
-  nombre y celular. Puede sumar productos para recogerlos en el local.
-- Confirma su cita por WhatsApp con un toque (mensaje con su código). Si no confirma en 2 h (o hasta 1 h antes
-  de la cita), la hora se libera sola y se le avisa.
+  nombre y celular. Puede sumar productos para recogerlos en el local. La cita dura la suma de sus servicios y
+  la siguiente puede empezar justo cuando termina, sin huecos muertos.
+- Con menos de 2 h de antelación la cita nace confirmada. Si reserva antes, la confirma por WhatsApp con un
+  toque (mensaje con su código); 35 min antes se le pide confirmar con botones "Sí, voy" / "No podré ir".
+- Si a los 15 min de la cita aún no confirmó, queda **en riesgo**: sigue siendo suya, pero otro cliente puede
+  reservar esa hora (y al primero se le avisa). A su hora, si nadie confirmó, vence.
+- Puede cancelar por WhatsApp ("Cancelar KRT482") con 35 min o más de antelación, o al responder que no podrá
+  ir al aviso de -35 min.
 - Botón de WhatsApp y enlaces a redes, si la barbería los configura.
 
 **Para el barbero** (`/panel`, con una clave)
 - Agenda del día y citas por confirmar, con hasta cuándo puede confirmar cada cliente; también puede
   confirmar o cancelar a mano (abre WhatsApp con el mensaje escrito).
-- Aviso push en el celular o la PC cuando alguien reserva y cuando confirma por WhatsApp.
+- Aviso push en el celular o la PC cuando alguien reserva, confirma o cancela por WhatsApp, y cuando una cita
+  queda en riesgo.
 - Servicios, productos, barberos, horario y bloqueos (feriados, vacaciones). Nada con citas se borra:
   se oculta.
 - La web: contacto, secciones visibles y fotos (se reducen y pierden los datos de ubicación al subirlas).
@@ -70,9 +76,9 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 | `SUPABASE_SERVICE_ROLE_KEY` | Subir fotos | Solo servidor; nunca con prefijo `NEXT_PUBLIC_`. |
 | `SUPABASE_BUCKET` | Bucket público de las fotos | |
 | `IMAGE_STORAGE` | `local` guarda las fotos en disco | Sin Supabase, solo en un servidor con disco persistente. |
-| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | Confirmación por WhatsApp | Ver [Configurar WhatsApp](#configurar-whatsapp). Sin ellas las citas se confirman a mano y no vencen. |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | Confirmación por WhatsApp | Ver [Configurar WhatsApp](#configurar-whatsapp). Sin ellas las citas se confirman a mano y nunca quedan en riesgo. |
 | `WHATSAPP_DISPLAY_NUMBER` | Número al que escriben para confirmar | El conectado a la API, solo cifras con 51. Un chip aparte: **no** es el WhatsApp de Luis. |
-| `CRON_SECRET` | Liberar citas sin confirmar | La tarea `GET /api/cron/vencer` lo exige; se llama cada 5 minutos. |
+| `CRON_SECRET` | Ciclo de confirmaciones | La tarea `GET /api/cron/vencer` lo exige; se llama cada 5 minutos (aviso de -35 min, en riesgo a -15, vencida a su hora). |
 | `SITE_URL` | Enlaces en los mensajes | La dirección pública, con `https://`. |
 
 ## Comandos
@@ -107,7 +113,7 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 3. Fotos: `SUPABASE_*` disponibles al compilar y al ejecutar.
 4. HTTPS: sin él no hay avisos push en el celular.
 5. Video real de la barbería con `npm run media:video` y testimonios reales con permiso.
-6. WhatsApp configurado (abajo), con `SITE_URL` y la tarea de vencer citas programada cada 5 minutos.
+6. WhatsApp configurado (abajo), con `SITE_URL` y el ciclo de confirmaciones programado cada 5 minutos.
 
 ## Configurar WhatsApp
 
@@ -120,15 +126,19 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 3. Inventa un `WHATSAPP_VERIFY_TOKEN` largo. En *WhatsApp > Configuration > Webhook* pon la URL
    `https://<tu-dominio>/api/whatsapp` y ese token, y suscríbete al campo **messages**. En local, expón el
    puerto con `ngrok http 3000` y usa su dirección.
-4. Crea y espera la aprobación de la plantilla **`cita_vencida`** (categoría utilidad, idioma *Spanish*, `es`):
-   cuerpo "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo. Cuando quieras, reserva
-   otra hora." y un botón de URL "Reservar" con la dirección fija `https://<tu-dominio>/reservar`. Meta
-   rechaza las plantillas que empiezan o terminan en una variable.
+4. Crea y espera la aprobación de dos plantillas (categoría utilidad, idioma *Spanish*, `es`). Meta rechaza las
+   que empiezan o terminan en una variable.
+   - **`recordatorio_cita`**: cuerpo "Hola {{1}}, tu cita de hoy a las {{2}} en Luis Barbershop está por
+     empezar. Si no la confirmas antes de las {{3}}, la hora quedará libre para otro cliente. ¿Vienes?" y dos
+     botones de **respuesta rápida**, en este orden: "Sí, voy" y "No podré ir".
+   - **`cita_vencida`** (a quien perdió su hora en riesgo): cuerpo "Hola {{1}}, tu reserva del {{2}} se liberó
+     porque no se confirmó a tiempo. Cuando quieras, reserva otra hora." y un botón de URL "Reservar" con la
+     dirección fija `https://<tu-dominio>/reservar`.
 5. Pon ese número en `WHATSAPP_DISPLAY_NUMBER` (solo cifras, con 51): es al que escriben los clientes para
    confirmar. El WhatsApp de Luis se queda en `/panel/web` para el botón flotante, y quien escriba al número
    automático con una consulta recibe ese número de Luis.
 6. Programa `GET /api/cron/vencer` cada 5 minutos con la cabecera `Authorization: Bearer <CRON_SECRET>`
-   (Vercel Cron, Railway o cron-job.org).
+   (Railway o cron-job.org; el cron de Vercel Hobby solo corre una vez al día, y aquí hace falta cada 5 min).
 
 Meta cobra por cada plantilla enviada y da 1.000 mensajes de servicio gratis al mes por número; revisa la
 tarifa de Perú en su tabla de precios.
