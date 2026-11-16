@@ -28,6 +28,7 @@ function makeRepos() {
   const services: Service[] = [
     { id: "corte", name: "Corte", durationMinutes: 30, priceCents: 3000, active: true },
     { id: "barba", name: "Barba", durationMinutes: 30, priceCents: 2000, active: true },
+    { id: "cejas", name: "Cejas", durationMinutes: 15, priceCents: 1000, active: true },
     { id: "viejo", name: "Retirado", durationMinutes: 30, priceCents: 1000, active: false },
   ];
   const products: Product[] = [{ id: "cera", name: "Cera", priceCents: 2500, active: true }];
@@ -115,6 +116,16 @@ describe("GetAvailableSlotsUseCase", () => {
   test("la duración es la suma de los servicios elegidos", async () => {
     const slots = await getSlots.execute({ barberId: "b1", serviceIds: ["corte", "barba"], date: DATE });
     expect(starts(slots)).toEqual(["15:00", "15:30", "16:00", "16:30", "17:00"]);
+  });
+
+  test("tras una cita de 45 min (corte + cejas) la siguiente puede empezar justo al terminar", async () => {
+    const first = await book({ serviceIds: ["corte", "cejas"] });
+    expect(first.slot.end).toEqual(utc("15:45"));
+    // El siguiente pide 75 min (corte + barba + cejas): a las 15:45 cabe, y a las 16:00 también.
+    const slots = await getSlots.execute({ barberId: "b1", serviceIds: ["corte", "barba", "cejas"], date: DATE });
+    expect(starts(slots)).toEqual(["15:45", "16:00", "16:30"]);
+    const packed = await book({ serviceIds: ["corte", "barba", "cejas"], start: utc("15:45"), customer: { name: "Otro", phone: "900000002" } });
+    expect(packed.slot.end).toEqual(utc("17:00"));
   });
 
   test("las citas activas ocupan el hueco y las canceladas lo liberan", async () => {

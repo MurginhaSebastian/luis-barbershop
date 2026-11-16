@@ -133,6 +133,22 @@ describe("availableSlots", () => {
     expect(starts(slots)).toEqual(["15:00", "17:00", "17:30", "18:00"]);
   });
 
+  test("también se puede empezar justo cuando termina una cita, para no dejar huecos muertos", () => {
+    // Cita de 10:00 a 10:45 (corte + barba): la siguiente puede empezar a las 10:45, no solo a las 11:00.
+    const busy = [slot("2026-11-02T15:00:00Z", "2026-11-02T15:45:00Z")];
+    const slots = availableSlots({ date: "2026-11-02", hours: [hours[0]], busy, durationMinutes: 45, now });
+    expect(starts(slots)).toEqual(["15:45", "16:00", "16:30", "17:00", "17:30", "18:00"]);
+  });
+
+  test("el final de algo ocupado no cuenta si cae fuera del tramo o no deja sitio antes del cierre", () => {
+    const busy = [slot("2026-11-02T18:00:00Z", "2026-11-02T18:40:00Z"), slot("2026-11-02T19:00:00Z", "2026-11-02T20:10:00Z")];
+    const slots = availableSlots({ date: "2026-11-02", hours, busy, durationMinutes: 30, now });
+    expect(starts(slots)).toContain("21:30");
+    expect(starts(slots)).not.toContain("18:40"); // 18:40 + 30 min pasa del cierre de las 19:00
+    expect(starts(slots)).toContain("20:10");
+    expect(starts(slots)).not.toContain("20:00"); // lo tapa el bloqueo hasta las 20:10
+  });
+
   test("respeta la antelación mínima y el máximo de días", () => {
     const soon = at("2026-11-02T15:10:00Z"); // 10:10 en Lima: hasta las 12:00 no hay 2 h de antelación
     expect(starts(availableSlots({ date: "2026-11-02", hours: [hours[0]], busy: [], durationMinutes: 30, now: soon }))[0]).toBe("17:30");

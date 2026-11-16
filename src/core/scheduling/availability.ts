@@ -50,8 +50,9 @@ export function bookingWindow(now: Date): { notBefore: Date; notAfter: Date } {
 }
 
 /**
- * Inicios posibles del día cada SLOT_STEP_MINUTES desde la apertura de cada tramo: el servicio
- * debe caber antes del cierre, no pisar nada ocupado y empezar dentro de la ventana de reserva.
+ * Inicios posibles del día cada SLOT_STEP_MINUTES desde la apertura de cada tramo y, además, justo al terminar
+ * cada cita o bloqueo: tras una cita de 45 min no queda un hueco muerto de 15. El servicio debe caber antes del
+ * cierre, no pisar nada ocupado y empezar dentro de la ventana de reserva.
  */
 export function availableSlots(params: {
   date: string;
@@ -62,15 +63,20 @@ export function availableSlots(params: {
 }): TimeSlot[] {
   const midnight = shopMidnight(params.date).getTime();
   const { notBefore, notAfter } = bookingWindow(params.now);
-  const slots: TimeSlot[] = [];
+  const slots = new Map<number, TimeSlot>();
 
   for (const { openMinute, closeMinute } of params.hours) {
-    for (let m = openMinute; m + params.durationMinutes <= closeMinute; m += SLOT_STEP_MINUTES) {
-      const slot = TimeSlot.ofMinutes(new Date(midnight + m * MINUTE_MS), params.durationMinutes);
+    const open = midnight + openMinute * MINUTE_MS;
+    const close = midnight + closeMinute * MINUTE_MS;
+    const grid = Array.from({ length: Math.ceil((closeMinute - openMinute) / SLOT_STEP_MINUTES) }, (_, i) => open + i * SLOT_STEP_MINUTES * MINUTE_MS);
+    const ends = params.busy.map((b) => b.end.getTime()).filter((t) => t > open && t < close);
+    for (const start of [...grid, ...ends]) {
+      const slot = TimeSlot.ofMinutes(new Date(start), params.durationMinutes);
+      if (slot.end.getTime() > close) continue;
       if (slot.start < notBefore || slot.start > notAfter) continue;
       if (params.busy.some((b) => slot.overlaps(b))) continue;
-      slots.push(slot);
+      slots.set(start, slot);
     }
   }
-  return slots.sort((a, b) => a.start.getTime() - b.start.getTime());
+  return [...slots.values()].sort((a, b) => a.start.getTime() - b.start.getTime());
 }
