@@ -125,6 +125,16 @@ describe("avisos de Meta (POST)", () => {
     expect(mocks.notifyConfirmed).toHaveBeenCalledWith(appointment);
   });
 
+  test("tocar un botón del aviso de -35 min llega como el texto del botón", async () => {
+    const reply = textMessage("x");
+    const m = reply.entry[0].changes[0].value.messages[0] as Record<string, unknown>;
+    m.type = "button";
+    delete m.text;
+    m.button = { payload: "Cancelar KRT482", text: "No podré ir" };
+    await post(reply);
+    expect(mocks.handleMessage).toHaveBeenCalledWith(expect.objectContaining({ text: "Cancelar KRT482" }));
+  });
+
   test("al cancelar, también avisa al barbero: la hora quedó libre", async () => {
     const appointment = { id: "a1" };
     mocks.handleMessage.mockResolvedValue({ kind: "cancelled", appointment });

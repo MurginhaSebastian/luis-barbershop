@@ -38,6 +38,8 @@ function makeDeps() {
       save: async (a) => {
         appointments.set(a.id, a);
       },
+      claimReminder: async () => false,
+      releaseReminder: async () => {},
       updateStatus: async (a, expected) => {
         if (appointments.get(a.id)?.status !== expected) return false;
         appointments.set(a.id, a);
@@ -65,7 +67,6 @@ function makeDeps() {
         confirmations.push(c);
       },
       findByCode: async (code) => confirmations.filter((c) => c.code === code),
-      findOverdue: async (now) => confirmations.filter((c) => c.confirmBy <= now),
       findByAppointments: async (ids) => confirmations.filter((c) => ids.includes(c.appointmentId)),
     },
     processedMessages: {
@@ -93,9 +94,9 @@ beforeEach(() => {
 });
 
 describe("pedir confirmación al reservar", () => {
-  test("guarda un código y el plazo de 2 h, para escribir al número de confirmación", async () => {
+  test("guarda un código y el plazo (15 min antes de la cita), para escribir al número de confirmación", async () => {
     const issued = await useCase.issue(book("a1", PEDRO));
-    expect(issued).toEqual({ appointmentId: "a1", code: "AAA222", confirmBy: lima("2026-11-09", "12:00") });
+    expect(issued).toEqual({ appointmentId: "a1", code: "AAA222", confirmBy: lima("2026-11-12", "15:45") });
     expect(t.confirmations).toEqual([issued]);
     expect(useCase.confirmationNumber).toBe(CONFIRMATION_NUMBER);
   });
@@ -276,79 +277,3 @@ describe("avisar a quien perdió su hora", () => {
   });
 });
 
-describe("vencer las que nadie confirmó", () => {
-  const LATE = lima("2026-11-09", "12:30");
-  async function pending(id: string, customer: Customer, confirmBy = lima("2026-11-09", "12:00")) {
-    t.appointments.set(id, book(id, customer));
-    t.confirmations.push({ appointmentId: id, code: "KRT482", confirmBy });
-  }
-  const at = (now: Date) => new BookingConfirmationUseCase({ ...t.deps, now: () => now });
-
-  test("pasado el plazo, la cita vence, libera el hueco y se avisa al cliente", async () => {
-    await pending("a1", PEDRO);
-    expect(await at(LATE).expireOverdue()).toEqual({ expired: 1, failed: 0 });
-    expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
-    expect(t.appointments.get("a1")?.blocksSchedule()).toBe(false);
-    // Dos variables: el enlace va en un botón fijo de la plantilla (Meta no admite terminar en variable).
-    expect(t.sendTemplate).toHaveBeenCalledWith(PEDRO.phone, "cita_vencida", ["Pedro", expect.stringMatching(/16:00/)]);
-  });
-
-  test("antes del plazo no vence nada", async () => {
-    await pending("a1", PEDRO);
-    expect(await at(lima("2026-11-09", "11:59")).expireOverdue()).toEqual({ expired: 0, failed: 0 });
-    expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.PENDING);
-  });
-
-  test("una confirmada no vence aunque su plazo haya pasado", async () => {
-    await pending("a1", PEDRO);
-    t.appointments.set("a1", book("a1", PEDRO).changeStatus(AppointmentStatus.CONFIRMED));
-    expect(await at(LATE).expireOverdue()).toEqual({ expired: 0, failed: 0 });
-    expect(t.sendTemplate).not.toHaveBeenCalled();
-  });
-
-  test("si el cliente confirma justo mientras vence, gana su confirmación", async () => {
-    await pending("a1", PEDRO);
-    const snapshot = t.appointments.get("a1")!;
-    t.appointments.set("a1", snapshot.changeStatus(AppointmentStatus.CONFIRMED));
-    const racing = new BookingConfirmationUseCase({
-      ...t.deps,
-      now: () => LATE,
-      appointments: { ...t.deps.appointments, findById: async () => snapshot },
-    });
-    expect(await racing.expireOverdue()).toEqual({ expired: 0, failed: 0 });
-    expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.CONFIRMED);
-    expect(t.sendTemplate).not.toHaveBeenCalled();
-  });
-
-  test("si vence justo cuando el cliente escribe, se le ofrece otra hora", async () => {
-    await pending("a1", PEDRO);
-    const snapshot = t.appointments.get("a1")!;
-    t.appointments.set("a1", snapshot.changeStatus(AppointmentStatus.EXPIRED));
-    let reads = 0;
-    const racing = new BookingConfirmationUseCase({
-      ...t.deps,
-      appointments: {
-        ...t.deps.appointments,
-        findById: async (id) => (reads++ === 0 ? snapshot : (t.appointments.get(id) ?? null)),
-      },
-    });
-    expect((await racing.handleMessage({ id: "wamid.7", from: PEDRO.phone, text: "Confirmo mi cita KRT482" })).kind).toBe("slot-taken");
-    expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
-  });
-
-  test("si el aviso falla, la cita vence igual y se cuenta el fallo", async () => {
-    await pending("a1", PEDRO);
-    await pending("a2", ANA);
-    t.sendTemplate.mockRejectedValueOnce(new Error("plantilla sin aprobar"));
-    expect(await at(LATE).expireOverdue()).toEqual({ expired: 2, failed: 1 });
-    expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
-    expect(t.appointments.get("a2")?.status).toBe(AppointmentStatus.EXPIRED);
-  });
-
-  test("sin WhatsApp no vence nada: nadie habría podido confirmar", async () => {
-    await pending("a1", PEDRO);
-    const off = new BookingConfirmationUseCase({ ...t.deps, messaging: null, now: () => LATE });
-    expect(await off.expireOverdue()).toEqual({ expired: 0, failed: 0 });
-    expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.PENDING);
-  });
-});

@@ -91,6 +91,8 @@ function makeRepos() {
         appointments.push(a);
       },
       updateStatus: async () => false,
+      claimReminder: async () => false,
+      releaseReminder: async () => {},
     },
     now: (): Date => NOW,
   };

@@ -6,16 +6,8 @@ import { codeInMessage, confirmationCode, confirmationDeadline, wantsToCancel } 
 const lima = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-05:00`);
 
 describe("confirmationDeadline", () => {
-  test("una cita lejana: 2 h para confirmar desde que se reserva", () => {
-    expect(confirmationDeadline(lima("2026-11-09", "10:00"), lima("2026-11-12", "16:00"))).toEqual(lima("2026-11-09", "12:00"));
-  });
-
-  test("una cita pronto: como tarde 1 h antes de la cita", () => {
-    expect(confirmationDeadline(lima("2026-11-09", "10:00"), lima("2026-11-09", "12:30"))).toEqual(lima("2026-11-09", "11:30"));
-  });
-
-  test("en el empate da igual cuál se tome", () => {
-    expect(confirmationDeadline(lima("2026-11-09", "10:00"), lima("2026-11-09", "13:00"))).toEqual(lima("2026-11-09", "12:00"));
+  test("15 min antes de la cita, sin importar cuándo se reservó", () => {
+    expect(confirmationDeadline(lima("2026-11-12", "16:00"))).toEqual(lima("2026-11-12", "15:45"));
   });
 });
 

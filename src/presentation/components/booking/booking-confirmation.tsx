@@ -52,8 +52,8 @@ export function BookingConfirmation(props: {
       {confirmation ? (
         <>
           <p className="mx-auto mt-6 max-w-sm leading-relaxed">
-            <strong className="text-foreground">Confírmala por WhatsApp {deadline(confirmation.confirmBy)}.</strong> Si no,
-            la hora se libera para otro cliente. Pagas en el local.
+            <strong className="text-foreground">Confírmala por WhatsApp {deadline(confirmation.confirmBy)}.</strong> Te lo
+            recordaremos 35 minutos antes; si no, otro cliente podrá tomar tu hora. Pagas en el local.
           </p>
           <p className="mt-3 text-sm text-muted-foreground">
             Tu código: <span className="font-semibold tracking-widest text-foreground">{confirmation.code}</span>

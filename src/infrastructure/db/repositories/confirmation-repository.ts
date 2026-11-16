@@ -1,8 +1,8 @@
-import { and, eq, inArray, lte } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { IConfirmationRepository } from "@/application/ports/repositories/confirmation-repository";
 import type { BookingConfirmation } from "@/core/entities/confirmation";
 import type { Db } from "../client";
-import { appointments, bookingConfirmations } from "../schema";
+import { bookingConfirmations } from "../schema";
 
 const columns = {
   appointmentId: bookingConfirmations.appointmentId,
@@ -25,14 +25,6 @@ export class DrizzleConfirmationRepository implements IConfirmationRepository {
 
   findByCode(code: string): Promise<BookingConfirmation[]> {
     return this.db.select(columns).from(bookingConfirmations).where(eq(bookingConfirmations.code, code));
-  }
-
-  findOverdue(now: Date): Promise<BookingConfirmation[]> {
-    return this.db
-      .select(columns)
-      .from(bookingConfirmations)
-      .innerJoin(appointments, eq(appointments.id, bookingConfirmations.appointmentId))
-      .where(and(eq(appointments.status, "PENDING"), lte(bookingConfirmations.confirmBy, now)));
   }
 
   async findByAppointments(appointmentIds: readonly string[]): Promise<BookingConfirmation[]> {

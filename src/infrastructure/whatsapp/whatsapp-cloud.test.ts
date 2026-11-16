@@ -34,6 +34,15 @@ describe("WhatsAppCloudSender", () => {
     });
   });
 
+  test("plantilla con botones de respuesta rápida: cada uno devuelve su texto", async () => {
+    const { fetchImpl, sender: s } = sender();
+    await s.sendTemplate("51900000001", "recordatorio_cita", ["Pedro"], ["Confirmo mi cita KRT482", "Cancelar KRT482"]);
+    expect(sentBody(fetchImpl).template.components.slice(1)).toEqual([
+      { type: "button", sub_type: "quick_reply", index: "0", parameters: [{ type: "payload", payload: "Confirmo mi cita KRT482" }] },
+      { type: "button", sub_type: "quick_reply", index: "1", parameters: [{ type: "payload", payload: "Cancelar KRT482" }] },
+    ]);
+  });
+
   test("en pruebas puede apuntar a otro servidor", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => new Response("{}"));
     await new WhatsAppCloudSender({ token: "t", phoneNumberId: "9", apiUrl: "http://localhost:3199" }, fetchImpl).sendText("51900000001", "x");

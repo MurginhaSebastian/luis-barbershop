@@ -1,4 +1,4 @@
-import { CONFIRM_BEFORE_START_MINUTES, CONFIRM_WITHIN_MINUTES } from "../scheduling/booking-policy";
+import { AT_RISK_MINUTES_BEFORE } from "../scheduling/booking-policy";
 import { MINUTE_MS } from "./time-slot";
 
 /** El cliente confirma su cita escribiendo este código por WhatsApp antes de `confirmBy`. */
@@ -14,14 +14,9 @@ const DIGITS = "23456789";
 export const CONFIRMATION_CODE_BYTES = 6;
 const CODE_IN_TEXT = new RegExp(`(?<![A-Z0-9])([${LETTERS}]{3})[\\s-]?([${DIGITS}]{3})(?![A-Z0-9])`);
 
-/** Hasta cuándo puede confirmar: 2 h tras reservar, o 1 h antes de la cita si eso llega antes. */
-export function confirmationDeadline(bookedAt: Date, start: Date): Date {
-  return new Date(
-    Math.min(
-      bookedAt.getTime() + CONFIRM_WITHIN_MINUTES * MINUTE_MS,
-      start.getTime() - CONFIRM_BEFORE_START_MINUTES * MINUTE_MS,
-    ),
-  );
+/** Hasta cuándo su hora es solo suya: 15 min antes de la cita. Después queda en riesgo (otro puede tomarla). */
+export function confirmationDeadline(start: Date): Date {
+  return new Date(start.getTime() - AT_RISK_MINUTES_BEFORE * MINUTE_MS);
 }
 
 /** Código a partir de 6 bytes aleatorios (los genera quien llama: el dominio no depende de crypto). */

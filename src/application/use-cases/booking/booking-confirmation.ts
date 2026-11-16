@@ -45,13 +45,6 @@ export interface IncomingMessage {
   text: string;
 }
 
-export interface ExpiryReport {
-  /** Citas que vencieron y liberaron su hueco. */
-  expired: number;
-  /** Clientes a los que no se pudo avisar (la cita vence igual). */
-  failed: number;
-}
-
 /**
  * Plantilla aprobada en Meta: "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo…", con un
  * botón de enlace fijo a /reservar. Meta rechaza plantillas que empiezan o terminan en una variable.
@@ -66,7 +59,7 @@ export type MessageOutcome =
   | { kind: "slot-taken"; appointment: Appointment }
   | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "inactive" };
 
-/** El cliente confirma su cita por WhatsApp; si no lo hace a tiempo, el hueco se libera. */
+/** El cliente confirma o cancela su cita por WhatsApp. Los plazos los aplica ConfirmationCycleUseCase. */
 export class BookingConfirmationUseCase {
   constructor(private readonly deps: BookingConfirmationDeps) {}
 
@@ -89,7 +82,7 @@ export class BookingConfirmationUseCase {
     const confirmation: BookingConfirmation = {
       appointmentId: appointment.id,
       code: confirmationCode(this.deps.randomBytes(CONFIRMATION_CODE_BYTES)),
-      confirmBy: confirmationDeadline(this.deps.now(), appointment.slot.start),
+      confirmBy: confirmationDeadline(appointment.slot.start),
     };
     await this.deps.confirmations.save(confirmation);
     return confirmation;
@@ -172,24 +165,6 @@ export class BookingConfirmationUseCase {
     params.append("barbero", appointment.barberId);
     params.append("dia", shopDateOf(appointment.slot.start));
     return `${this.deps.siteUrl}/reservar?${params}`;
-  }
-
-  /**
-   * Libera las citas pendientes cuyo plazo pasó y avisa a cada cliente con la plantilla aprobada.
-   * Sin WhatsApp no vence nada: nadie habría podido confirmar. Un aviso fallido no impide vencer las demás.
-   */
-  async expireOverdue(): Promise<ExpiryReport> {
-    const expired: Appointment[] = [];
-    if (!this.deps.messaging) return { expired: 0, failed: 0 };
-    for (const { appointmentId } of await this.deps.confirmations.findOverdue(this.deps.now())) {
-      const appointment = await this.deps.appointments.findById(appointmentId);
-      if (appointment?.status !== AppointmentStatus.PENDING) continue;
-      // Solo si sigue pendiente: si el cliente confirmó en este instante, gana su confirmación.
-      const next = appointment.changeStatus(AppointmentStatus.EXPIRED);
-      if (await this.deps.appointments.updateStatus(next, AppointmentStatus.PENDING)) expired.push(next);
-    }
-    const { failed } = await this.notifyReleased(expired);
-    return { expired: expired.length, failed };
   }
 
   /**

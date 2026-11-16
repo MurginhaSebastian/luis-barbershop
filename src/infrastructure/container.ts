@@ -7,6 +7,7 @@ import { ManageScheduleUseCase } from "@/application/use-cases/admin/manage-sche
 import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-available-slots";
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
 import { BookingConfirmationUseCase } from "@/application/use-cases/booking/booking-confirmation";
+import { ConfirmationCycleUseCase } from "@/application/use-cases/booking/confirmation-cycle";
 import { GetCatalogUseCase } from "@/application/use-cases/catalog/get-catalog";
 import { getDb } from "./db/client";
 import { DrizzleAppointmentRepository } from "./db/repositories/appointment-repository";
@@ -48,6 +49,7 @@ export function getUseCases() {
     now: () => new Date(),
     randomBytes: (length: number) => crypto.getRandomValues(new Uint8Array(length)),
   };
+  const managePush = new ManagePushUseCase(deps);
   return {
     getCatalog: new GetCatalogUseCase(deps),
     getAvailableSlots: new GetAvailableSlotsUseCase(deps),
@@ -57,7 +59,8 @@ export function getUseCases() {
     manageCatalog: new ManageCatalogUseCase(deps),
     manageSchedule: new ManageScheduleUseCase(deps),
     manageSite: new ManageSiteUseCase(deps),
-    managePush: new ManagePushUseCase(deps),
+    managePush,
+    confirmationCycle: new ConfirmationCycleUseCase({ ...deps, alerts: managePush }),
     changeAppointmentStatus: new ChangeAppointmentStatusUseCase(deps),
   };
 }

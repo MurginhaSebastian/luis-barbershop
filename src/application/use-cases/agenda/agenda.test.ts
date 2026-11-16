@@ -35,6 +35,8 @@ function makeRepos(appointments: Appointment[]) {
       save: async (a: Appointment) => {
         appointments.splice(appointments.findIndex((x) => x.id === a.id), 1, a);
       },
+      claimReminder: async () => false,
+      releaseReminder: async () => {},
       updateStatus: async (a: Appointment, expected: AppointmentStatus) => {
         const i = appointments.findIndex((x) => x.id === a.id && x.status === expected);
         if (i < 0) return false;
@@ -60,7 +62,6 @@ function makeRepos(appointments: Appointment[]) {
     confirmations: {
       save: async () => {},
       findByCode: async () => [],
-      findOverdue: async () => [],
       findByAppointments: async (ids: readonly string[]) =>
         ids.includes("mañana") ? [{ appointmentId: "mañana", code: "KRT482", confirmBy: new Date("2026-11-02T14:00:00Z") }] : [],
     },

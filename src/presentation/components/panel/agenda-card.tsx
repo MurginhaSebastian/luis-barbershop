@@ -66,7 +66,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
       <p className="mt-1 tabular-nums text-primary">{formatPrice(item.totalCents)}</p>
       {item.status === "PENDING" && item.confirmBy && (
         <p className="mt-2 text-sm text-muted-foreground">
-          El cliente puede confirmar por WhatsApp hasta las {formatTime(item.confirmBy)}; si no, la hora se libera sola.
+          El cliente puede confirmar por WhatsApp hasta las {formatTime(item.confirmBy)}; después, otro cliente puede tomar la hora.
         </p>
       )}
 

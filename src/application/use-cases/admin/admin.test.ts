@@ -58,6 +58,8 @@ function makeRepos() {
       findByCustomerFrom: async () => [],
       save: async () => {},
       updateStatus: async () => false,
+      claimReminder: async () => false,
+      releaseReminder: async () => {},
     },
     schedule: {
       findBusinessHours: async (weekday: number) => hours.get(weekday) ?? [],

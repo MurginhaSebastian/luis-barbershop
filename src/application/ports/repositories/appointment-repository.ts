@@ -22,4 +22,8 @@ export interface IAppointmentRepository {
    * confirmó mientras vencía, o el barbero canceló a la vez). Así un cambio nunca pisa a otro.
    */
   updateStatus(next: Appointment, expected: AppointmentStatus): Promise<boolean>;
+  /** Marca el aviso de -35 min como enviado si la cita sigue PENDING y sin marcar; false si ya lo estaba. */
+  claimReminder(id: string, at: Date): Promise<boolean>;
+  /** Quita la marca (el aviso no salió): el próximo ciclo lo reintenta. */
+  releaseReminder(id: string): Promise<void>;
 }

@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
 import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import { TimeSlot } from "@/core/entities/time-slot";
@@ -121,6 +121,19 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
       if (isOverlapViolation(error)) throw new SlotUnavailableError();
       throw error;
     }
+  }
+
+  async claimReminder(id: string, at: Date): Promise<boolean> {
+    const claimed = await this.db
+      .update(appointments)
+      .set({ reminderSentAt: at })
+      .where(and(eq(appointments.id, id), eq(appointments.status, AppointmentStatus.PENDING), isNull(appointments.reminderSentAt)))
+      .returning({ id: appointments.id });
+    return claimed.length > 0;
+  }
+
+  async releaseReminder(id: string): Promise<void> {
+    await this.db.update(appointments).set({ reminderSentAt: null }).where(eq(appointments.id, id));
   }
 
   /** Inserta o actualiza la cita y reemplaza sus líneas, todo en una transacción. */

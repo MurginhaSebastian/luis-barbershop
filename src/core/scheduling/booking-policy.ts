@@ -7,8 +7,9 @@ export const BORN_CONFIRMED_UNDER_MINUTES = 120;
 export const CUSTOMER_CANCEL_MIN_MINUTES = 35;
 export const MAX_DAYS_AHEAD = 14;
 export const MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER = 2;
-/** Plazo para confirmar por WhatsApp: 2 h tras reservar, y como tarde 1 h antes de la cita. */
-export const CONFIRM_WITHIN_MINUTES = 120;
-export const CONFIRM_BEFORE_START_MINUTES = 60;
+/** A los 35 min de la cita, si sigue pendiente, se le pide confirmar por WhatsApp. */
+export const REMINDER_MINUTES_BEFORE = 35;
+/** A los 15 min, si aún no confirmó, pasa a en riesgo: otro cliente puede tomar la hora. */
+export const AT_RISK_MINUTES_BEFORE = 15;
 // shortcut: offset fijo de Lima (sin horario de verano); usar una lib de zonas si se abre fuera de Perú.
 export const SHOP_UTC_OFFSET_MINUTES = -300;

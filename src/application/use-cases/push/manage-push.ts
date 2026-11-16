@@ -59,6 +59,16 @@ export class ManagePushUseCase {
     });
   }
 
+  /** Faltan 15 min y no confirmó: otro cliente ya puede reservar esa hora. */
+  async notifyAtRisk(appointment: Appointment): Promise<DeliveryReport> {
+    const [barber] = await this.deps.barbers.findByIds([appointment.barberId]);
+    return this.broadcast({
+      title: "Cita en riesgo",
+      body: `${appointment.customerName} no confirmó · ${shopDateTime(appointment.slot.start)} · ${barber?.name ?? "barbero"}\nLa hora queda libre para otro cliente.`,
+      url: "/panel",
+    });
+  }
+
   /** El cliente canceló por WhatsApp: la hora quedó libre. */
   async notifyCancelled(appointment: Appointment): Promise<DeliveryReport> {
     const [barber] = await this.deps.barbers.findByIds([appointment.barberId]);

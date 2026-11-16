@@ -17,7 +17,7 @@ export interface AgendaItem {
   services: string[];
   products: string[];
   totalCents: number;
-  /** Si está pendiente de confirmar por WhatsApp: hasta cuándo (ISO). Después se libera sola. */
+  /** Si está pendiente de confirmar por WhatsApp: hasta cuándo (ISO). Después queda en riesgo. */
   confirmBy?: string;
 }
 

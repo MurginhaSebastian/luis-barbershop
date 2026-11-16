@@ -28,14 +28,20 @@ export class WhatsAppCloudSender implements IMessagingService {
     return this.send({ to: `+${toPhone}`, type: "text", text: { body: text } });
   }
 
-  sendTemplate(toPhone: string, template: string, parameters: readonly string[]): Promise<void> {
+  sendTemplate(toPhone: string, template: string, parameters: readonly string[], replies: readonly string[] = []): Promise<void> {
+    const buttons = replies.map((payload, index) => ({
+      type: "button",
+      sub_type: "quick_reply",
+      index: String(index),
+      parameters: [{ type: "payload", payload }],
+    }));
     return this.send({
       to: `+${toPhone}`,
       type: "template",
       template: {
         name: template,
         language: { code: "es" },
-        components: [{ type: "body", parameters: parameters.map((text) => ({ type: "text", text })) }],
+        components: [{ type: "body", parameters: parameters.map((text) => ({ type: "text", text })) }, ...buttons],
       },
     });
   }

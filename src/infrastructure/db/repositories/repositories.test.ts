@@ -154,6 +154,19 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect((await deps.appointments.findById(first.id))?.status).toBe(AppointmentStatus.CONFIRMED);
   });
 
+  test("el aviso de -35 min se marca una sola vez, y solo si sigue pendiente", async () => {
+    const booked = await book(utc("15:00"));
+    const other = await book(utc("16:00"), "900000002");
+    expect(await deps.appointments.claimReminder(booked.id, utc("14:25"))).toBe(true);
+    expect(await deps.appointments.claimReminder(booked.id, utc("14:30"))).toBe(false); // otro cron a la vez
+    await deps.appointments.releaseReminder(booked.id); // el aviso no salió
+    expect(await deps.appointments.claimReminder(booked.id, utc("14:30"))).toBe(true);
+    await deps.appointments.updateStatus(other.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.PENDING);
+    expect(await deps.appointments.claimReminder(other.id, utc("15:25"))).toBe(false);
+    const sent = await db.select({ at: schema.appointments.reminderSentAt }).from(schema.appointments).where(sql`id = ${booked.id}`);
+    expect(sent).toEqual([{ at: utc("14:30") }]);
+  });
+
   test("guarda cuándo se confirmó la cita", async () => {
     const booked = await book(utc("15:00"));
     const confirmedAt = async () =>
@@ -256,7 +269,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect((await repo.findAll()).map((s) => s.endpoint)).toEqual(["https://push.example/2"]);
   });
 
-  test("confirmaciones: por código, y vencidas solo si la cita sigue pendiente", async () => {
+  test("confirmaciones: por código y por cita", async () => {
     const repo = new DrizzleConfirmationRepository(db);
     const first = await book(utc("15:00"));
     const second = await book(utc("16:00"), "900000002");
@@ -267,13 +280,8 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect((await repo.findByCode("KRT482")).map((c) => c.appointmentId).sort()).toEqual([first.id, second.id].sort());
     expect(await repo.findByCode("AAA222")).toEqual([]);
 
-    expect((await repo.findOverdue(utc("10:30"))).map((c) => c.appointmentId)).toEqual([first.id]);
-    expect(await repo.findOverdue(utc("09:59"))).toEqual([]);
-
-    // Confirmada ya no vence; volver a guardar sustituye el plazo.
-    await deps.appointments.save(first.changeStatus(AppointmentStatus.CONFIRMED));
+    // Volver a guardar sustituye código y plazo.
     await repo.save({ appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") });
-    expect(await repo.findOverdue(utc("11:30"))).toEqual([]);
     expect(await repo.findByAppointments([second.id, "00000000-0000-4000-8000-000000000999"])).toEqual([
       { appointmentId: second.id, code: "PQR789", confirmBy: utc("12:00") },
     ]);

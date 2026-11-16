@@ -22,6 +22,8 @@ const notification = z.object({
                   from: z.string().regex(/^\d{8,15}$/).optional(),
                   type: z.string(),
                   text: z.object({ body: z.string().max(4096) }).optional(),
+                  // Botón de respuesta rápida de una plantilla: trae el texto que se le puso al enviarla.
+                  button: z.object({ payload: z.string().max(1000) }).optional(),
                 }),
               )
               .optional(),
@@ -64,7 +66,10 @@ export async function POST(request: Request) {
     .flatMap((entry) => entry.changes)
     .filter((change) => change.field === "messages" && change.value.metadata?.phone_number_id === config.phoneNumberId)
     .flatMap((change) => change.value.messages ?? [])
-    .flatMap((m) => (m.type === "text" && m.from && m.text ? [{ id: m.id, from: m.from, text: m.text.body }] : []));
+    .flatMap((m) => {
+      const text = m.type === "text" ? m.text?.body : m.type === "button" ? m.button?.payload : undefined;
+      return m.from && text ? [{ id: m.id, from: m.from, text }] : [];
+    });
 
   const { bookingConfirmation, managePush } = getUseCases();
   try {
