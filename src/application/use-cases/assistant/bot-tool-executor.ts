@@ -36,6 +36,8 @@ export type ToolError =
   /** No existe o es de otro número: la misma respuesta, para no revelar que existe. */
   | "APPOINTMENT_NOT_FOUND"
   | "NO_ACTIVE_APPOINTMENTS"
+  /** No tiene nada por confirmar: ni pendientes, ni en riesgo, ni una vencida cuya hora tomó otro. */
+  | "NO_APPOINTMENTS_TO_CONFIRM"
   /** Tiene varias citas y no dijo cuál: el modelo debe preguntarle (vienen en data.appointments). */
   | "MULTIPLE_APPOINTMENTS_FOUND"
   /** Estaba en riesgo y otro cliente tomó la hora: en data.nextSlots, las siguientes libres de ese día. */
@@ -126,10 +128,14 @@ export class BotToolExecutor {
   }
 
   private async confirm(args: Args<"confirmar_asistencia">, context: ToolContext): Promise<ToolResult> {
-    const target = await this.target(context, args.appointmentId, [AppointmentStatus.PENDING, AppointmentStatus.AT_RISK], [
-      // Si la que tenía ya venció (otro tomó su hora), se le dice eso en vez de "no tienes citas".
-      AppointmentStatus.EXPIRED,
-    ]);
+    const target = await this.target(
+      context,
+      args.appointmentId,
+      // Primero lo que se puede confirmar; si no hay, una vencida (solo vence tras estar en riesgo: se le dice que
+      // otro tomó su hora) o una ya confirmada (se le dice que ya lo estaba).
+      [[AppointmentStatus.PENDING, AppointmentStatus.AT_RISK], [AppointmentStatus.EXPIRED], [AppointmentStatus.CONFIRMED]],
+      fail("NO_APPOINTMENTS_TO_CONFIRM", "No tienes ninguna cita pendiente por confirmar."),
+    );
     if ("result" in target) return target.result;
     const outcome = await this.deps.confirmation.confirm(target.appointment);
     if (outcome.kind === "confirmed") {
@@ -149,7 +155,7 @@ export class BotToolExecutor {
   }
 
   private async cancel(args: Args<"cancelar_cita">, context: ToolContext): Promise<ToolResult> {
-    const target = await this.target(context, args.appointmentId, ACTIVE);
+    const target = await this.target(context, args.appointmentId, [ACTIVE], fail("NO_ACTIVE_APPOINTMENTS", "Este número no tiene citas activas."));
     if ("result" in target) return target.result;
     const outcome = await this.deps.confirmation.cancel(target.appointment);
     if (outcome.kind === "cancelled") {
@@ -166,14 +172,14 @@ export class BotToolExecutor {
   }
 
   /**
-   * La cita sobre la que actuar, siempre del celular verificado. Con id, debe ser suya; sin id, la única en esos
-   * estados (o, si no hay ninguna, la única en `orElse`). Con varias no se adivina: el modelo pregunta.
+   * La cita sobre la que actuar, siempre del celular verificado. Con id, debe ser suya; sin id, la única del primer
+   * grupo de estados que tenga alguna (si ninguno tiene, `none`). Con varias no se adivina: el modelo pregunta.
    */
   private async target(
     context: ToolContext,
     appointmentId: string | undefined,
-    statuses: readonly AppointmentStatus[],
-    orElse: readonly AppointmentStatus[] = [],
+    tiers: readonly (readonly AppointmentStatus[])[],
+    none: ToolResult,
   ): Promise<{ appointment: Appointment } | { result: ToolResult }> {
     const customer = await this.deps.customers.findByPhone(normalizePhone(context.verifiedPhone));
     if (appointmentId) {
@@ -183,10 +189,12 @@ export class BotToolExecutor {
         : { result: fail("APPOINTMENT_NOT_FOUND", "No encontramos esa cita entre las de este número.") };
     }
     const upcoming = customer ? await this.deps.appointments.findByCustomerFrom(customer.id, context.now) : [];
-    const pick = (wanted: readonly AppointmentStatus[]) =>
-      upcoming.filter((a) => wanted.includes(a.status)).toSorted((a, b) => a.slot.start.getTime() - b.slot.start.getTime());
-    const candidates = pick(statuses).length > 0 ? pick(statuses) : pick(orElse);
-    if (candidates.length === 0) return { result: fail("NO_ACTIVE_APPOINTMENTS", "Este número no tiene citas activas.") };
+    const candidates =
+      tiers
+        .map((wanted) => upcoming.filter((a) => wanted.includes(a.status)))
+        .find((found) => found.length > 0)
+        ?.toSorted((a, b) => a.slot.start.getTime() - b.slot.start.getTime()) ?? [];
+    if (candidates.length === 0) return { result: none };
     if (candidates.length > 1) {
       return {
         result: fail("MULTIPLE_APPOINTMENTS_FOUND", "Tiene varias citas: pregúntale cuál.", { appointments: await this.views(candidates) }),

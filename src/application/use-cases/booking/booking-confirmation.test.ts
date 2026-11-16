@@ -168,7 +168,7 @@ describe("confirmar por WhatsApp", () => {
 
   test("una cita vencida no se reabre: se le ofrecen las horas libres de ese día con sus servicios", async () => {
     await pending("a1", PEDRO);
-    t.appointments.set("a1", book("a1", PEDRO).changeStatus(AppointmentStatus.EXPIRED));
+    t.appointments.set("a1", book("a1", PEDRO).changeStatus(AppointmentStatus.AT_RISK).changeStatus(AppointmentStatus.EXPIRED));
     expect((await useCase.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("slot-taken");
     expect(t.appointments.get("a1")?.status).toBe(AppointmentStatus.EXPIRED);
     expect(replied()[0].text).toContain("https://barberia.example/reservar?paso=3&servicios=s1&barbero=b1&dia=2026-11-12");

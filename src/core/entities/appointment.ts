@@ -20,7 +20,9 @@ const BLOCKING_STATUSES: ReadonlySet<AppointmentStatus> = new Set([AppointmentSt
 
 // Una cita cancelada o vencida no se reabre: su hora ya podría ser de otro cliente. Una confirmada no vence.
 const ALLOWED_CHANGES: Record<AppointmentStatus, readonly AppointmentStatus[]> = {
-  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "AT_RISK", "EXPIRED"],
+  // Una pendiente no vence directamente: antes pasa por en riesgo. Así "vencida" siempre significa que estuvo en
+  // riesgo (no confirmó a tiempo) y el asistente puede decir con certeza que otro tomó su hora o que pasó.
+  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "AT_RISK"],
   CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],
   // Confirma tarde (si nadie tomó el hueco), llega igual o se pierde.
   AT_RISK: ["CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "EXPIRED"],

@@ -141,7 +141,7 @@ describe("ChangeAppointmentStatusUseCase", () => {
 
   test("si la cita cambió mientras tanto (venció o la confirmó el cliente), no la pisa", async () => {
     const snapshot = repos.data[0];
-    repos.data[0] = snapshot.changeStatus(AppointmentStatus.EXPIRED);
+    repos.data[0] = snapshot.changeStatus(AppointmentStatus.AT_RISK).changeStatus(AppointmentStatus.EXPIRED);
     const stale = { ...repos, appointments: { ...repos.appointments, findById: async () => snapshot } };
     await expect(new ChangeAppointmentStatusUseCase(stale).execute({ id: "a1", status: AppointmentStatus.CONFIRMED })).rejects.toThrow(
       InvalidStatusChangeError,

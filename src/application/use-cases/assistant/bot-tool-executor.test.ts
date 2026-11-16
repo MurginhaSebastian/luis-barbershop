@@ -353,8 +353,19 @@ describe("confirmar_asistencia", () => {
     expect(nextSlots.map((s) => s.time)).toEqual(["10:30", "11:00", "11:30"]);
   });
 
-  test("sin citas activas lo dice", async () => {
-    expect(await call("confirmar_asistencia")).toMatchObject({ ok: false, error: "NO_ACTIVE_APPOINTMENTS" });
+  test("sin nada que confirmar no dice que otro tomó su hora: NO_APPOINTMENTS_TO_CONFIRM", async () => {
+    w.book(id(31), ME, lima("09:00", "2026-11-11"), AppointmentStatus.EXPIRED); // vencida, pero de ayer
+    w.book(id(32), ME, lima("11:00"), AppointmentStatus.CANCELLED);
+    expect(await call("confirmar_asistencia")).toMatchObject({
+      ok: false,
+      error: "NO_APPOINTMENTS_TO_CONFIRM",
+      message: "No tienes ninguna cita pendiente por confirmar.",
+    });
+  });
+
+  test("si ya estaba confirmada, lo dice", async () => {
+    w.book(id(31), ME, lima("11:00"), AppointmentStatus.CONFIRMED);
+    expect(await call("confirmar_asistencia")).toMatchObject({ ok: true, data: { note: "Ya estaba confirmada." } });
   });
 });
 
@@ -371,6 +382,10 @@ describe("cancelar_cita", () => {
     at("10:30");
     expect(await call("cancelar_cita")).toMatchObject({ ok: false, error: "CANCELLATION_TOO_LATE" });
     expect(statusOf(id(31))).toBe(AppointmentStatus.CONFIRMED);
+  });
+
+  test("sin citas activas lo dice", async () => {
+    expect(await call("cancelar_cita")).toMatchObject({ ok: false, error: "NO_ACTIVE_APPOINTMENTS" });
   });
 
   test("con varias citas activas y sin decir cuál, pregunta", async () => {

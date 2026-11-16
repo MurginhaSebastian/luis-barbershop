@@ -73,8 +73,9 @@ describe("cita vencida", () => {
     products: [],
   });
 
-  test("una pendiente vence y deja libre el hueco", () => {
-    const expired = pending.changeStatus("EXPIRED");
+  test("una pendiente vence pasando por en riesgo, y deja libre el hueco", () => {
+    expect(() => pending.changeStatus("EXPIRED")).toThrow(InvalidStatusChangeError);
+    const expired = pending.changeStatus("AT_RISK").changeStatus("EXPIRED");
     expect(expired.status).toBe("EXPIRED");
     expect(expired.blocksSchedule()).toBe(false);
   });
@@ -84,6 +85,6 @@ describe("cita vencida", () => {
   });
 
   test("una vencida no se reabre", () => {
-    expect(() => pending.changeStatus("EXPIRED").changeStatus("CONFIRMED")).toThrow(InvalidStatusChangeError);
+    expect(() => pending.changeStatus("AT_RISK").changeStatus("EXPIRED").changeStatus("CONFIRMED")).toThrow(InvalidStatusChangeError);
   });
 });

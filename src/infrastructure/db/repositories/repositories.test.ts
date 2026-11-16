@@ -294,8 +294,8 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   test("cambiar estado solo si sigue como se leyó", async () => {
     const booked = await book(utc("15:00"));
     expect(await deps.appointments.updateStatus(booked.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.PENDING)).toBe(true);
-    // Ya no está pendiente: vencerla ahora pisaría la confirmación.
-    expect(await deps.appointments.updateStatus(booked.changeStatus(AppointmentStatus.EXPIRED), AppointmentStatus.PENDING)).toBe(false);
+    // Ya no está pendiente: ponerla en riesgo ahora pisaría la confirmación.
+    expect(await deps.appointments.updateStatus(booked.changeStatus(AppointmentStatus.AT_RISK), AppointmentStatus.PENDING)).toBe(false);
     expect((await deps.appointments.findById(booked.id))?.status).toBe(AppointmentStatus.CONFIRMED);
   });
 
