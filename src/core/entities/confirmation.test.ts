@@ -53,7 +53,7 @@ describe("codeInMessage", () => {
 });
 
 describe("wantsToCancel", () => {
-  test.each(["CANCELAR KRT482", "Quiero cancelar mi cita KRT482", "No podré ir, KRT482", "no voy KRT482", "anula KRT482"])("%s cancela", (text) => {
+  test.each(["CANCELAR KRT482", "Quiero cancelar mi cita KRT482", "No podré ir, KRT482", "No puedo ir KRT482", "no llego KRT482", "no voy KRT482", "anula KRT482"])("%s cancela", (text) => {
     expect(wantsToCancel(text)).toBe(true);
   });
   test.each(["Confirmo mi cita KRT482", "Sí, voy KRT482", "KRT482", "Notificado KRT482"])("%s no cancela", (text) => {

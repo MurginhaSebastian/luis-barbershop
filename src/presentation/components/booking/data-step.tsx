@@ -123,7 +123,7 @@ export function DataStep(props: {
               </p>
             ) : (
               <p id="phone-hint" className="mt-1.5 text-sm text-muted-foreground">
-                Te escribiremos aquí para confirmar tu cita.
+                Te escribiremos aquí por WhatsApp sobre tu cita.
               </p>
             )}
           </div>
