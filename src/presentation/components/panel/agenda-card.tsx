@@ -10,14 +10,27 @@ import { cancellationMessage, confirmationMessage, whatsappLink } from "@/presen
 
 export type ChangeStatusAction = (id: string, status: AppointmentStatus) => Promise<{ error?: string }>;
 
-const STATUS: Record<AppointmentStatus, { label: string; className: string }> = {
-  PENDING: { label: "Por confirmar", className: "border-primary text-primary" },
-  CONFIRMED: { label: "Confirmada", className: "border-foreground/60 text-foreground" },
-  COMPLETED: { label: "Atendida", className: "border-border text-muted-foreground" },
-  CANCELLED: { label: "Cancelada", className: "border-destructive/60 text-destructive" },
-  NO_SHOW: { label: "No vino", className: "border-destructive/60 text-destructive" },
-  AT_RISK: { label: "En riesgo: hueco libre", className: "border-destructive/60 text-destructive" },
-  EXPIRED: { label: "Vencida, sin confirmar", className: "border-border text-muted-foreground" },
+// La etiqueta lleva siempre el estado en palabras: el color solo lo refuerza.
+const STATUS: Record<AppointmentStatus, { label: string; badge: string; card?: string }> = {
+  PENDING: {
+    label: "Separado · Por confirmar",
+    badge: "border-status-pending bg-status-pending-surface text-status-pending-foreground",
+    card: "border-status-pending bg-status-pending-surface",
+  },
+  CONFIRMED: {
+    label: "Confirmada",
+    badge: "border-status-confirmed bg-status-confirmed-surface text-status-confirmed-foreground",
+    card: "border-status-confirmed bg-status-confirmed-surface",
+  },
+  AT_RISK: {
+    label: "En riesgo · Hueco libre",
+    badge: "border-status-risk bg-status-risk-surface text-status-risk-foreground",
+    card: "border-2 border-dashed border-status-risk bg-status-risk-surface",
+  },
+  COMPLETED: { label: "Atendida", badge: "border-border text-muted-foreground" },
+  CANCELLED: { label: "Cancelada", badge: "border-destructive/60 text-destructive" },
+  NO_SHOW: { label: "No vino", badge: "border-destructive/60 text-destructive" },
+  EXPIRED: { label: "Vencida, sin confirmar", badge: "border-border text-muted-foreground" },
 };
 
 const action = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -30,6 +43,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
   const finished = item.status !== "PENDING" && item.status !== "CONFIRMED" && item.status !== "AT_RISK";
+  const minutes = Math.round((Date.parse(item.end) - Date.parse(item.start)) / 60_000);
 
   const change = (status: AppointmentStatus, message?: string) => {
     // Se abre aquí, durante el toque: después del await el navegador lo bloquearía.
@@ -46,14 +60,21 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
   return (
     <article
       aria-label={`${formatTime(item.start)}, ${item.customerName}`}
-      className={cn("rounded-2xl border border-border bg-card p-4 wrap-anywhere", finished && "opacity-70")}
+      className={cn(
+        "h-full rounded-2xl border border-border bg-card p-4 wrap-anywhere",
+        STATUS[item.status].card,
+        finished && "opacity-70",
+      )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div>
           {props.showDate && <p className="text-sm first-letter:uppercase text-muted-foreground">{formatLongDate(item.start)}</p>}
-          <p className="font-heading text-3xl tabular-nums">{formatTime(item.start)}</p>
+          <p className="font-heading text-2xl tabular-nums sm:text-3xl">
+            {formatTime(item.start)} – {formatTime(item.end)}
+            <span className="font-sans text-sm text-muted-foreground"> · {minutes} min</span>
+          </p>
         </div>
-        <span className={cn("rounded-full border px-3 py-1 text-xs", STATUS[item.status].className)}>
+        <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold", STATUS[item.status].badge)}>
           {STATUS[item.status].label}
         </span>
       </div>

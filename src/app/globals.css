@@ -5,6 +5,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+    --color-status-pending: var(--status-pending);
+    --color-status-pending-surface: var(--status-pending-surface);
+    --color-status-pending-foreground: var(--status-pending-foreground);
+    --color-status-confirmed: var(--status-confirmed);
+    --color-status-confirmed-surface: var(--status-confirmed-surface);
+    --color-status-confirmed-foreground: var(--status-confirmed-foreground);
+    --color-status-risk: var(--status-risk);
+    --color-status-risk-surface: var(--status-risk-surface);
+    --color-status-risk-foreground: var(--status-risk-foreground);
     --font-heading: var(--font-display);
     --font-sans: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
@@ -116,6 +125,17 @@
     --sidebar-accent-foreground: #efe6d8;
     --sidebar-border: #4a3a30;
     --sidebar-ring: #c9a45c;
+    /* Estados de cita en el panel. Colores sólidos: sobre cada superficie, el texto normal y el apagado
+       superan 4.5:1 (comprobado con la fórmula de WCAG; axe lo vigila en las pruebas). */
+    --status-pending: #e0b04a;
+    --status-pending-surface: #30260e;
+    --status-pending-foreground: #f6d98f;
+    --status-confirmed: #3fbf8f;
+    --status-confirmed-surface: #0f2e26;
+    --status-confirmed-foreground: #93e6c4;
+    --status-risk: #f08a3c;
+    --status-risk-surface: #3a1c0b;
+    --status-risk-foreground: #ffc08f;
 }
 
 @layer base {
