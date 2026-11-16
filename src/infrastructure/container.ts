@@ -10,6 +10,7 @@ import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create
 import { BookingConfirmationUseCase } from "@/application/use-cases/booking/booking-confirmation";
 import { ConfirmationCycleUseCase } from "@/application/use-cases/booking/confirmation-cycle";
 import { GetCatalogUseCase } from "@/application/use-cases/catalog/get-catalog";
+import { selectAssistant } from "./assistant/select-assistant";
 import { getDb } from "./db/client";
 import { DrizzleAppointmentRepository } from "./db/repositories/appointment-repository";
 import { DrizzleBarberRepository, DrizzleProductRepository, DrizzleServiceRepository } from "./db/repositories/catalog-repositories";
@@ -59,6 +60,8 @@ export function getUseCases() {
     getAvailableSlots,
     createAppointment,
     bookingConfirmation,
+    /** Atiende lo que escriben al número automático (AiAssistantPort). */
+    assistant: selectAssistant(process.env, bookingConfirmation),
     // Lo usará el adaptador del LLM; hoy nadie lo llama.
     botTools: new BotToolExecutor({
       ...deps,

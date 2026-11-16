@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/infrastructure/container", () => ({
   getWhatsAppConfig: () => mocks.config,
   getUseCases: () => ({
-    bookingConfirmation: { handleMessage: mocks.handleMessage },
+    assistant: { handleMessage: mocks.handleMessage },
     managePush: { notifyConfirmed: mocks.notifyConfirmed, notifyCancelled: mocks.notifyCancelled },
   }),
 }));
@@ -133,6 +133,20 @@ describe("avisos de Meta (POST)", () => {
     m.button = { payload: "Cancelar KRT482", text: "No podré ir" };
     await post(reply);
     expect(mocks.handleMessage).toHaveBeenCalledWith(expect.objectContaining({ text: "Cancelar KRT482" }));
+  });
+
+  test.each([
+    ["button_reply", { type: "button_reply", button_reply: { id: "Confirmo mi cita KRT482", title: "Sí, voy" } }],
+    ["list_reply", { type: "list_reply", list_reply: { id: "Cancelar KRT482", title: "Cancelar", description: "Mi cita" } }],
+  ])("un mensaje interactivo (%s) llega con el id de lo que tocó", async (_, interactive) => {
+    const reply = textMessage("x");
+    const m = reply.entry[0].changes[0].value.messages[0] as Record<string, unknown>;
+    m.type = "interactive";
+    delete m.text;
+    m.interactive = interactive;
+    await post(reply);
+    const id = (interactive as { button_reply?: { id: string }; list_reply?: { id: string } });
+    expect(mocks.handleMessage).toHaveBeenCalledWith(expect.objectContaining({ text: (id.button_reply ?? id.list_reply)!.id }));
   });
 
   test("al cancelar, también avisa al barbero: la hora quedó libre", async () => {

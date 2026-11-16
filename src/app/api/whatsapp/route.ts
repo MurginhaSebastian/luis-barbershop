@@ -24,6 +24,13 @@ const notification = z.object({
                   text: z.object({ body: z.string().max(4096) }).optional(),
                   // Botón de respuesta rápida de una plantilla: trae el texto que se le puso al enviarla.
                   button: z.object({ payload: z.string().max(1000) }).optional(),
+                  // Botón o lista de un mensaje interactivo (los que envíe el asistente dentro de las 24 h): su id.
+                  interactive: z
+                    .object({
+                      button_reply: z.object({ id: z.string().max(256) }).optional(),
+                      list_reply: z.object({ id: z.string().max(200) }).optional(),
+                    })
+                    .optional(),
                 }),
               )
               .optional(),
@@ -33,6 +40,16 @@ const notification = z.object({
     }),
   ),
 });
+
+type Message = NonNullable<z.infer<typeof notification>["entry"][number]["changes"][number]["value"]["messages"]>[number];
+
+/** Lo que dijo el cliente: el texto, el de la respuesta rápida o el id del botón o la opción que tocó. Fotos y audios, nada. */
+function messageText(m: Message): string | undefined {
+  if (m.type === "text") return m.text?.body;
+  if (m.type === "button") return m.button?.payload;
+  if (m.type === "interactive") return (m.interactive?.button_reply ?? m.interactive?.list_reply)?.id;
+  return undefined;
+}
 
 export function GET(request: Request) {
   const config = getWhatsAppConfig();
@@ -67,14 +84,14 @@ export async function POST(request: Request) {
     .filter((change) => change.field === "messages" && change.value.metadata?.phone_number_id === config.phoneNumberId)
     .flatMap((change) => change.value.messages ?? [])
     .flatMap((m) => {
-      const text = m.type === "text" ? m.text?.body : m.type === "button" ? m.button?.payload : undefined;
+      const text = messageText(m);
       return m.from && text ? [{ id: m.id, from: m.from, text }] : [];
     });
 
-  const { bookingConfirmation, managePush } = getUseCases();
+  const { assistant, managePush } = getUseCases();
   try {
     for (const message of messages) {
-      const outcome = await bookingConfirmation.handleMessage(message);
+      const outcome = await assistant.handleMessage(message);
       if (outcome.kind === "confirmed" || outcome.kind === "cancelled") {
         const { kind, appointment } = outcome;
         after(() =>

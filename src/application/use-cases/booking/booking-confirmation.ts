@@ -1,3 +1,4 @@
+import type { AiAssistantPort, IncomingMessage, MessageOutcome } from "@/application/ports/assistant";
 import type { IMessagingService } from "@/application/ports/messaging";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
@@ -38,29 +39,14 @@ export interface BookingConfirmationDeps {
   randomBytes: (length: number) => Uint8Array;
 }
 
-/** Un mensaje de texto que llegó por WhatsApp. `from`: el número del cliente, solo cifras ("51987654321"). */
-export interface IncomingMessage {
-  id: string;
-  from: string;
-  text: string;
-}
-
 /**
  * Plantilla aprobada en Meta: "Hola {{1}}, tu reserva del {{2}} se liberó porque no se confirmó a tiempo…", con un
  * botón de enlace fijo a /reservar. Meta rechaza plantillas que empiezan o terminan en una variable.
  */
 export const EXPIRED_TEMPLATE = "cita_vencida";
 
-export type MessageOutcome =
-  | { kind: "confirmed" | "cancelled"; appointment: Appointment }
-  /** Confirmada y faltan menos de 35 min: no se cancela sola, hay que avisar a la barbería. */
-  | { kind: "too-late"; appointment: Appointment }
-  /** SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER: no confirmó a tiempo y su hora ya es de otro (o venció). */
-  | { kind: "slot-taken"; appointment: Appointment }
-  | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "inactive" };
-
 /** El cliente confirma o cancela su cita por WhatsApp. Los plazos los aplica ConfirmationCycleUseCase. */
-export class BookingConfirmationUseCase {
+export class BookingConfirmationUseCase implements AiAssistantPort {
   constructor(private readonly deps: BookingConfirmationDeps) {}
 
   get enabled(): boolean {
