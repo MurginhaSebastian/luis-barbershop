@@ -147,6 +147,12 @@ describe("aviso de reserva nueva", () => {
     expect(t.sent[0].message).toMatchObject({ title: "Cita cancelada", body: expect.stringMatching(/Pedro canceló.*10:00/) });
   });
 
+  test("avisa cuando una cita queda en riesgo: otro cliente ya puede tomar la hora", async () => {
+    await push.subscribe(sub(1));
+    await push.notifyAtRisk(appointment);
+    expect(t.sent[0].message).toMatchObject({ title: "Cita en riesgo", body: expect.stringMatching(/Pedro no confirmó.*10:00[^]*libre/) });
+  });
+
   test("la prueba manual usa el mismo camino", async () => {
     await push.subscribe(sub(1));
     expect(await push.sendTest()).toEqual({ sent: 1, removed: 0, failed: 0 });
