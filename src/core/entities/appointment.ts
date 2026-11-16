@@ -7,21 +7,22 @@ export const AppointmentStatus = {
   COMPLETED: "COMPLETED",
   CANCELLED: "CANCELLED",
   NO_SHOW: "NO_SHOW",
-  /** Nadie la confirmó a tiempo: libera el hueco. */
+  /** Liberación condicional: faltan 15 min y no confirmó. Sigue siendo suya, pero otro cliente puede tomar el hueco. */
+  AT_RISK: "AT_RISK",
+  /** Nadie la confirmó a tiempo o otro cliente tomó su hueco en riesgo. */
   EXPIRED: "EXPIRED",
 } as const;
 export type AppointmentStatus = (typeof AppointmentStatus)[keyof typeof AppointmentStatus];
 
-const BLOCKING_STATUSES: ReadonlySet<AppointmentStatus> = new Set([
-  AppointmentStatus.PENDING,
-  AppointmentStatus.CONFIRMED,
-  AppointmentStatus.COMPLETED,
-]);
+// Debe coincidir con el WHERE de appointments_no_overlap (migración 0009). Una cita en riesgo no bloquea.
+const BLOCKING_STATUSES: ReadonlySet<AppointmentStatus> = new Set([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED]);
 
 // Una cita cancelada o vencida no se reabre: su hora ya podría ser de otro cliente. Una confirmada no vence.
 const ALLOWED_CHANGES: Record<AppointmentStatus, readonly AppointmentStatus[]> = {
-  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "EXPIRED"],
+  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "AT_RISK", "EXPIRED"],
   CONFIRMED: ["COMPLETED", "CANCELLED", "NO_SHOW"],
+  // Confirma tarde (si nadie tomó el hueco), llega igual o se pierde.
+  AT_RISK: ["CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "EXPIRED"],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],

@@ -10,6 +10,7 @@ export const appointmentStatus = pgEnum("appointment_status", [
   "CANCELLED",
   "NO_SHOW",
   "EXPIRED",
+  "AT_RISK",
 ]);
 
 export const barbers = pgTable("barbers", {
@@ -83,7 +84,7 @@ export const scheduleBlocks = pgTable(
   ],
 );
 
-// La restricción que impide solapes por barbero está en la migración 0001 (Drizzle no modela EXCLUDE).
+// La restricción que impide solapes por barbero está en las migraciones 0001 y 0009 (Drizzle no modela EXCLUDE).
 export const appointments = pgTable(
   "appointments",
   {
@@ -95,6 +96,10 @@ export const appointments = pgTable(
     endsAt: instant("ends_at").notNull(),
     status: appointmentStatus().notNull().default("PENDING"),
     createdAt: instant("created_at").notNull().defaultNow(),
+    /** Cuándo pasó a CONFIRMED (al nacer, por el cliente o por el barbero). */
+    confirmedAt: instant("confirmed_at"),
+    /** Cuándo se le pidió confirmar, 35 min antes. */
+    reminderSentAt: instant("reminder_sent_at"),
   },
   (t) => [
     check("appointments_range", sql`${t.endsAt} > ${t.startsAt}`),

@@ -49,11 +49,20 @@ describe("Appointment", () => {
     expect(a.blocksSchedule()).toBe(true);
   });
 
-  test("cancelada o no-show deja libre la agenda", () => {
+  test("solo pendiente y confirmada ocupan agenda: en riesgo, atendida, cancelada, no vino y vencida la dejan libre", () => {
     const a = Appointment.book(base);
-    for (const status of [AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW]) {
-      expect(Appointment.restore({ ...a, status }).blocksSchedule()).toBe(false);
+    const { PENDING, CONFIRMED, ...free } = AppointmentStatus;
+    for (const status of [PENDING, CONFIRMED]) expect(Appointment.restore({ ...a, status }).blocksSchedule()).toBe(true);
+    for (const status of Object.values(free)) expect(Appointment.restore({ ...a, status }).blocksSchedule()).toBe(false);
+  });
+
+  test("una cita en riesgo puede confirmarse, atenderse o vencer; una confirmada no pasa a riesgo", () => {
+    const atRisk = Appointment.book(base).changeStatus(AppointmentStatus.AT_RISK);
+    for (const status of ["CONFIRMED", "COMPLETED", "CANCELLED", "NO_SHOW", "EXPIRED"] as const) {
+      expect(atRisk.changeStatus(status).status).toBe(status);
     }
+    expect(() => Appointment.book(base).changeStatus("CONFIRMED").changeStatus("AT_RISK")).toThrow(InvalidStatusChangeError);
+    expect(() => atRisk.changeStatus("EXPIRED").changeStatus("AT_RISK")).toThrow(InvalidStatusChangeError);
   });
 
   test("sigue el recorrido de una cita", () => {

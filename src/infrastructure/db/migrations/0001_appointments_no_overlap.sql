@@ -1,5 +1,5 @@
 -- Un barbero no puede tener dos citas que ocupan agenda solapadas, ni aunque lleguen a la vez.
--- Los estados deben coincidir con BLOCKING_STATUSES de src/core/entities/appointment.ts.
+-- Los estados deben coincidir con BLOCKING_STATUSES de src/core/entities/appointment.ts (la 0009 la sustituye).
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 --> statement-breakpoint
 ALTER TABLE "appointments" ADD CONSTRAINT "appointments_no_overlap"

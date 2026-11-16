@@ -118,6 +118,27 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     await expect(deps.appointments.save(rival)).rejects.toThrow(SlotUnavailableError);
   });
 
+  test("una cita en riesgo deja tomar su hueco; si ya lo tomaron, no puede volver a confirmarse", async () => {
+    const first = await book(utc("15:00"));
+    const atRisk = first.changeStatus(AppointmentStatus.AT_RISK);
+    expect(await deps.appointments.updateStatus(atRisk, AppointmentStatus.PENDING)).toBe(true);
+    const rival = Appointment.book({ ...first, id: crypto.randomUUID(), customerName: "Rival", start: utc("15:00") });
+    await deps.appointments.save(rival);
+    await expect(
+      deps.appointments.updateStatus(atRisk.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.AT_RISK),
+    ).rejects.toThrow(SlotUnavailableError);
+    expect((await deps.appointments.findById(first.id))?.status).toBe(AppointmentStatus.AT_RISK);
+  });
+
+  test("guarda cuándo se confirmó la cita", async () => {
+    const booked = await book(utc("15:00"));
+    const confirmedAt = async () =>
+      (await db.select({ at: schema.appointments.confirmedAt }).from(schema.appointments)).map((r) => r.at);
+    expect(await confirmedAt()).toEqual([null]);
+    await deps.appointments.updateStatus(booked.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.PENDING);
+    expect((await confirmedAt())[0]).toBeInstanceOf(Date);
+  });
+
   test("dos reservas simultáneas de un cliente nuevo comparten cliente", async () => {
     const [a, b] = await Promise.all([book(utc("15:00"), "900000003"), book(utc("16:00"), "+51 900 000 003")]);
     expect(a.customerId).toBe(b.customerId);

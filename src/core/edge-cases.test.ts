@@ -130,9 +130,4 @@ describe("Appointment", () => {
     expect(confirmed.customerName).toBe("Pedro");
     expect(confirmed.blocksSchedule()).toBe(true);
   });
-
-  test("una cita atendida sigue ocupando su hueco en la agenda", () => {
-    const done = Appointment.restore({ ...Appointment.book(base), status: AppointmentStatus.COMPLETED });
-    expect(done.blocksSchedule()).toBe(true);
-  });
 });

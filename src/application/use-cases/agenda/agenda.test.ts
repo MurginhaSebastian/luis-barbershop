@@ -107,6 +107,12 @@ describe("GetAgendaUseCase", () => {
     expect(agenda.day.map((i) => i.id)).toEqual(["vieja"]);
   });
 
+  test("las citas en riesgo siguen en la lista de pendientes: aún pueden confirmar", async () => {
+    const repos = makeRepos([book("riesgo", "2026-11-02T15:00:00Z").changeStatus(AppointmentStatus.AT_RISK)]);
+    const { pending } = await new GetAgendaUseCase(repos).execute({ date: "2026-11-03" });
+    expect(pending.map((i) => [i.id, i.status])).toEqual([["riesgo", AppointmentStatus.AT_RISK]]);
+  });
+
   test("muestra el barbero aunque ya no esté activo", async () => {
     const repos = makeRepos([book("a1", "2026-11-02T15:00:00Z", "b2")]);
     const { day } = await new GetAgendaUseCase(repos).execute({ date: "2026-11-02" });

@@ -40,8 +40,8 @@ export async function loginAction(_prev: LoginState, form: FormData): Promise<Lo
   redirect("/panel");
 }
 
-// Vencer es cosa del sistema (plazo de confirmación), no un botón del panel.
-const statusChange = z.object({ id: z.uuid(), status: z.enum(AppointmentStatus).exclude(["EXPIRED"]) });
+// Poner en riesgo y vencer es cosa del sistema (ciclo de confirmaciones), no un botón del panel.
+const statusChange = z.object({ id: z.uuid(), status: z.enum(AppointmentStatus).exclude(["EXPIRED", "AT_RISK"]) });
 
 export async function changeStatusAction(id: string, status: AppointmentStatus): Promise<{ error?: string }> {
   await requirePanelSession();

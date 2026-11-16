@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
-import { Appointment, type AppointmentStatus } from "@/core/entities/appointment";
+import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import { TimeSlot } from "@/core/entities/time-slot";
 import { SlotUnavailableError } from "@/core/errors/domain-errors";
 import type { Db } from "../client";
@@ -15,6 +15,17 @@ function isOverlapViolation(error: unknown): boolean {
   }
   return false;
 }
+
+/**
+ * La restricción anti-solape se comprueba tras escribir: dos escrituras simultáneas del mismo barbero se
+ * esperarían entre sí (deadlock). En fila por barbero, la segunda ve la primera ya guardada.
+ */
+function lockBarber(tx: Pick<Db, "execute">, barberId: string) {
+  return tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${barberId}, 0))`);
+}
+
+/** Momento en que entra en CONFIRMED, con el reloj de la base (como created_at). */
+const confirmedNow = (status: AppointmentStatus) => (status === AppointmentStatus.CONFIRMED ? { confirmedAt: sql`now()` } : {});
 
 export class DrizzleAppointmentRepository implements IAppointmentRepository {
   constructor(private readonly db: Db) {}
@@ -95,12 +106,21 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
   }
 
   async updateStatus(next: Appointment, expected: AppointmentStatus): Promise<boolean> {
-    const changed = await this.db
-      .update(appointments)
-      .set({ status: next.status })
-      .where(and(eq(appointments.id, next.id), eq(appointments.status, expected)))
-      .returning({ id: appointments.id });
-    return changed.length > 0;
+    try {
+      return await this.db.transaction(async (tx) => {
+        // De AT_RISK a CONFIRMED vuelve a ocupar agenda: otro cliente pudo tomar el hueco mientras tanto.
+        await lockBarber(tx, next.barberId);
+        const changed = await tx
+          .update(appointments)
+          .set({ status: next.status, ...confirmedNow(next.status) })
+          .where(and(eq(appointments.id, next.id), eq(appointments.status, expected)))
+          .returning({ id: appointments.id });
+        return changed.length > 0;
+      });
+    } catch (error) {
+      if (isOverlapViolation(error)) throw new SlotUnavailableError();
+      throw error;
+    }
   }
 
   /** Inserta o actualiza la cita y reemplaza sus líneas, todo en una transacción. */
@@ -116,12 +136,10 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     };
     try {
       await this.db.transaction(async (tx) => {
-        // La restricción anti-solape se comprueba tras insertar: dos reservas simultáneas del mismo barbero
-        // se esperarían entre sí (deadlock). En fila por barbero, la segunda ve la primera ya guardada.
-        await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${appointment.barberId}, 0))`);
+        await lockBarber(tx, appointment.barberId);
         await tx
           .insert(appointments)
-          .values(row)
+          .values({ ...row, ...confirmedNow(row.status) })
           .onConflictDoUpdate({
             target: appointments.id,
             set: { startsAt: row.startsAt, endsAt: row.endsAt, status: row.status },

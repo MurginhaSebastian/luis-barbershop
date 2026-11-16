@@ -16,6 +16,7 @@ const STATUS: Record<AppointmentStatus, { label: string; className: string }> = 
   COMPLETED: { label: "Atendida", className: "border-border text-muted-foreground" },
   CANCELLED: { label: "Cancelada", className: "border-destructive/60 text-destructive" },
   NO_SHOW: { label: "No vino", className: "border-destructive/60 text-destructive" },
+  AT_RISK: { label: "En riesgo: hueco libre", className: "border-destructive/60 text-destructive" },
   EXPIRED: { label: "Vencida, sin confirmar", className: "border-border text-muted-foreground" },
 };
 
@@ -28,7 +29,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
   const { item } = props;
   const [error, setError] = useState<string>();
   const [pending, startTransition] = useTransition();
-  const finished = item.status !== "PENDING" && item.status !== "CONFIRMED";
+  const finished = item.status !== "PENDING" && item.status !== "CONFIRMED" && item.status !== "AT_RISK";
 
   const change = (status: AppointmentStatus, message?: string) => {
     // Se abre aquí, durante el toque: después del await el navegador lo bloquearía.
@@ -69,9 +70,15 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
         </p>
       )}
 
+      {item.status === "AT_RISK" && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          No confirmó a tiempo: otro cliente puede reservar esta hora. Si llega o te avisa, confírmala o márcala atendida.
+        </p>
+      )}
+
       {!finished && (
         <div className="mt-4 flex flex-wrap gap-2">
-          {item.status === "PENDING" && (
+          {item.status !== "CONFIRMED" && (
             <>
               <button type="button" disabled={pending} className={primary} onClick={() => change("CONFIRMED", confirmationMessage(item))}>
                 <MessageCircle aria-hidden className="size-4" />
@@ -82,7 +89,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
               </button>
             </>
           )}
-          {item.status === "CONFIRMED" && (
+          {item.status !== "PENDING" && (
             <>
               <button type="button" disabled={pending} className={primary} onClick={() => change("COMPLETED")}>
                 Atendida

@@ -39,11 +39,12 @@ export class GetAgendaUseCase {
   constructor(private readonly deps: GetAgendaDeps) {}
 
   async execute({ date }: { date: string }): Promise<Agenda> {
-    const [pending, day] = await Promise.all([
+    const [pending, atRisk, day] = await Promise.all([
       this.deps.appointments.findByStatusFrom(AppointmentStatus.PENDING, this.deps.now()),
+      this.deps.appointments.findByStatusFrom(AppointmentStatus.AT_RISK, this.deps.now()),
       this.deps.appointments.findInRange(shopDayRange(date)),
     ]);
-    const all = [...pending, ...day];
+    const all = [...pending, ...atRisk, ...day];
     const [customers, barbers, confirmations] = await Promise.all([
       this.deps.customers.findByIds([...new Set(all.map((a) => a.customerId))]),
       this.deps.barbers.findByIds([...new Set(all.map((a) => a.barberId))]),
@@ -71,6 +72,6 @@ export class GetAgendaUseCase {
           }),
         }));
 
-    return { pending: toItems(pending), day: toItems(day) };
+    return { pending: toItems([...pending, ...atRisk]), day: toItems(day) };
   }
 }
