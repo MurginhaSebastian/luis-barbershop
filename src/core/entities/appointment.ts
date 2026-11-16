@@ -1,5 +1,6 @@
 import { InvalidAppointmentError, InvalidStatusChangeError } from "../errors/domain-errors";
-import { TimeSlot } from "./time-slot";
+import { BORN_CONFIRMED_UNDER_MINUTES } from "../scheduling/booking-policy";
+import { MINUTE_MS, TimeSlot } from "./time-slot";
 
 export const AppointmentStatus = {
   PENDING: "PENDING",
@@ -68,8 +69,11 @@ export class Appointment {
     readonly products: readonly ProductLine[],
   ) {}
 
-  /** Nueva reserva: nace PENDING y dura la suma de sus servicios. */
-  static book(input: Omit<AppointmentProps, "slot" | "status"> & { start: Date }): Appointment {
+  /**
+   * Nueva reserva: dura la suma de sus servicios. Nace PENDING si se reserva con 2 h o más de antelación y
+   * CONFIRMED si es con menos (el "cazador de huecos" no tiene tiempo de confirmar: ya viene).
+   */
+  static book(input: Omit<AppointmentProps, "slot" | "status"> & { start: Date; bookedAt: Date }): Appointment {
     if (input.services.length === 0) {
       throw new InvalidAppointmentError("La cita necesita al menos un servicio.");
     }
@@ -77,7 +81,8 @@ export class Appointment {
       throw new InvalidAppointmentError("La cantidad de cada producto debe ser un entero positivo.");
     }
     const slot = TimeSlot.ofMinutes(input.start, totalDuration(input.services));
-    return Appointment.restore({ ...input, slot, status: AppointmentStatus.PENDING });
+    const soon = input.start.getTime() - input.bookedAt.getTime() < BORN_CONFIRMED_UNDER_MINUTES * MINUTE_MS;
+    return Appointment.restore({ ...input, slot, status: soon ? AppointmentStatus.CONFIRMED : AppointmentStatus.PENDING });
   }
 
   /** Reconstruye una cita ya persistida (uso de los repositorios). */

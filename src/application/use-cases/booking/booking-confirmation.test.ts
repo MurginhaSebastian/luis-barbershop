@@ -3,7 +3,7 @@ import { Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import type { BookingConfirmation } from "@/core/entities/confirmation";
 import type { Customer } from "@/core/entities/customer";
 import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "@/core/entities/site";
-import { BookingConfirmationUseCase, type BookingConfirmationDeps } from "./booking-confirmation";
+import { BookingConfirmationUseCase, type BookingConfirmationDeps, EXPIRED_TEMPLATE } from "./booking-confirmation";
 
 const lima = (date: string, hhmm: string) => new Date(`${date}T${hhmm}:00-05:00`);
 const NOW = lima("2026-11-09", "10:00");
@@ -19,6 +19,7 @@ const book = (id: string, customer: Customer) =>
     customerId: customer.id,
     customerName: customer.name,
     start: lima("2026-11-12", "16:00"),
+    bookedAt: new Date("2026-11-01T00:00:00Z"), // con días de antelación: nace pendiente
     services: [{ serviceId: "s1", name: "Corte", durationMinutes: 30, priceCents: 3000 }],
     products: [],
   });
@@ -96,6 +97,11 @@ describe("pedir confirmación al reservar", () => {
     expect(issued).toEqual({ appointmentId: "a1", code: "AAA222", confirmBy: lima("2026-11-09", "12:00") });
     expect(t.confirmations).toEqual([issued]);
     expect(useCase.confirmationNumber).toBe(CONFIRMATION_NUMBER);
+  });
+
+  test("una cita que nace confirmada no pide código", async () => {
+    expect(await useCase.issue(book("a1", PEDRO).changeStatus(AppointmentStatus.CONFIRMED))).toBeNull();
+    expect(t.confirmations).toEqual([]);
   });
 
   test("sin WhatsApp configurado no hay plazo: la cita espera al barbero", async () => {
@@ -192,6 +198,20 @@ describe("confirmar por WhatsApp", () => {
   test("sin WhatsApp configurado no atiende mensajes", async () => {
     const off = new BookingConfirmationUseCase({ ...t.deps, messaging: null });
     expect((await off.handleMessage(message("Confirmo mi cita KRT482"))).kind).toBe("ignored");
+  });
+});
+
+describe("avisar a quien perdió su hora", () => {
+  test("envía la plantilla a cada cliente desplazado, aunque falle con uno", async () => {
+    t.sendTemplate.mockRejectedValueOnce(new Error("Meta caído"));
+    const report = await useCase.notifyReleased([book("a1", PEDRO), book("a2", ANA)]);
+    expect(report).toEqual({ sent: 1, failed: 1 });
+    expect(t.sendTemplate).toHaveBeenLastCalledWith(ANA.phone, EXPIRED_TEMPLATE, [ANA.name, "jue, 12 nov., 16:00"]);
+  });
+
+  test("sin WhatsApp no avisa a nadie", async () => {
+    const off = new BookingConfirmationUseCase({ ...t.deps, messaging: null });
+    expect(await off.notifyReleased([book("a1", PEDRO)])).toEqual({ sent: 0, failed: 0 });
   });
 });
 

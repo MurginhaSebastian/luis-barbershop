@@ -18,6 +18,7 @@ const appointment = (id: string, barberId: string, start: string) =>
     customerId: "c1",
     customerName: "Pedro",
     start: at(start),
+    bookedAt: new Date("2026-11-01T00:00:00Z"), // con días de antelación: nace pendiente
     services: [{ serviceId: "s1", name: "Corte", durationMinutes: 30, priceCents: 3000 }],
     products: [],
   });

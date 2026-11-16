@@ -15,6 +15,7 @@ const appointment = Appointment.book({
   customerId: "c1",
   customerName: "Pedro",
   start: new Date("2026-11-02T15:00:00Z"),
+  bookedAt: new Date("2026-11-01T00:00:00Z"), // con días de antelación: nace pendiente
   services: [
     { serviceId: "s1", name: "Corte", durationMinutes: 30, priceCents: 3000 },
     { serviceId: "s2", name: "Barba", durationMinutes: 30, priceCents: 2000 },

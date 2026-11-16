@@ -3,9 +3,10 @@ import { Appointment } from "@/core/entities/appointment";
 import { BookingWindowError, SlotUnavailableError, TooManyActiveAppointmentsError } from "@/core/errors/domain-errors";
 import { createAppointmentAction } from "./actions";
 
-const { execute, notifyNewBooking, issue, confirmation, afterResponse } = vi.hoisted(() => ({
+const { execute, notifyNewBooking, notifyReleased, issue, confirmation, afterResponse } = vi.hoisted(() => ({
   execute: vi.fn(),
   notifyNewBooking: vi.fn(),
+  notifyReleased: vi.fn(),
   issue: vi.fn(),
   confirmation: { number: null as string | null },
   afterResponse: [] as (() => Promise<void>)[],
@@ -16,6 +17,7 @@ vi.mock("@/infrastructure/container", () => ({
     managePush: { notifyNewBooking },
     bookingConfirmation: {
       issue,
+      notifyReleased,
       get confirmationNumber() {
         return confirmation.number;
       },
@@ -41,6 +43,7 @@ const idle = { status: "idle" } as const;
 beforeEach(() => {
   execute.mockReset();
   notifyNewBooking.mockReset();
+  notifyReleased.mockReset().mockResolvedValue({ sent: 0, failed: 0 });
   issue.mockReset().mockResolvedValue(null);
   confirmation.number = null;
   afterResponse.length = 0;
@@ -54,15 +57,22 @@ const booked = () =>
     customerId: "c1",
     customerName: "Cliente Prueba",
     start: new Date(START),
+    bookedAt: new Date("2026-11-01T00:00:00Z"), // con días de antelación: nace pendiente
     services: [{ serviceId: SERVICE, name: "Corte", durationMinutes: 30, priceCents: 3000 }],
     products: [],
   });
 
 describe("createAppointmentAction", () => {
   test("una reserva válida devuelve lo que muestra la confirmación", async () => {
-    execute.mockResolvedValue(booked());
+    execute.mockResolvedValue({ appointment: booked(), displaced: [] });
 
-    expect(await createAppointmentAction(idle, form())).toEqual({ status: "ok", start: START, totalCents: 3000, barberId: BARBER });
+    expect(await createAppointmentAction(idle, form())).toEqual({
+      status: "ok",
+      start: START,
+      totalCents: 3000,
+      barberId: BARBER,
+      confirmed: false,
+    });
     expect(execute).toHaveBeenCalledWith(
       expect.objectContaining({ barberId: BARBER, customer: { name: "Cliente Prueba", phone: "900000001" } }),
     );
@@ -111,7 +121,7 @@ describe("createAppointmentAction", () => {
   describe("aviso al panel", () => {
     test("se envía después de responder, con la cita reservada", async () => {
       const appointment = booked();
-      execute.mockResolvedValue(appointment);
+      execute.mockResolvedValue({ appointment, displaced: [] });
       notifyNewBooking.mockResolvedValue({ sent: 1, removed: 0, failed: 0 });
 
       await createAppointmentAction(idle, form());
@@ -123,7 +133,7 @@ describe("createAppointmentAction", () => {
 
     test("si falla, se registra y la reserva sigue hecha", async () => {
       const log = vi.spyOn(console, "error").mockImplementation(() => {});
-      execute.mockResolvedValue(booked());
+      execute.mockResolvedValue({ appointment: booked(), displaced: [] });
       notifyNewBooking.mockRejectedValue(new Error("push caído"));
 
       expect(await createAppointmentAction(idle, form())).toMatchObject({ status: "ok" });
@@ -133,11 +143,25 @@ describe("createAppointmentAction", () => {
 
     test("los dispositivos que no lo recibieron quedan en el registro", async () => {
       const log = vi.spyOn(console, "error").mockImplementation(() => {});
-      execute.mockResolvedValue(booked());
+      execute.mockResolvedValue({ appointment: booked(), displaced: [] });
       notifyNewBooking.mockResolvedValue({ sent: 1, removed: 0, failed: 1 });
       await createAppointmentAction(idle, form());
       await afterResponse[0]();
       expect(log).toHaveBeenCalledWith("aviso de reserva", { sent: 1, removed: 0, failed: 1 });
+    });
+
+    test("avisa por WhatsApp a quien perdió su hora en riesgo, después de responder", async () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      const displaced = [booked().changeStatus("AT_RISK").changeStatus("EXPIRED")];
+      execute.mockResolvedValue({ appointment: booked(), displaced });
+      notifyNewBooking.mockResolvedValue({ sent: 1, removed: 0, failed: 0 });
+      notifyReleased.mockResolvedValue({ sent: 0, failed: 1 });
+
+      await createAppointmentAction(idle, form());
+      expect(notifyReleased).not.toHaveBeenCalled();
+      await afterResponse[0]();
+      expect(notifyReleased).toHaveBeenCalledWith(displaced);
+      expect(log).toHaveBeenCalledWith("aviso a clientes desplazados", { sent: 0, failed: 1 });
     });
 
     test("una reserva rechazada no avisa", async () => {
@@ -150,7 +174,7 @@ describe("createAppointmentAction", () => {
   describe("confirmación por WhatsApp", () => {
     test("con WhatsApp devuelve el código, el plazo y a qué número escribir", async () => {
       const appointment = booked();
-      execute.mockResolvedValue(appointment);
+      execute.mockResolvedValue({ appointment, displaced: [] });
       confirmation.number = "51911111111";
       issue.mockResolvedValue({ appointmentId: "a1", code: "KRT482", confirmBy: new Date("2026-11-01T17:00:00Z") });
 
@@ -162,7 +186,7 @@ describe("createAppointmentAction", () => {
     });
 
     test("sin WhatsApp la reserva no lleva confirmación", async () => {
-      execute.mockResolvedValue(booked());
+      execute.mockResolvedValue({ appointment: booked(), displaced: [] });
       const state = await createAppointmentAction(idle, form());
       expect(state).toMatchObject({ status: "ok" });
       expect(state).not.toHaveProperty("confirmation", expect.anything());
@@ -170,7 +194,7 @@ describe("createAppointmentAction", () => {
 
     test("si falla, la reserva sigue hecha y la confirma el barbero", async () => {
       const log = vi.spyOn(console, "error").mockImplementation(() => {});
-      execute.mockResolvedValue(booked());
+      execute.mockResolvedValue({ appointment: booked(), displaced: [] });
       confirmation.number = "51911111111";
       issue.mockRejectedValue(new Error("base caída"));
       const state = await createAppointmentAction(idle, form());

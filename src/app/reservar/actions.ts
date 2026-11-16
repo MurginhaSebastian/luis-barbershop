@@ -2,7 +2,7 @@
 
 import { after } from "next/server";
 import { z } from "zod";
-import type { Appointment } from "@/core/entities/appointment";
+import { type Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import { DomainError, SlotUnavailableError } from "@/core/errors/domain-errors";
 import { getUseCases } from "@/infrastructure/container";
 import type { BookingState } from "@/presentation/components/booking/booking-state";
@@ -22,10 +22,10 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
 
   const { name, phone, ...booking } = parsed.data;
   try {
-    const { createAppointment, managePush } = getUseCases();
-    const appointment = await createAppointment.execute({ ...booking, customer: { name, phone } });
+    const { createAppointment, managePush, bookingConfirmation } = getUseCases();
+    const { appointment, displaced } = await createAppointment.execute({ ...booking, customer: { name, phone } });
     const confirmation = await requestConfirmation(appointment);
-    // Después de responder: el cliente no espera al aviso y un aviso fallido no deshace la reserva.
+    // Después de responder: el cliente no espera a los avisos y un aviso fallido no deshace la reserva.
     after(async () => {
       try {
         const report = await managePush.notifyNewBooking(appointment);
@@ -33,12 +33,20 @@ export async function createAppointmentAction(_prev: BookingState, form: FormDat
       } catch (error) {
         console.error("aviso de reserva", error);
       }
+      try {
+        // Quien no confirmó a tiempo y perdió su hora: que no venga en balde.
+        const report = await bookingConfirmation.notifyReleased(displaced);
+        if (report.failed > 0) console.error("aviso a clientes desplazados", report);
+      } catch (error) {
+        console.error("aviso a clientes desplazados", error);
+      }
     });
     return {
       status: "ok",
       start: appointment.slot.start.toISOString(),
       totalCents: appointment.totalCents,
       barberId: appointment.barberId,
+      confirmed: appointment.status === AppointmentStatus.CONFIRMED,
       confirmation: confirmation ?? undefined,
     };
   } catch (error) {

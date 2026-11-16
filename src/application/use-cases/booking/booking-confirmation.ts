@@ -76,7 +76,8 @@ export class BookingConfirmationUseCase {
    * vencerla sería castigar al cliente por algo que no podía hacer.
    */
   async issue(appointment: Appointment): Promise<BookingConfirmation | null> {
-    if (!this.enabled) return null;
+    // Una cita que nace confirmada (reservada con menos de 2 h) no tiene nada que confirmar.
+    if (!this.enabled || appointment.status !== AppointmentStatus.PENDING) return null;
     const confirmation: BookingConfirmation = {
       appointmentId: appointment.id,
       code: confirmationCode(this.deps.randomBytes(CONFIRMATION_CODE_BYTES)),
@@ -135,21 +136,34 @@ export class BookingConfirmationUseCase {
    * Sin WhatsApp no vence nada: nadie habría podido confirmar. Un aviso fallido no impide vencer las demás.
    */
   async expireOverdue(): Promise<ExpiryReport> {
-    const report: ExpiryReport = { expired: 0, failed: 0 };
-    const messaging = this.deps.messaging;
-    if (!messaging) return report;
+    const expired: Appointment[] = [];
+    if (!this.deps.messaging) return { expired: 0, failed: 0 };
     for (const { appointmentId } of await this.deps.confirmations.findOverdue(this.deps.now())) {
       const appointment = await this.deps.appointments.findById(appointmentId);
       if (appointment?.status !== AppointmentStatus.PENDING) continue;
       // Solo si sigue pendiente: si el cliente confirmó en este instante, gana su confirmación.
-      if (!(await this.deps.appointments.updateStatus(appointment.changeStatus(AppointmentStatus.EXPIRED), AppointmentStatus.PENDING))) {
-        continue;
-      }
-      report.expired++;
+      const next = appointment.changeStatus(AppointmentStatus.EXPIRED);
+      if (await this.deps.appointments.updateStatus(next, AppointmentStatus.PENDING)) expired.push(next);
+    }
+    const { failed } = await this.notifyReleased(expired);
+    return { expired: expired.length, failed };
+  }
+
+  /**
+   * Avisa a cada cliente de que su hora quedó libre por no confirmar a tiempo (otro la tomó o venció), con la
+   * plantilla aprobada: el cliente no ha escrito en 24 h. Un aviso fallido no impide los demás.
+   */
+  async notifyReleased(appointments: readonly Appointment[]): Promise<{ sent: number; failed: number }> {
+    const report = { sent: 0, failed: 0 };
+    const messaging = this.deps.messaging;
+    if (!messaging || appointments.length === 0) return report;
+    const customers = await this.deps.customers.findByIds([...new Set(appointments.map((a) => a.customerId))]);
+    for (const appointment of appointments) {
       try {
-        const [customer] = await this.deps.customers.findByIds([appointment.customerId]);
+        const customer = customers.find((c) => c.id === appointment.customerId);
         if (!customer) throw new Error(`Cliente ${appointment.customerId} no encontrado`);
         await messaging.sendTemplate(customer.phone, EXPIRED_TEMPLATE, [appointment.customerName, shopDateTime(appointment.slot.start)]);
+        report.sent++;
       } catch {
         report.failed++;
       }

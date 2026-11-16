@@ -17,6 +17,7 @@ const book = (id: string, start: string, barberId = "b1") =>
     customerId: "c1",
     customerName: "Pedro",
     start: new Date(start),
+    bookedAt: new Date("2026-11-01T00:00:00Z"), // con días de antelación: nace pendiente
     services: [service],
     products: [product],
   });

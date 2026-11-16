@@ -86,10 +86,13 @@ function makeRepos() {
         appointments.filter((a) => a.barberId === barberId && a.slot.overlaps(range)),
       findByCustomerFrom: async (customerId: string, from: Date) =>
         appointments.filter((a) => a.customerId === customerId && a.slot.end > from),
-      save: async (a: Appointment) => void appointments.push(a),
+      save: async (a: Appointment, displacing: readonly Appointment[] = []) => {
+        for (const d of displacing) appointments.splice(appointments.findIndex((x) => x.id === d.id), 1, d.changeStatus("EXPIRED"));
+        appointments.push(a);
+      },
       updateStatus: async () => false,
     },
-    now: () => NOW,
+    now: (): Date => NOW,
   };
 }
 
@@ -103,7 +106,7 @@ beforeEach(() => {
   create = new CreateAppointmentUseCase(repos);
 });
 
-const book = (overrides: Partial<Parameters<CreateAppointmentUseCase["execute"]>[0]> = {}) =>
+const reserve = (overrides: Partial<Parameters<CreateAppointmentUseCase["execute"]>[0]> = {}) =>
   create.execute({
     barberId: "b1",
     serviceIds: ["corte"],
@@ -111,6 +114,7 @@ const book = (overrides: Partial<Parameters<CreateAppointmentUseCase["execute"]>
     start: utc("15:00"),
     ...overrides,
   });
+const book = async (overrides: Parameters<typeof reserve>[0] = {}) => (await reserve(overrides)).appointment;
 
 describe("GetAvailableSlotsUseCase", () => {
   test("la duración es la suma de los servicios elegidos", async () => {
@@ -191,6 +195,51 @@ describe("sin preferencia de barbero", () => {
   });
 });
 
+describe("estado al nacer y huecos en riesgo", () => {
+  const at = (now: string) => {
+    repos.now = () => utc(now);
+    create = new CreateAppointmentUseCase(repos);
+  };
+  const otro = { name: "Cazador", phone: "900000009" };
+  const putAtRisk = (a: Appointment) =>
+    repos.data.appointments.splice(repos.data.appointments.indexOf(a), 1, a.changeStatus(AppointmentStatus.AT_RISK));
+
+  test("con menos de 2 h nace confirmada; con 2 h o más, pendiente", async () => {
+    at("14:00"); // 9:00 en Lima
+    expect((await book({ start: utc("15:30") })).status).toBe(AppointmentStatus.CONFIRMED); // faltan 90 min
+    expect((await book({ start: utc("16:00"), customer: otro })).status).toBe(AppointmentStatus.PENDING); // faltan 120
+  });
+
+  test("escenario B: quien reserva a última hora toma el hueco en riesgo y el primero queda vencido", async () => {
+    at("10:00");
+    const first = await book({ start: utc("15:00") });
+    putAtRisk(first);
+    at("14:50"); // faltan 10 min
+    expect(starts(await getSlots.execute({ barberId: "b1", serviceIds: ["corte"], date: DATE }))[0]).toBe("15:00");
+
+    const { appointment, displaced } = await reserve({ start: utc("15:00"), customer: otro });
+    expect(appointment.status).toBe(AppointmentStatus.CONFIRMED);
+    expect(displaced.map((a) => [a.id, a.status])).toEqual([[first.id, AppointmentStatus.EXPIRED]]);
+    expect(repos.data.appointments.find((a) => a.id === first.id)?.status).toBe(AppointmentStatus.EXPIRED);
+  });
+
+  test("sin preferencia, antes otro barbero libre que desplazar a quien aún puede llegar", async () => {
+    at("10:00");
+    putAtRisk(await book({ start: utc("15:00") }));
+    at("14:50");
+    const { appointment, displaced } = await reserve({ barberId: null, start: utc("15:00"), customer: otro });
+    expect(appointment.barberId).toBe("b2");
+    expect(displaced).toEqual([]);
+  });
+
+  test("una cita en riesgo no cuenta para el máximo de citas del celular", async () => {
+    at("10:00");
+    putAtRisk(await book({ start: utc("15:00") }));
+    await book({ start: utc("16:00") });
+    expect((await book({ start: utc("17:00") })).status).toBe(AppointmentStatus.PENDING);
+  });
+});
+
 describe("CreateAppointmentUseCase", () => {
   test("guarda la cita PENDING con foto de precios y productos", async () => {
     const a = await book({ serviceIds: ["corte", "barba"], products: [{ productId: "cera", quantity: 1 }] });
@@ -208,7 +257,7 @@ describe("CreateAppointmentUseCase", () => {
   });
 
   test("rechaza reservas fuera de la ventana", async () => {
-    await expect(book({ start: new Date("2026-11-01T12:30:00Z") })).rejects.toThrow(BookingWindowError);
+    await expect(book({ start: new Date("2026-11-01T12:03:00Z") })).rejects.toThrow(BookingWindowError);
     await expect(book({ start: new Date("2026-12-07T15:00:00Z") })).rejects.toThrow(BookingWindowError);
   });
 

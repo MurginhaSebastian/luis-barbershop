@@ -124,7 +124,7 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
   }
 
   /** Inserta o actualiza la cita y reemplaza sus líneas, todo en una transacción. */
-  async save(appointment: Appointment): Promise<void> {
+  async save(appointment: Appointment, displacing: readonly Appointment[] = []): Promise<void> {
     const row = {
       id: appointment.id,
       barberId: appointment.barberId,
@@ -137,6 +137,14 @@ export class DrizzleAppointmentRepository implements IAppointmentRepository {
     try {
       await this.db.transaction(async (tx) => {
         await lockBarber(tx, appointment.barberId);
+        for (const { id } of displacing) {
+          const expired = await tx
+            .update(appointments)
+            .set({ status: AppointmentStatus.EXPIRED })
+            .where(and(eq(appointments.id, id), eq(appointments.status, AppointmentStatus.AT_RISK)))
+            .returning({ id: appointments.id });
+          if (expired.length === 0) throw new SlotUnavailableError();
+        }
         await tx
           .insert(appointments)
           .values({ ...row, ...confirmedNow(row.status) })

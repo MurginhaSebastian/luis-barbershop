@@ -34,6 +34,7 @@ describe("Appointment", () => {
     customerId: "c1",
     customerName: "Cliente Prueba",
     start: at("2026-11-02T15:00:00Z"),
+    bookedAt: new Date("2026-11-01T00:00:00Z"), // con días de antelación: nace pendiente
     services: [
       { serviceId: "s1", name: "Corte", durationMinutes: 30, priceCents: 3000 },
       { serviceId: "s2", name: "Barba", durationMinutes: 15, priceCents: 1500 },
@@ -63,6 +64,15 @@ describe("Appointment", () => {
     }
     expect(() => Appointment.book(base).changeStatus("CONFIRMED").changeStatus("AT_RISK")).toThrow(InvalidStatusChangeError);
     expect(() => atRisk.changeStatus("EXPIRED").changeStatus("AT_RISK")).toThrow(InvalidStatusChangeError);
+  });
+
+  test("con menos de 2 h de antelación nace confirmada; con 2 h o más, pendiente", () => {
+    const start = base.start.getTime();
+    const bookedMinutesBefore = (m: number) => Appointment.book({ ...base, bookedAt: new Date(start - m * 60_000) }).status;
+    expect(bookedMinutesBefore(119)).toBe(AppointmentStatus.CONFIRMED);
+    expect(bookedMinutesBefore(10)).toBe(AppointmentStatus.CONFIRMED);
+    expect(bookedMinutesBefore(120)).toBe(AppointmentStatus.PENDING);
+    expect(bookedMinutesBefore(3 * 24 * 60)).toBe(AppointmentStatus.PENDING);
   });
 
   test("sigue el recorrido de una cita", () => {
@@ -150,8 +160,10 @@ describe("availableSlots", () => {
   });
 
   test("respeta la antelación mínima y el máximo de días", () => {
-    const soon = at("2026-11-02T15:10:00Z"); // 10:10 en Lima: hasta las 12:00 no hay 2 h de antelación
-    expect(starts(availableSlots({ date: "2026-11-02", hours: [hours[0]], busy: [], durationMinutes: 30, now: soon }))[0]).toBe("17:30");
+    const soon = at("2026-11-02T15:26:00Z"); // 10:26 en Lima: las 10:30 aún se puede (4 min no)
+    expect(starts(availableSlots({ date: "2026-11-02", hours: [hours[0]], busy: [], durationMinutes: 30, now: soon }))[0]).toBe("16:00");
+    const early = at("2026-11-02T15:20:00Z"); // 10:20: las 10:30 sí, faltan 10 min
+    expect(starts(availableSlots({ date: "2026-11-02", hours: [hours[0]], busy: [], durationMinutes: 30, now: early }))[0]).toBe("15:30");
     expect(availableSlots({ date: "2026-12-03", hours, busy: [], durationMinutes: 30, now })).toEqual([]);
   });
 });

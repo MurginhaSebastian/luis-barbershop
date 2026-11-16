@@ -16,6 +16,7 @@ export function BookingConfirmation(props: {
   barberName: string;
   services: string[];
   totalCents: number;
+  confirmed: boolean;
   confirmation?: Confirmation;
 }) {
   const { confirmation } = props;
@@ -28,7 +29,7 @@ export function BookingConfirmation(props: {
     <section className="mx-auto mt-8 max-w-lg rounded-3xl border-2 border-primary/70 p-8 text-center">
       <CheckCircle2 aria-hidden className="mx-auto size-12 text-primary" />
       <h2 ref={heading} tabIndex={-1} className="mt-4 font-heading text-4xl text-primary outline-none">
-        Reserva registrada
+        {props.confirmed ? "Reserva confirmada" : "Reserva registrada"}
       </h2>
       <dl className="mt-6 space-y-1 text-lg">
         <div>
@@ -80,7 +81,9 @@ export function BookingConfirmation(props: {
       ) : (
         <>
           <p className="mx-auto mt-6 max-w-sm leading-relaxed">
-            Tu cita queda pendiente hasta que te escribamos por WhatsApp para confirmarla. Pagas en el local.
+            {props.confirmed
+              ? "Te esperamos: tu hora ya es tuya. Pagas en el local."
+              : "Tu cita queda pendiente hasta que te escribamos por WhatsApp para confirmarla. Pagas en el local."}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/" className={ctaClass}>

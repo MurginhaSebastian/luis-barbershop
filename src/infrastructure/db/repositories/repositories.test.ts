@@ -82,14 +82,16 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     await db.insert(schema.businessHours).values({ weekday: 1, openMinute: 600, closeMinute: 720 });
   });
 
-  const book = (start: Date, phone = "900000001") =>
-    new CreateAppointmentUseCase(deps).execute({
-      barberId: BARBER,
-      serviceIds: [CORTE],
-      products: [{ productId: CERA, quantity: 2 }],
-      customer: { name: "Cliente Prueba", phone },
-      start,
-    });
+  const book = async (start: Date, phone = "900000001") =>
+    (
+      await new CreateAppointmentUseCase(deps).execute({
+        barberId: BARBER,
+        serviceIds: [CORTE],
+        products: [{ productId: CERA, quantity: 2 }],
+        customer: { name: "Cliente Prueba", phone },
+        start,
+      })
+    ).appointment;
 
   test("reserva de punta a punta y la lee de vuelta con sus líneas", async () => {
     await db.insert(schema.scheduleBlocks).values({ barberId: null, startsAt: utc("16:30"), endsAt: utc("17:00") });
@@ -112,6 +114,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       customerId: first.customerId,
       customerName: "Rival",
       start: utc("15:15"),
+      bookedAt: NOW,
       services: first.services,
       products: [],
     });
@@ -122,12 +125,33 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     const first = await book(utc("15:00"));
     const atRisk = first.changeStatus(AppointmentStatus.AT_RISK);
     expect(await deps.appointments.updateStatus(atRisk, AppointmentStatus.PENDING)).toBe(true);
-    const rival = Appointment.book({ ...first, id: crypto.randomUUID(), customerName: "Rival", start: utc("15:00") });
+    const rival = Appointment.book({ ...first, id: crypto.randomUUID(), customerName: "Rival", start: utc("15:00"), bookedAt: NOW });
     await deps.appointments.save(rival);
     await expect(
       deps.appointments.updateStatus(atRisk.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.AT_RISK),
     ).rejects.toThrow(SlotUnavailableError);
     expect((await deps.appointments.findById(first.id))?.status).toBe(AppointmentStatus.AT_RISK);
+  });
+
+  test("tomar un hueco en riesgo vence la cita anterior en la misma transacción", async () => {
+    const first = await book(utc("15:00"));
+    const atRisk = first.changeStatus(AppointmentStatus.AT_RISK);
+    await deps.appointments.updateStatus(atRisk, AppointmentStatus.PENDING);
+    const hunter = Appointment.book({ ...first, id: crypto.randomUUID(), start: utc("15:00"), bookedAt: utc("14:50") });
+    await deps.appointments.save(hunter, [atRisk]);
+    expect((await deps.appointments.findById(first.id))?.status).toBe(AppointmentStatus.EXPIRED);
+    expect((await deps.appointments.findById(hunter.id))?.status).toBe(AppointmentStatus.CONFIRMED);
+  });
+
+  test("si el cliente en riesgo confirmó justo antes, la nueva reserva no se guarda", async () => {
+    const first = await book(utc("15:00"));
+    const atRisk = first.changeStatus(AppointmentStatus.AT_RISK);
+    await deps.appointments.updateStatus(atRisk, AppointmentStatus.PENDING);
+    await deps.appointments.updateStatus(atRisk.changeStatus(AppointmentStatus.CONFIRMED), AppointmentStatus.AT_RISK);
+    const hunter = Appointment.book({ ...first, id: crypto.randomUUID(), start: utc("15:00"), bookedAt: utc("14:50") });
+    await expect(deps.appointments.save(hunter, [atRisk])).rejects.toThrow(SlotUnavailableError);
+    expect(await deps.appointments.findById(hunter.id)).toBeNull();
+    expect((await deps.appointments.findById(first.id))?.status).toBe(AppointmentStatus.CONFIRMED);
   });
 
   test("guarda cuándo se confirmó la cita", async () => {
@@ -340,7 +364,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     test("sin preferencia, cada barbero recibe una cita y nadie se solapa", async () => {
       await db.insert(schema.barbers).values({ id: OTHER_BARBER, name: "Barbero B" });
       const results = await race(6, null);
-      const booked = results.flatMap((r) => (r.status === "fulfilled" ? [r.value.barberId] : []));
+      const booked = results.flatMap((r) => (r.status === "fulfilled" ? [r.value.appointment.barberId] : []));
       expect(booked.toSorted()).toEqual([BARBER, OTHER_BARBER].toSorted());
       expect(await db.select().from(schema.appointments)).toHaveLength(2);
     });

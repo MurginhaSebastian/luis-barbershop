@@ -16,9 +16,9 @@ const slots = (overrides: Partial<Parameters<typeof availableSlots>[0]>) =>
 
 describe("ventana de reserva, justo en el límite", () => {
   test("la hora exacta de la antelación mínima se puede reservar; un minuto después, no", () => {
-    expect(MIN_ADVANCE_MINUTES).toBe(120);
-    expect(starts(slots({ now: at("2026-11-02T13:00:00Z") }))[0]).toBe("15:00");
-    expect(starts(slots({ now: at("2026-11-02T13:01:00Z") }))[0]).toBe("15:30");
+    expect(MIN_ADVANCE_MINUTES).toBe(5);
+    expect(starts(slots({ now: at("2026-11-02T14:55:00Z") }))[0]).toBe("15:00");
+    expect(starts(slots({ now: at("2026-11-02T14:56:00Z") }))[0]).toBe("15:30");
   });
 
   test("el último instante del plazo máximo se puede reservar; lo siguiente, no", () => {
@@ -29,7 +29,7 @@ describe("ventana de reserva, justo en el límite", () => {
 
   test("la ventana se calcula desde el instante actual", () => {
     const { notBefore, notAfter } = bookingWindow(at("2026-11-01T12:00:00Z"));
-    expect(notBefore.toISOString()).toBe("2026-11-01T14:00:00.000Z");
+    expect(notBefore.toISOString()).toBe("2026-11-01T12:05:00.000Z");
     expect(notAfter.toISOString()).toBe("2026-11-15T12:00:00.000Z");
   });
 });
@@ -117,6 +117,7 @@ describe("Appointment", () => {
     customerId: "c1",
     customerName: "Pedro",
     start: at("2026-11-02T15:00:00Z"),
+    bookedAt: new Date("2026-11-01T00:00:00Z"), // con días de antelación: nace pendiente
     services: [{ serviceId: "s1", name: "Corte", durationMinutes: 45, priceCents: 3550 }],
     products: [],
   };

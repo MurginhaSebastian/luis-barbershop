@@ -1,5 +1,8 @@
 export const SLOT_STEP_MINUTES = 30;
-export const MIN_ADVANCE_MINUTES = 120;
+/** Pocos minutos: el "cazador de huecos" puede tomar la hora de una cita en riesgo (faltan 15 min o menos). */
+export const MIN_ADVANCE_MINUTES = 5;
+/** Con menos antelación que esto no hay tiempo de pedir confirmación: la cita nace confirmada. */
+export const BORN_CONFIRMED_UNDER_MINUTES = 120;
 export const MAX_DAYS_AHEAD = 14;
 export const MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER = 2;
 /** Plazo para confirmar por WhatsApp: 2 h tras reservar, y como tarde 1 h antes de la cita. */

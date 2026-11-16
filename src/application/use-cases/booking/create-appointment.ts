@@ -1,5 +1,6 @@
-import { Appointment, type ProductLine, totalDuration } from "@/core/entities/appointment";
+import { Appointment, AppointmentStatus, type ProductLine, totalDuration } from "@/core/entities/appointment";
 import { type Customer, normalizePhone } from "@/core/entities/customer";
+import { TimeSlot } from "@/core/entities/time-slot";
 import {
   BookingWindowError,
   NotFoundError,
@@ -21,6 +22,12 @@ export interface CreateAppointmentInput {
   start: Date;
 }
 
+export interface BookingResult {
+  appointment: Appointment;
+  /** Citas en riesgo de otros clientes cuyo hueco tomó esta reserva: ya vencieron y falta avisarles. */
+  displaced: Appointment[];
+}
+
 export interface CreateAppointmentDeps extends AvailabilityDeps {
   customers: ICustomerRepository;
   products: IProductRepository;
@@ -29,10 +36,11 @@ export interface CreateAppointmentDeps extends AvailabilityDeps {
 export class CreateAppointmentUseCase {
   constructor(private readonly deps: CreateAppointmentDeps) {}
 
-  async execute(input: CreateAppointmentInput): Promise<Appointment> {
+  async execute(input: CreateAppointmentInput): Promise<BookingResult> {
     const services = await loadBookableServices(this.deps.services, input.serviceIds);
+    const bookedAt = this.deps.now();
 
-    const { notBefore, notAfter } = bookingWindow(this.deps.now());
+    const { notBefore, notAfter } = bookingWindow(bookedAt);
     if (input.start < notBefore || input.start > notAfter) {
       throw new BookingWindowError("La hora elegida está fuera del plazo de reserva.");
     }
@@ -53,6 +61,7 @@ export class CreateAppointmentUseCase {
     const customer = await this.findOrCreateCustomer(input.customer);
     // shortcut: dos reservas simultáneas del mismo celular podrían pasar el límite; bloquear por cliente si se abusa.
     const upcoming = await this.deps.appointments.findByCustomerFrom(customer.id, this.deps.now());
+    // Las citas en riesgo no cuentan: igual que en la agenda, su hueco ya está libre para otros.
     if (upcoming.filter((a) => a.blocksSchedule()).length >= MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER) {
       throw new TooManyActiveAppointmentsError(MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER);
     }
@@ -64,19 +73,33 @@ export class CreateAppointmentUseCase {
       priceCents: s.priceCents,
     }));
 
-    for (const { barberId } of candidates) {
+    // Las citas en riesgo no ocupan agenda: el hueco aparece libre, pero tomarlo desplaza a su cliente.
+    const slot = TimeSlot.ofMinutes(input.start, totalDuration(services));
+    const options = await Promise.all(
+      candidates.map(async ({ barberId }) => ({
+        barberId,
+        displacing: (await this.deps.appointments.findByBarberInRange(barberId, slot)).filter(
+          (a) => a.status === AppointmentStatus.AT_RISK,
+        ),
+      })),
+    );
+    // Sin preferencia, antes un barbero libre del todo que quitarle la hora a quien aún puede llegar.
+    options.sort((a, b) => a.displacing.length - b.displacing.length);
+
+    for (const { barberId, displacing } of options) {
       const appointment = Appointment.book({
         id: crypto.randomUUID(),
         barberId,
         customerId: customer.id,
         customerName: input.customer.name.trim(),
         start: input.start,
+        bookedAt,
         services: lines,
         products,
       });
       try {
-        await this.deps.appointments.save(appointment);
-        return appointment;
+        await this.deps.appointments.save(appointment, displacing);
+        return { appointment, displaced: displacing.map((a) => a.changeStatus(AppointmentStatus.EXPIRED)) };
       } catch (error) {
         // Otra reserva ganó ese hueco justo ahora: sin preferencia, aún puede atenderle otro barbero.
         if (!(error instanceof SlotUnavailableError)) throw error;

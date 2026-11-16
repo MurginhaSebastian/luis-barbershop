@@ -7,6 +7,8 @@ export type BookingState =
       start: string;
       totalCents: number;
       barberId: string;
+      /** Nació confirmada (reservada con menos de 2 h): no hay nada que confirmar. */
+      confirmed: boolean;
       /** Si hay que confirmarla por WhatsApp: el código, hasta cuándo (ISO) y a qué número escribir. */
       confirmation?: { code: string; confirmBy: string; whatsapp: string };
     };
