@@ -208,6 +208,79 @@ test.describe("agenda", () => {
   });
 });
 
+test.describe("línea de tiempo del día", () => {
+  const LUIS = "10000000-0000-4000-8000-000000000001";
+  const INVITADO = "10000000-0000-4000-8000-000000000002";
+  const CORTE = "20000000-0000-4000-8000-000000000001";
+
+  /** Mañana: una cita en riesgo y la que tomó su hora (se cruzan), una larga y otra de otro barbero. */
+  const seedDay = () =>
+    withE2eDatabase(async (db) => {
+      const { rows } = await db.query("SELECT to_char((now() AT TIME ZONE 'America/Lima')::date + 1, 'YYYY-MM-DD') AS day");
+      const day = rows[0].day as string;
+      const add = async (n: number, name: string, barber: string, from: string, minutes: number, status: string) => {
+        const customer = `30000000-0000-4000-8000-00000000000${n}`;
+        const appointment = `40000000-0000-4000-8000-00000000000${n}`;
+        const start = new Date(`${day}T${from}:00-05:00`);
+        await db.query("INSERT INTO customers (id, name, phone) VALUES ($1, $2, $3)", [customer, name, `5190000010${n}`]);
+        await db.query(
+          "INSERT INTO appointments (id, barber_id, customer_id, customer_name, starts_at, ends_at, status) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+          [appointment, barber, customer, name, start, new Date(start.getTime() + minutes * 60_000), status],
+        );
+        await db.query(
+          "INSERT INTO appointment_services (appointment_id, position, service_id, name, duration_minutes, price_cents) VALUES ($1, 0, $2, 'Corte clásico', $3, 3000)",
+          [appointment, CORTE, minutes],
+        );
+      };
+      await add(1, "Cliente en riesgo", LUIS, "10:00", 45, "AT_RISK");
+      await add(2, "Cazador de huecos", LUIS, "10:00", 30, "CONFIRMED");
+      await add(3, "Cliente largo", LUIS, "11:30", 120, "PENDING");
+      await add(4, "Cliente de invitado", INVITADO, "10:00", 30, "CONFIRMED");
+      return day;
+    });
+
+  test("en 320 px: las citas que se cruzan se apilan, miden según su duración y se filtra por barbero", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    const day = await seedDay();
+    await login(page);
+    await page.goto(`/panel?dia=${day}`);
+    const region = page.getByRole("region", { name: /^(Hoy|.*de .*)$/ });
+    const card = (name: string) => region.getByRole("article", { name: new RegExp(name) });
+    await expect(region.getByRole("article")).toHaveCount(4);
+
+    // La cita en riesgo y la que tomó su hora no se tapan: una debajo de la otra.
+    const risk = (await card("Cliente en riesgo").boundingBox())!;
+    const hunter = (await card("Cazador de huecos").boundingBox())!;
+    expect(risk.y + risk.height <= hunter.y || hunter.y + hunter.height <= risk.y).toBe(true);
+    await expect(card("Cliente en riesgo")).toContainText("En riesgo · Hueco libre");
+    await expect(card("Cliente largo")).toContainText("11:30 – 13:30 · 120 min");
+    // Dos horas miden más que media hora.
+    expect((await card("Cliente largo").boundingBox())!.height).toBeGreaterThan(hunter.height);
+    await expect(region.getByText(/^Libre 10:45 – 11:30 · 45 min$/)).toBeVisible();
+
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+
+    await region.getByRole("button", { name: "Barbero invitado" }).click();
+    await expect(region.getByRole("button", { name: "Barbero invitado" })).toHaveAttribute("aria-pressed", "true");
+    await expect(region.getByRole("article")).toHaveCount(1);
+    await region.getByRole("button", { name: "Todos" }).click();
+    await expect(region.getByRole("article")).toHaveCount(4);
+  });
+
+  test("canceladas y vencidas van aparte, debajo de la línea de tiempo", async ({ page }) => {
+    const day = await seedDay();
+    await withE2eDatabase((db) => db.query("UPDATE appointments SET status = 'EXPIRED' WHERE customer_name = 'Cliente en riesgo'"));
+    await login(page);
+    await page.goto(`/panel?dia=${day}`);
+    const timeline = page.getByRole("list", { name: "Línea de tiempo del día" });
+    await expect(timeline.getByRole("article")).toHaveCount(3);
+    await expect(page.getByRole("heading", { name: "Canceladas y vencidas" })).toBeVisible();
+    await expect(page.getByRole("article", { name: /Cliente en riesgo/ })).toContainText("Vencida");
+  });
+});
+
 test.describe("avisos push", () => {
   /** El navegador de pruebas no tiene servicio de push: se simula su suscripción, con claves reales. */
   async function fakePushService(page: Page) {

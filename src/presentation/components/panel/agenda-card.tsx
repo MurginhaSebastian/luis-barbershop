@@ -61,7 +61,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
     <article
       aria-label={`${formatTime(item.start)}, ${item.customerName}`}
       className={cn(
-        "h-full rounded-2xl border border-border bg-card p-4 wrap-anywhere",
+        "flex-1 rounded-2xl border border-border bg-card p-4 wrap-anywhere",
         STATUS[item.status].card,
         finished && "opacity-70",
       )}

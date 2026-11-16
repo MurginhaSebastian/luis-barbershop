@@ -4,6 +4,7 @@ import type { Agenda } from "@/application/use-cases/agenda/get-agenda";
 import { shiftDay } from "@/presentation/lib/days";
 import { formatLongDate } from "@/presentation/lib/format";
 import { AgendaCard, type ChangeStatusAction } from "./agenda-card";
+import { AgendaDay } from "./agenda-day";
 
 const dayLink =
   "inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border border-input px-3 text-sm transition-colors duration-200 hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -51,13 +52,7 @@ export function AgendaView(props: { agenda: Agenda; date: string; today: string;
         {day.length === 0 ? (
           <p className="mt-4 text-muted-foreground">No hay citas este día.</p>
         ) : (
-          <ul className="mt-4 space-y-3">
-            {day.map((item) => (
-              <li key={item.id}>
-                <AgendaCard item={item} changeStatus={props.changeStatus} />
-              </li>
-            ))}
-          </ul>
+          <AgendaDay items={day} changeStatus={props.changeStatus} />
         )}
       </section>
     </div>
