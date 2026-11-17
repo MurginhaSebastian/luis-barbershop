@@ -88,3 +88,14 @@ test("readWhatsAppConfig exige las cinco variables y deja el número en cifras",
   expect(readWhatsAppConfig({ ...env, WHATSAPP_DISPLAY_NUMBER: "" })).toBeNull();
   expect(readWhatsAppConfig({ ...env, WHATSAPP_API_URL: "http://localhost:3199" })?.apiUrl).toBe("http://localhost:3199");
 });
+
+test("readWhatsAppConfig acepta WHATSAPP_ACCESS_TOKEN y WHATSAPP_TOKEN gana si están los dos", () => {
+  const rest = {
+    WHATSAPP_PHONE_NUMBER_ID: "1",
+    WHATSAPP_APP_SECRET: "s",
+    WHATSAPP_VERIFY_TOKEN: "v",
+    WHATSAPP_DISPLAY_NUMBER: "51911111111",
+  };
+  expect(readWhatsAppConfig({ ...rest, WHATSAPP_ACCESS_TOKEN: "meta" })?.token).toBe("meta");
+  expect(readWhatsAppConfig({ ...rest, WHATSAPP_TOKEN: "t", WHATSAPP_ACCESS_TOKEN: "meta" })?.token).toBe("t");
+});

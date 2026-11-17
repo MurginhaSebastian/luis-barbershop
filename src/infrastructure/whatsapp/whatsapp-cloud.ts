@@ -60,8 +60,9 @@ export class WhatsAppCloudSender implements IMessagingService {
 
 /** Sin estas cinco variables no hay WhatsApp: las citas se confirman a mano, como antes. */
 export function readWhatsAppConfig(env: Record<string, string | undefined>): WhatsAppConfig | null {
+  // WHATSAPP_ACCESS_TOKEN: el nombre que usa Meta.
+  const token = env.WHATSAPP_TOKEN || env.WHATSAPP_ACCESS_TOKEN;
   const {
-    WHATSAPP_TOKEN: token,
     WHATSAPP_PHONE_NUMBER_ID: phoneNumberId,
     WHATSAPP_APP_SECRET: appSecret,
     WHATSAPP_VERIFY_TOKEN: verifyToken,
