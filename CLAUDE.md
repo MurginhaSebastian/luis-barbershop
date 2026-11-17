@@ -4,6 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Protocolo de Orquestación y Eficiencia de Agentes
+
+Subagentes en `.claude/agents/`: `Explore` (Haiku, solo lectura) y `Coder` (Sonnet, implementa y prueba).
+
+- **Opus (arquitecto y orquestador):** analiza los requerimientos complejos, diseña el plan paso a paso con
+  interfaces y contratos exactos y valida el resultado final.
+- **Prohibido leer varios archivos directamente con el contexto de Opus:** para inspeccionar el código antes de
+  planificar, invoca a `Explore` y pídele solo los fragmentos y firmas exactas que hacen falta.
+- **Prohibido escribir bloques largos de código o correr suites pesadas con Opus:** con el plan técnico de un
+  paso definido, delega a `Coder` la implementación, las pruebas (Vitest/Playwright) y el commit.
+
 Web app para una barbería: reserva de citas, agenda del barbero, catálogo y venta cruzada de productos.
 Next.js 16 (App Router) + React 19 + TypeScript estricto + Tailwind 4 + shadcn/ui + Zod 4.
 
