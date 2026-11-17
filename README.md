@@ -81,7 +81,7 @@ npm run dev          # http://localhost:3000 (panel en /panel)
 | `IMAGE_STORAGE` | `local` guarda las fotos en disco | Sin Supabase, solo en un servidor con disco persistente. |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN` | Confirmación por WhatsApp | Ver [Configurar WhatsApp](#configurar-whatsapp). Sin ellas las citas se confirman a mano y nunca quedan en riesgo. |
 | `WHATSAPP_DISPLAY_NUMBER` | Número al que escriben para confirmar | El conectado a la API, solo cifras con 51. Un chip aparte: **no** es el WhatsApp de Luis. |
-| `AI_PROVIDER` | Asistente de IA (aún sin conectar) | Vacío: responde el asistente básico (código y palabras clave). Las herramientas para el LLM ya existen (`BotToolExecutor`). |
+| `AI_PROVIDER`, `GROQ_API_KEY`, `AI_MODEL` | Asistente de IA en WhatsApp | Vacío: responde el asistente básico (código y palabras clave). `AI_PROVIDER=groq` con la clave de Groq: responde la IA, con el modelo `openai/gpt-oss-120b` salvo que `AI_MODEL` diga otro. |
 | `CRON_SECRET` | Ciclo de confirmaciones | La tarea `GET /api/cron/vencer` lo exige; se llama cada 5 minutos (aviso de -35 min, en riesgo a -15, vencida a su hora). |
 | `SITE_URL` | Enlaces en los mensajes | La dirección pública, con `https://`. |
 
@@ -143,6 +143,9 @@ npm run dev          # http://localhost:3000 (panel en /panel)
    automático con una consulta recibe ese número de Luis.
 6. Programa `GET /api/cron/vencer` cada 5 minutos con la cabecera `Authorization: Bearer <CRON_SECRET>`
    (Railway o cron-job.org; el cron de Vercel Hobby solo corre una vez al día, y aquí hace falta cada 5 min).
+7. (Opcional) Asistente con IA: crea una clave en [console.groq.com](https://console.groq.com) y pon
+   `AI_PROVIDER=groq` y `GROQ_API_KEY`. Responderá en lenguaje natural, con las mismas reglas de la web. Los
+   mensajes de los clientes pasan por Groq y se guardan 2 horas para dar contexto.
 
 Meta cobra por cada plantilla enviada y da 1.000 mensajes de servicio gratis al mes por número; revisa la
 tarifa de Perú en su tabla de precios.

@@ -14,8 +14,8 @@ export class HandleIncomingMessageUseCase {
       return await this.deps.assistant.handleMessage(message);
     } catch (error) {
       // Falló antes de terminar (base caída, WhatsApp sin responder): se libera para que el reintento de Meta lo
-      // atienda. Repetir lo ya hecho es seguro: confirmar y cancelar no cambian dos veces y una reserva repetida
-      // choca con la primera.
+      // atienda. Confirmar y cancelar no cambian dos veces; una reserva repetida solo choca si es la misma hora,
+      // por eso el asistente de IA, una vez que cambió una cita, ya no lanza errores hasta aquí.
       await this.deps.processedMessages.release(message.id);
       throw error;
     }

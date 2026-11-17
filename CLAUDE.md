@@ -215,9 +215,10 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   automático recibe ese contacto.
 - El cliente envía "Confirmo mi cita KRT482" con el enlace `wa.me` de la confirmación. `/api/whatsapp` verifica
   la firma de Meta sobre el cuerpo original y `handleMessage` busca el código **junto al número** que escribe
-  (el código no es único). Los avisos repetidos se ignoran (`processed_messages`), marcados al final para que
-  un fallo a medias se reintente.
-- `BookingConfirmationUseCase.confirm` y `cancel` son lo que usará el futuro asistente con IA. Confirmar sirve
+  (el código no es único). Cada aviso se reclama antes de atenderlo (`HandleIncomingMessageUseCase`,
+  `processed_messages`): un repetido de Meta mientras el primero sigue en curso no hace nada. Si el asistente
+  falla, se suelta para que Meta reintente.
+- `BookingConfirmationUseCase.confirm` y `cancel` los usan también las herramientas del asistente. Confirmar sirve
   desde `PENDING` o `AT_RISK`; si otro tomó la hora, `slot-taken` (SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER) y la
   respuesta enlaza a las horas libres. Cancelar sigue `Appointment.customerCanCancel` (35 min, o sin confirmar);
   "Cancelar KRT482", "no voy"… cancelan (`wantsToCancel`).
@@ -234,10 +235,21 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - El webhook entrega al puerto `AiAssistantPort` (`application/ports/assistant.ts`) el texto escrito, el
   `payload` de un botón de plantilla (`type: "button"`) o el `id` de un botón o lista interactivos
   (`type: "interactive"`). `selectAssistant` (`infrastructure/assistant/`) elige quién lo atiende: sin
-  `AI_PROVIDER`, `BookingConfirmationUseCase` (código y palabras clave). Un `AI_PROVIDER` sin adaptador avisa y
-  usa ese, nunca rompe la web.
+  `AI_PROVIDER`, `BookingConfirmationUseCase` (código y palabras clave); con `AI_PROVIDER=groq` y
+  `GROQ_API_KEY`, `GroqAssistant`. Una combinación incompleta avisa una vez y usa el básico, nunca rompe la web.
 
-### Asistente de IA (preparado, sin LLM conectado)
+### Asistente de IA (Groq, `AI_PROVIDER=groq`)
+- `GroqAssistant` (`infrastructure/assistant/`) llama por `fetch` a la API compatible con OpenAI de Groq, con
+  `AI_MODEL` (por defecto `openai/gpt-oss-120b`; `llama-3.3-70b-versatile` se retiró). Hasta 3 rondas de
+  `tool_calls` y una última petición sin herramientas, todo en 12 s. Los códigos ("Confirmo mi cita KRT482", los
+  botones del recordatorio) van al asistente básico, sin modelo.
+- Contexto: `assistant_messages` (migración 0010), los últimos 10 turnos de las 2 últimas horas por celular; al
+  escribir se borra lo más viejo de cualquier celular. Ordenado por secuencia, no por hora.
+- Si Groq falla, responde el básico. Si ya reservó, confirmó o canceló, un mensaje fijo con lo hecho; y desde ahí
+  un fallo al responder se registra y no se relanza: soltar el mensaje haría que Meta lo repita y podría reservar
+  otra hora.
+- El alcance (solo la barbería, política de Meta) lo fija el prompt de sistema (`systemPrompt`): ningún código
+  impide que el modelo conteste otra cosa. Los `failedNotices` se registran con los 3 últimos dígitos del celular.
 - `BotToolExecutor.executeTool(llamada, { verifiedPhone, now })` (`application/use-cases/assistant/`) ejecuta las
   5 herramientas de `bot-tools.ts`: `listar_catalogo_y_mis_citas`, `consultar_huecos_dinamicos`, `reservar_cita`,
   `confirmar_asistencia` y `cancelar_cita`. `botToolDefinitions()` las da en JSON Schema para el LLM.

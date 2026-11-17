@@ -12,7 +12,7 @@ consultarlo con un experto. Estado al **16 de noviembre de 2026**.
 - el barbero (Luis) gestiona su agenda, su catálogo y la propia web desde un panel privado.
 
 **Estado.**
-- Funciona completa en local (en el PC de desarrollo), con 165 commits en GitHub.
+- Funciona completa en local (en el PC de desarrollo), con 172 commits en GitHub.
 - **Aún no está publicada en internet**: no tiene hosting, dominio ni HTTPS.
 - Las integraciones externas (WhatsApp de Meta, Supabase, avisos en celulares reales) están programadas y
   probadas con simulaciones, pero **no con los servicios reales**.
@@ -24,9 +24,9 @@ datos reales (teléfonos, direcciones, clientes) ni contraseñas.
 
 | Prueba | Resultado |
 |---|---|
-| Lógica (unitarias e integración) | 498 |
+| Lógica (unitarias e integración) | 520 |
 | Navegador | 214 |
-| Errores sembrados a propósito, detectados | 63 de 63 |
+| Errores sembrados a propósito, detectados | 69 de 69 |
 | Cobertura de la lógica | 96 % |
 | Lighthouse | 95–100 |
 | Dispositivos emulados | 7 |
@@ -75,7 +75,9 @@ Lo que se fue pidiendo durante el proyecto, en resumen:
     - WhatsApp entiende también los botones y listas de mensajes interactivos.
     - En el panel, la agenda del día es una línea de tiempo proporcional, con colores por estado y filtro por
       barbero.
-14. **Siguiente paso.** Conectar el asistente a un proveedor de IA (Groq o Claude Haiku).
+14. **Asistente con IA conectado a Groq** (hecho el 16 de noviembre). Falta solo la clave de Groq para activarlo.
+    - Recuerda las 2 últimas horas de conversación; cada mensaje se atiende una sola vez.
+    - Los huecos "Libre" del panel respetan el horario y los bloqueos.
 
 ---
 
@@ -275,8 +277,8 @@ WhatsApp. Usar el de Luis le haría perder sus conversaciones normales.
 - Si la plantilla `recordatorio_cita` no está aprobada, el recordatorio no sale, pero la cita igual queda en
   riesgo a los 15 minutos. Hay que tenerla aprobada antes de activar WhatsApp.
 
-**Fase 2: asistente con IA (preparado, sin conectar).** Responderá en lenguaje natural ("¿tienen hora el sábado
-en la tarde?") usando cinco herramientas que ya existen y siguen las mismas reglas de la web:
+**Fase 2: asistente con IA (programado; falta la clave de Groq).** Responde en lenguaje natural ("¿tienen hora
+el sábado en la tarde?") usando cinco herramientas que siguen las mismas reglas de la web:
 
 | Herramienta | Qué hace |
 |---|---|
@@ -289,10 +291,21 @@ en la tarde?") usando cinco herramientas que ya existen y siguen las mismas regl
 - **Seguridad:** la IA nunca elige el celular del cliente. Lo pone el servidor, tomado del remitente que Meta
   firma, así que un mensaje no puede actuar sobre las citas de otro número.
 - Si el cliente tiene varias citas y no dice cuál, la IA debe preguntarle; no adivina.
-- Mientras no se conecte, responde el asistente básico actual (código y palabras clave).
-- **Falta para activarlo:** elegir proveedor (Groq o Claude Haiku 5.5), su clave, el modelo y el adaptador que
-  conversa con el modelo. Plan: compararlos sobre unas 40 conversaciones de prueba y quedarse con el que acierte
-  más.
+- **Proveedor:** Groq, por su API compatible con OpenAI. Modelo por defecto `openai/gpt-oss-120b`: el modelo
+  que se había pensado (`llama-3.3-70b-versatile`) Groq lo retiró el 16 de agosto de 2026 para cuentas que no
+  son de empresa. Se cambia con `AI_MODEL`.
+- **Cómo conversa:** hasta 3 rondas de herramientas por mensaje (p. ej. catálogo → horas libres → reservar) y
+  luego la respuesta, en 12 segundos como máximo. Recuerda lo hablado en las últimas 2 horas (hasta 10
+  mensajes), para entender "¿a qué hora?" o "a las 5, soy Sebastián".
+- **Reglas del asistente** (en sus instrucciones): solo temas de la barbería (política de Meta para IA), nunca
+  inventar precios ni horas, preguntar cuál cita si tiene varias y dar el WhatsApp de Luis ante reclamos. Que
+  respete el tema depende del modelo: el código no puede impedirlo.
+- **Si Groq falla** (sin red, demasiadas peticiones, error del servicio), responde el asistente básico. Si ya
+  había reservado, confirmado o cancelado, le envía un mensaje fijo con lo hecho.
+- **Sin IA** (sin `AI_PROVIDER`), responde el asistente básico: código y palabras clave.
+- **Cada mensaje se atiende una sola vez**, aunque Meta lo repita mientras la IA está pensando.
+- **Falta para activarlo:** una clave de Groq (`GROQ_API_KEY`) y `AI_PROVIDER=groq`, además de lo pendiente de
+  WhatsApp. Conviene probarlo con unas 40 conversaciones reales antes de abrirlo al público.
 
 ---
 
@@ -300,9 +313,9 @@ en la tarde?") usando cinco herramientas que ya existen y siguen las mismas regl
 
 | Tipo | Comando | Qué comprueba |
 |---|---|---|
-| Lógica | `npm test` | 498 pruebas: reglas, casos de uso, acciones, herramientas del asistente y repositorios contra Postgres real |
+| Lógica | `npm test` | 520 pruebas: reglas, casos de uso, acciones, herramientas y adaptador de IA (con Groq simulado) y repositorios contra Postgres real |
 | Cobertura | `npm run test:coverage` | 96 % de líneas (mínimo exigido: 90 %) |
-| Mutación | `npm run test:mutation` | Rompe 63 reglas críticas a propósito y exige que alguna prueba lo note |
+| Mutación | `npm run test:mutation` | Rompe 69 reglas críticas a propósito y exige que alguna prueba lo note |
 | Navegador | `npm run test:e2e` | 214 pruebas: agenda en 320 px y escritorio, reserva, panel, WhatsApp de punta a punta (recordatorio, en riesgo, vencida, tomar una hora en riesgo), accesibilidad (axe), teclado, seguridad, móvil y escritorio |
 | Dispositivos | `npm run test:devices` | iPhone 15, iPad Mini, Pixel 7, Galaxy S9+ (320 px), Safari, Firefox y Edge 1920. Con capturas. La agenda del panel no se prueba en Safari/iPhone en local (no guardan la cookie segura sin HTTPS) |
 | Lighthouse | `npm run lighthouse` | Portada móvil 95; resto 100 en rendimiento, accesibilidad, buenas prácticas y SEO (medido el 12 de noviembre) |
@@ -392,6 +405,16 @@ Cifras comprobadas en las páginas oficiales en noviembre de 2026. Conviene revi
 
 ---
 
+**Del asistente con IA:**
+- **Privacidad.** Los mensajes de los clientes pasan por Groq (un proveedor externo) y se guardan 2 horas en la
+  base para dar contexto. Conviene mencionarlo en el aviso de privacidad.
+- **Costo y abuso.** Cualquiera puede escribir al número y cada mensaje es una llamada pagada a Groq. No hay un
+  límite de mensajes por número.
+- **Tiempo de respuesta.** La IA puede tardar hasta 12 segundos; el hosting tiene que permitir peticiones de esa
+  duración en el webhook.
+- **Next.js.** `npm audit` marca un aviso moderado (GHSA-mfr8-8qww-v76h) en la versión instalada, corregido en
+  16.4.6. Afecta a `unstable_cache`, que el proyecto no usa; aun así conviene actualizar.
+
 ## 10. Preguntas sugeridas para el experto
 
 1. ¿Es adecuada la arquitectura (Clean Architecture con Next.js) para un negocio de este tamaño, o es
@@ -453,6 +476,7 @@ Cifras comprobadas en las páginas oficiales en noviembre de 2026. Conviene revi
 | Créditos de fotos y video | `public/images/CREDITS.md`, `public/videos/CREDITS.md` |
 | Ciclo de confirmaciones | `src/application/use-cases/booking/confirmation-cycle.ts` |
 | Herramientas del asistente con IA | `src/application/use-cases/assistant/` |
+| Asistente con Groq | `src/infrastructure/assistant/groq-assistant.ts` |
 | Línea de tiempo del panel | `src/presentation/components/panel/agenda-day.tsx`, `src/presentation/lib/timeline.ts` |
 | Reglas de tiempo (2 h, 35 min, 15 min, 5 min) | `src/core/scheduling/booking-policy.ts` |
-| Historial de cambios | `git log` (165 commits desde el 29 de octubre de 2026) |
+| Historial de cambios | `git log` (172 commits desde el 29 de octubre de 2026) |
