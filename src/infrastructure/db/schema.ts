@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigserial, boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 const instant = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -167,6 +167,26 @@ export const bookingConfirmations = pgTable(
     confirmBy: instant("confirm_by").notNull(),
   },
   (t) => [index("booking_confirmations_code_idx").on(t.code), index("booking_confirmations_confirm_by_idx").on(t.confirmBy)],
+);
+
+/**
+ * Lo último que se dijeron el cliente y el asistente de IA, para que entienda "¿a qué hora?" en el siguiente
+ * mensaje. Solo se usan las 2 últimas horas y lo más viejo se borra al escribir: no es un archivo de chats.
+ */
+export const assistantMessages = pgTable(
+  "assistant_messages",
+  {
+    // Secuencia, no uuid: dos turnos guardados en el mismo instante conservan su orden.
+    id: bigserial({ mode: "number" }).primaryKey(),
+    phone: text().notNull(),
+    role: text().notNull(),
+    content: text().notNull(),
+    createdAt: instant("created_at").notNull(),
+  },
+  (t) => [
+    check("assistant_messages_role", sql`${t.role} IN ('user', 'assistant')`),
+    index("assistant_messages_phone_idx").on(t.phone, t.createdAt),
+  ],
 );
 
 /** Mensajes de WhatsApp ya atendidos, para no repetir la respuesta cuando Meta reintenta el aviso. */

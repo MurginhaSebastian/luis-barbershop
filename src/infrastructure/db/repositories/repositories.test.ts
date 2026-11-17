@@ -16,6 +16,7 @@ import { DrizzleSiteSettingsRepository } from "./site-settings-repository";
 import { DrizzlePushSubscriptionRepository } from "./push-subscription-repository";
 import { DrizzleConfirmationRepository } from "./confirmation-repository";
 import { DrizzleProcessedMessageRepository } from "./processed-message-repository";
+import { DrizzleConversationRepository } from "./conversation-repository";
 import { DrizzleServiceRepository as ServiceRepo } from "./catalog-repositories";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
 import { GetAgendaUseCase } from "@/application/use-cases/agenda/get-agenda";
@@ -78,7 +79,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
   });
 
   beforeEach(async () => {
-    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings, push_subscriptions, booking_confirmations, processed_messages CASCADE`);
+    await db.execute(sql`TRUNCATE barbers, services, products, customers, business_hours, schedule_blocks, appointments, site_settings, push_subscriptions, booking_confirmations, processed_messages, assistant_messages CASCADE`);
     await db.insert(schema.barbers).values({ id: BARBER, name: "Barbero A" });
     await db.insert(schema.services).values({ id: CORTE, name: "Corte", durationMinutes: 30, priceCents: 3000 });
     await db.insert(schema.products).values({ id: CERA, name: "Cera", priceCents: 2500 });
@@ -297,6 +298,28 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     // Ya no está pendiente: ponerla en riesgo ahora pisaría la confirmación.
     expect(await deps.appointments.updateStatus(booked.changeStatus(AppointmentStatus.AT_RISK), AppointmentStatus.PENDING)).toBe(false);
     expect((await deps.appointments.findById(booked.id))?.status).toBe(AppointmentStatus.CONFIRMED);
+  });
+
+  test("conversación con el asistente: últimos turnos de las 2 últimas horas, en orden, y lo viejo se borra", async () => {
+    const repo = new DrizzleConversationRepository(db);
+    const at = (hhmm: string) => utc(hhmm);
+    const twoHoursBefore = (d: Date) => new Date(d.getTime() - 2 * 3600_000);
+    await repo.append("51900000001", [{ role: "user", content: "hola de ayer" }], new Date("2026-11-01T10:00:00Z"), new Date(0));
+    await repo.append("51900000002", [{ role: "user", content: "otro cliente" }], at("09:00"), new Date(0));
+    for (let i = 1; i <= 6; i++) {
+      // Pregunta y respuesta en el mismo instante: el orden lo da la secuencia, no la hora.
+      await repo.append("51900000001", [{ role: "user", content: `p${i}` }, { role: "assistant", content: `r${i}` }], at(`10:0${i}`), new Date(0));
+    }
+    const now = at("10:30");
+    expect((await repo.recent("51900000001", twoHoursBefore(now), 10)).map((t) => t.content)).toEqual(
+      ["p2", "r2", "p3", "r3", "p4", "r4", "p5", "r5", "p6", "r6"],
+    );
+    expect(await repo.recent("51900000001", twoHoursBefore(now), 10)).toContainEqual({ role: "assistant", content: "r6" });
+    // Escribir borra lo de más de 2 horas, de cualquier celular.
+    await repo.append("51900000001", [{ role: "user", content: "p7" }], now, twoHoursBefore(now));
+    const left = await db.select({ content: schema.assistantMessages.content }).from(schema.assistantMessages);
+    expect(left.map((r) => r.content)).not.toContain("hola de ayer");
+    expect(left.map((r) => r.content)).toContain("otro cliente"); // 09:00, dentro de las 2 h
   });
 
   test("mensajes atendidos: de dos reclamos simultáneos del mismo aviso, solo uno lo consigue", async () => {
