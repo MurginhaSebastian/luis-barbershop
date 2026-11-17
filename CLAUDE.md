@@ -294,7 +294,7 @@ no Radix) y `cn` viene del paquete `cn` de shadcn, que sustituye a `clsx` + `tai
 
 ## Negocio
 
-Barbería en Perú: precios en soles (céntimos enteros), agenda en America/Lima (UTC−5, sin horario
+Barbería en Trujillo (Perú): precios en soles (céntimos enteros), agenda en America/Lima (UTC−5, sin horario
 de verano). Varios barberos con un horario de barbería común y bloqueos por barbero (o de toda la
 barbería). El cliente reserva sin cuenta (nombre + teléfono, se reconoce por teléfono); una cita
 puede llevar varios servicios (se suman duración y precio) y productos que se pagan en el local.

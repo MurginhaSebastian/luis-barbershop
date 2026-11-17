@@ -1,6 +1,6 @@
 # Luis Barbershop
 
-Web de una barbería en Lima: los clientes reservan su hora en línea y el barbero lleva la agenda, el catálogo y
+Web de una barbería en Trujillo: los clientes reservan su hora en línea y el barbero lleva la agenda, el catálogo y
 la web desde un panel propio. Precios en soles, horario de Lima.
 
 ## Qué hace

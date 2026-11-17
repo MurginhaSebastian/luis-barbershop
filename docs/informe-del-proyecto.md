@@ -7,7 +7,7 @@ consultarlo con un experto. Estado al **16 de noviembre de 2026**.
 
 ## 1. Resumen en una página
 
-**Qué es.** Una web para una barbería en Lima (Perú):
+**Qué es.** Una web para una barbería en Trujillo (Perú):
 - los clientes reservan su hora en línea, sin crear cuenta;
 - el barbero (Luis) gestiona su agenda, su catálogo y la propia web desde un panel privado.
 
