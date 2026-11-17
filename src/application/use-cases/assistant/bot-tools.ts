@@ -58,6 +58,11 @@ export function botToolDefinitions() {
   return Object.entries(BOT_TOOLS).map(([name, tool]) => ({
     name,
     description: tool.description,
-    parameters: z.toJSONSchema(tool.schema),
+    // Los patrones de uuid y fecha cuestan cientos de tokens por petición y Zod los valida igual en el servidor.
+    parameters: z.toJSONSchema(tool.schema, {
+      override: ({ jsonSchema }) => {
+        delete jsonSchema.pattern;
+      },
+    }),
   }));
 }

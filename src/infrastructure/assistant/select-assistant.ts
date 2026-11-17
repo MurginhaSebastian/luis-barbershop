@@ -13,6 +13,7 @@ export interface AssistantDeps {
   messaging: IMessagingService | null;
   siteSettings: ISiteSettingsRepository;
   now: () => Date;
+  siteUrl?: string;
 }
 
 let warned = false;

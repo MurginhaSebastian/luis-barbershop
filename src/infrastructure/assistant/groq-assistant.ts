@@ -29,6 +29,7 @@ export interface GroqAssistantDeps {
   /** El asistente básico: atiende los códigos y responde cuando Groq no puede. */
   fallback: AiAssistantPort;
   now: () => Date;
+  siteUrl?: string;
   fetchImpl?: typeof fetch;
 }
 
@@ -110,7 +111,15 @@ export class GroqAssistant implements AiAssistantPort {
       // Sin nada hecho, un error de la base o de la app se relanza: el mensaje se libera y Meta reintenta.
       if (!(error instanceof AssistantUnavailableError) && done.length === 0) throw error;
       console.error("asistente de IA sin respuesta", { error: String(error), phone: mask(phone) });
-      if (done.length === 0) return this.deps.fallback.handleMessage(message);
+      if (done.length === 0) {
+        // Sin historial: este aviso no es parte de la conversación.
+        const options = [
+          this.deps.siteUrl && `reserva en ${this.deps.siteUrl}/reservar`,
+          whatsapp && `escribe a Luis al +${whatsapp}`,
+        ].filter(Boolean);
+        await this.deps.messaging.sendText(phone, `Perdona, ahora mismo no puedo responderte. Vuelve a escribirme en un minuto${options.map((o) => `, o ${o}`).join("")}.`);
+        return { kind: "answered" };
+      }
       // Ya reservó, confirmó o canceló: se le dice eso, no las instrucciones de siempre.
       reply = afterMutation(done.at(-1)!, whatsapp);
     }
@@ -174,6 +183,8 @@ export class GroqAssistant implements AiAssistantPort {
           model: this.deps.model,
           messages,
           temperature: 0.2,
+          // Menos tokens de razonamiento: el límite gratis es por tokens/minuto.
+          ...(this.deps.model.startsWith("openai/gpt-oss") && { reasoning_effort: "low" }),
           ...(withTools && { tools: this.tools, tool_choice: "auto" }),
         }),
         signal,

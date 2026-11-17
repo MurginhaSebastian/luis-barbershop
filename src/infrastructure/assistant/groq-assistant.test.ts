@@ -45,6 +45,7 @@ function makeAssistant(responses: (Response | Error)[]) {
     siteSettings: { get: async () => ({ ...DEFAULT_SITE_SETTINGS, contact: { whatsapp: "51900000000" } }), save: async () => {} },
     fallback,
     now: () => NOW,
+    siteUrl: "https://luis.example",
     fetchImpl,
   });
   const bodies = () => fetchImpl.mock.calls.map(([, init]) => JSON.parse(String(init?.body)));
@@ -75,7 +76,7 @@ describe("varias rondas de herramientas", () => {
 
     const bodies = t.bodies();
     expect(bodies).toHaveLength(4);
-    expect(bodies[0]).toMatchObject({ model: "openai/gpt-oss-120b", tool_choice: "auto" });
+    expect(bodies[0]).toMatchObject({ model: "openai/gpt-oss-120b", tool_choice: "auto", reasoning_effort: "low" });
     expect(bodies[0].tools.map((tool: { function: { name: string } }) => tool.function.name)).toContain("reservar_cita");
     // El resultado vuelve al modelo con su id de llamada y sin los avisos fallidos, que se registran aparte.
     const toolMessage = bodies[3].messages.find((m: { tool_call_id?: string }) => m.tool_call_id === "c3");
@@ -103,8 +104,9 @@ describe("varias rondas de herramientas", () => {
     expect(t.executeTool).toHaveBeenCalledTimes(3);
     expect(t.fetchImpl).toHaveBeenCalledTimes(4);
     expect(t.bodies()[3]).not.toHaveProperty("tools"); // la última petición, sin herramientas
-    // Sin respuesta en texto y sin nada hecho: responde el asistente básico.
-    expect(t.fallback.handleMessage).toHaveBeenCalled();
+    // Sin respuesta en texto y sin nada hecho: aviso amable, no las instrucciones del básico.
+    expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+    expect(t.fallback.handleMessage).not.toHaveBeenCalled();
   });
 
   test("argumentos vacíos son {} y los mal formados vuelven al modelo como error, sin ejecutar nada", async () => {
@@ -155,17 +157,21 @@ describe("contexto", () => {
   });
 });
 
+const FRIENDLY =
+  "Perdona, ahora mismo no puedo responderte. Vuelve a escribirme en un minuto, o reserva en https://luis.example/reservar, o escribe a Luis al +51900000000.";
+
 describe("si Groq falla", () => {
   test.each([
     ["sin red o timeout", new Error("The operation was aborted due to timeout")],
     ["límite de uso (429)", new Response('{"error":{"message":"rate limit"}}', { status: 429 })],
     ["error del servidor (503)", new Response("caído", { status: 503 })],
     ["respuesta inesperada", new Response('{"nada":true}', { status: 200 })],
-  ])("%s: responde el asistente básico, sin colgar ni lanzar", async (_, failure) => {
+  ])("%s: aviso amable, sin colgar ni lanzar", async (_, failure) => {
     const t = makeAssistant([failure]);
-    expect(await t.assistant.handleMessage(message("¿tienen hora el sábado?"))).toEqual({ kind: "no-code" });
-    expect(t.fallback.handleMessage).toHaveBeenCalled();
-    expect(t.sendText).not.toHaveBeenCalled();
+    expect(await t.assistant.handleMessage(message("¿tienen hora el sábado?"))).toEqual({ kind: "answered" });
+    expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+    expect(t.fallback.handleMessage).not.toHaveBeenCalled();
+    expect(t.history).toEqual([]);
   });
 
   test("si ya reservó, le confirma la reserva en vez de las instrucciones de siempre", async () => {

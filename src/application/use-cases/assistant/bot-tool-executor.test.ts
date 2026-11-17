@@ -251,6 +251,7 @@ describe("lo que manda el modelo no es de fiar", () => {
     const definitions = botToolDefinitions();
     expect(definitions.map((d) => d.name)).toContain("consultar_huecos_dinamicos");
     expect(JSON.stringify(definitions)).not.toMatch(/phone|celular|telefono/i);
+    expect(JSON.stringify(definitions)).not.toContain("\"pattern\"");
   });
 });
 
