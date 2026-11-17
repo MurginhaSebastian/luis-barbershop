@@ -88,6 +88,14 @@ describe("varias rondas de herramientas", () => {
     ]);
   });
 
+  test("el prompt prohíbe decir confirmada si quedó pendiente, y la negrita sale en formato WhatsApp", async () => {
+    const t = makeAssistant([groq({ content: "Tu cita de **Fade** con **Luis**" })]);
+    await t.assistant.handleMessage(message("hola"));
+    expect(t.bodies()[0].messages[0].content).toContain("no digas que está confirmada");
+    expect(t.sendText).toHaveBeenCalledWith(ME, "Tu cita de *Fade* con *Luis*");
+    expect(t.history.at(-1)).toEqual({ role: "assistant", content: "Tu cita de *Fade* con *Luis*" });
+  });
+
   test("como mucho 3 rondas: si el modelo sigue pidiendo herramientas, no se ejecutan más", async () => {
     const always = () => groq({ tool_calls: [call("c", "listar_catalogo_y_mis_citas")] });
     const t = makeAssistant([always(), always(), always(), always(), always()]);

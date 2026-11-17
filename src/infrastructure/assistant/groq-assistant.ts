@@ -80,7 +80,8 @@ export function systemPrompt(now: Date, contact: string | undefined): string {
     "5. Los ids de mensajes anteriores no los conservas: antes de usar un appointmentId o un serviceId, vuelve a llamar a listar_catalogo_y_mis_citas.",
     `6. Si el cliente tiene un reclamo o pide hablar con una persona, dale ${luis}.`,
     "7. Las herramientas ya saben quién escribe: nunca pidas ni uses otro número de celular.",
-    "8. Responde en español, breve y cordial, en texto plano de WhatsApp (sin tablas ni markdown). Precios en soles (S/) y horas de Perú en formato 24 h.",
+    "8. Tras reservar, repite lo que diga el campo next de reservar_cita. Si la cita quedó pendiente, no digas que está confirmada: di que quedó separada y que 35 minutos antes le escribiremos por WhatsApp para que la confirme.",
+    "9. Responde en español, breve y cordial, en texto plano de WhatsApp (sin tablas ni markdown). Precios en soles (S/) y horas de Perú en formato 24 h.",
   ].join("\n");
 }
 
@@ -132,7 +133,8 @@ export class GroqAssistant implements AiAssistantPort {
       const calls = answer.tool_calls ?? [];
       if (calls.length === 0 || !withTools) {
         if (calls.length > 0 || !answer.content?.trim()) throw new AssistantUnavailableError("sin respuesta en texto");
-        return answer.content.trim();
+        // WhatsApp marca la negrita con un solo asterisco.
+        return answer.content.trim().replace(/\*\*(.+?)\*\*/g, "*$1*");
       }
       messages.push({
         role: "assistant",
