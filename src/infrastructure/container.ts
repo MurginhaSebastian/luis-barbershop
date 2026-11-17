@@ -27,6 +27,10 @@ import { DrizzleConfirmationRepository } from "./db/repositories/confirmation-re
 import { DrizzleConversationRepository } from "./db/repositories/conversation-repository";
 import { DrizzleProcessedMessageRepository } from "./db/repositories/processed-message-repository";
 import { readWhatsAppConfig, WhatsAppCloudSender } from "./whatsapp/whatsapp-cloud";
+import type { IMessagingService } from "@/application/ports/messaging";
+import { withDevReplies } from "./whatsapp/dev-replies";
+
+const devReplies = (m: IMessagingService) => (process.env.NODE_ENV !== "production" ? withDevReplies(m) : m);
 
 /** Raíz de composición: único sitio donde los casos de uso reciben sus implementaciones concretas. */
 export function getUseCases() {
@@ -48,7 +52,7 @@ export function getUseCases() {
     confirmations: new DrizzleConfirmationRepository(db),
     processedMessages: new DrizzleProcessedMessageRepository(db),
     siteUrl: process.env.SITE_URL?.replace(/\/$/, ""),
-    messaging: whatsapp ? new WhatsAppCloudSender(whatsapp) : null,
+    messaging: whatsapp ? devReplies(new WhatsAppCloudSender(whatsapp)) : null,
     confirmationNumber: whatsapp?.displayNumber ?? null,
     now: () => new Date(),
     randomBytes: (length: number) => crypto.getRandomValues(new Uint8Array(length)),
