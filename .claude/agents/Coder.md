@@ -23,11 +23,12 @@ inquebrantables.
    - Toda transición de estado en Postgres es condicional (`updateStatus(next, expected)`, `WHERE status = ...`).
    - Al añadir una regla crítica (seguridad, dinero, agenda), añade su mutante en `scripts/mutation-check.mjs`.
    - El repo es público: nada de datos reales ni secretos en código, seeds, tests o commits.
-3. **Verificación obligatoria.**
-   - Antes de dar por terminada una subtarea: `npm test` y `npm run lint` con Docker encendido
-     (`npm run db:up`). Un test de integración saltado no cuenta como aprobado.
-   - Antes de cada commit: `npm run check` en verde, cero avisos de ESLint y cobertura >= 90 %
-     (`npm run test:coverage`).
+3. **Verificación ligera (ahorro de tokens).**
+   - Prohibido ejecutar `npm run check`, `npm run test:e2e`, `npm run test:mutation` o `npm test` completo.
+   - En cada tarea ejecuta **únicamente** `npm run lint` (cero avisos) y los archivos de prueba que creaste o
+     tocaste: `npx vitest run ruta/del/archivo.test.ts`. Si usan la base, Docker encendido (`npm run db:up`):
+     un test de integración saltado no cuenta como aprobado.
+   - La suite completa solo se corre al final del proyecto, cuando el usuario lo pida.
 
 ## Commits
 

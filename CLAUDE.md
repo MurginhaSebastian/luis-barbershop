@@ -14,6 +14,10 @@ Subagentes en `.claude/agents/`: `Explore` (Haiku, solo lectura) y `Coder` (Sonn
   planificar, invoca a `Explore` y pídele solo los fragmentos y firmas exactas que hacen falta.
 - **Prohibido escribir bloques largos de código o correr suites pesadas con Opus:** con el plan técnico de un
   paso definido, delega a `Coder` la implementación, las pruebas (Vitest/Playwright) y el commit.
+- **Verificación para ahorrar tokens:** prohibido ejecutar `npm run check`, `npm run test:e2e`,
+  `npm run test:mutation` o `npm test` completo tras cada cambio. En cada tarea solo `npm run lint` y los
+  archivos de prueba creados o tocados (`npx vitest run ruta/del/archivo.test.ts`). La suite completa se corre
+  solo al final del proyecto, cuando el usuario lo pida.
 
 Web app para una barbería: reserva de citas, agenda del barbero, catálogo y venta cruzada de productos.
 Next.js 16 (App Router) + React 19 + TypeScript estricto + Tailwind 4 + shadcn/ui + Zod 4.
@@ -25,7 +29,7 @@ npm run dev          # servidor de desarrollo
 npm run build        # build de producción (también corre el chequeo de tipos de Next)
 npm run lint         # ESLint (flat config, eslint.config.mjs)
 npx tsc --noEmit     # solo tipos
-npm run check        # lint + tipos + tests + build: obligatorio antes de cada commit
+npm run check        # lint + tipos + tests + build: solo al final del proyecto, cuando se pida
 npm test                                    # Vitest, todos los tests
 npx vitest run src/core/core.test.ts -t "availableSlots"   # un archivo / un test
 npm run test:coverage  # cobertura de la lógica, con mínimo obligatorio
@@ -304,5 +308,5 @@ terminar cada cita, con antelación mínima y máximo de días configurables en 
   direcciones, clientes) en código, seeds ni tests.
 - Claude hace los commits: uno por paso, seguido de `git push`, avisando antes en una línea de
   qué incluye. Conventional Commits en español (`feat:`, `chore:`, `refactor:`), sin línea
-  `Co-Authored-By`, y con `npm run check` en verde antes. Docker encendido: un test de integración
-  saltado no cuenta como aprobado.
+  `Co-Authored-By`, y con `npm run lint` y las pruebas tocadas en verde antes (ver el protocolo de arriba).
+  Docker encendido si esas pruebas usan la base: un test de integración saltado no cuenta como aprobado.
