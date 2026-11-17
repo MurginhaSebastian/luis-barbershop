@@ -14,6 +14,7 @@
     "test:devices": "playwright test -c playwright.devices.config.ts",
     "lighthouse": "node scripts/lighthouse.mjs",
     "check": "eslint --max-warnings 0 && next typegen && tsc --noEmit && vitest run && next build",
+    "chat:whatsapp": "node --env-file=.env scripts/test-whatsapp-chat.mjs",
     "panel:clave": "node --no-warnings scripts/panel-password.mjs",
     "panel:push": "node scripts/push-keys.mjs",
     "media:video": "node scripts/video-portada.mjs",
