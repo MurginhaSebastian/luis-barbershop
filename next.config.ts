@@ -50,6 +50,7 @@ const nextConfig: NextConfig = {
   experimental: {
     // Fotos de hasta 5 MB más el sobrante del formulario multipart.
     serverActions: { bodySizeLimit: "6mb" },
+    agentUpgrade: "security",
   },
   async headers() {
     const always = [
