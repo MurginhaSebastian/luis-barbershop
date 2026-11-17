@@ -199,7 +199,8 @@ export class BookingConfirmationUseCase implements AiAssistantPort {
       case "not-found":
         return "No encontramos una reserva con ese código para este número. Escríbenos desde el celular con el que reservaste y revisa el código.";
       case "no-code":
-      case "ignored": {
+      case "ignored":
+      case "answered": {
         // Este número solo confirma: las consultas van al WhatsApp de Luis, que las lee él.
         const { whatsapp } = (await this.deps.siteSettings.get()).contact;
         const ask = whatsapp ? `Para consultas escríbenos a +${whatsapp}.` : book;

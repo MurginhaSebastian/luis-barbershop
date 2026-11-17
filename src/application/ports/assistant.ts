@@ -14,7 +14,9 @@ export type MessageOutcome =
   | { kind: "too-late"; appointment: Appointment }
   /** SLOT_ALREADY_TAKEN_BY_ANOTHER_CUSTOMER: no confirmó a tiempo y su hora ya es de otro (o venció). */
   | { kind: "slot-taken"; appointment: Appointment }
-  | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "inactive" };
+  | { kind: "ignored" | "no-code" | "not-found" | "already-confirmed" | "inactive" }
+  /** Respondió el asistente de IA; sus herramientas ya avisaron al barbero de lo que cambió. */
+  | { kind: "answered" };
 
 /**
  * Quien atiende los mensajes del número automático y le responde al cliente. Hoy lo hace

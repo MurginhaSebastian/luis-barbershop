@@ -1,17 +1,31 @@
 import { expect, test, vi } from "vitest";
 import type { AiAssistantPort } from "@/application/ports/assistant";
-import { selectAssistant } from "./select-assistant";
+import { GroqAssistant } from "./groq-assistant";
+import { type AssistantDeps, selectAssistant } from "./select-assistant";
 
 const basic: AiAssistantPort = { handleMessage: async () => ({ kind: "no-code" }) };
+const deps: AssistantDeps = {
+  fallback: basic,
+  tools: { executeTool: async () => ({ ok: true, data: {} }) },
+  conversations: { recent: async () => [], append: async () => {} },
+  messaging: { sendText: async () => {}, sendTemplate: async () => {} },
+  siteSettings: { get: async () => ({}) as never, save: async () => {} },
+  now: () => new Date(),
+};
 
 test("sin AI_PROVIDER atiende el asistente básico", () => {
-  expect(selectAssistant({}, basic)).toBe(basic);
+  expect(selectAssistant({}, deps)).toBe(basic);
 });
 
-test("un AI_PROVIDER sin adaptador avisa una vez y no rompe la web", () => {
+test("con AI_PROVIDER=groq y su clave atiende el de IA", () => {
+  expect(selectAssistant({ AI_PROVIDER: "groq", GROQ_API_KEY: "gsk_prueba" }, deps)).toBeInstanceOf(GroqAssistant);
+});
+
+test("sin clave, sin WhatsApp o con un proveedor desconocido avisa una vez y no rompe la web", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  expect(selectAssistant({ AI_PROVIDER: "groq" }, basic)).toBe(basic);
-  expect(selectAssistant({ AI_PROVIDER: "groq" }, basic)).toBe(basic);
+  expect(selectAssistant({ AI_PROVIDER: "groq" }, deps)).toBe(basic);
+  expect(selectAssistant({ AI_PROVIDER: "groq", GROQ_API_KEY: "gsk_prueba" }, { ...deps, messaging: null })).toBe(basic);
+  expect(selectAssistant({ AI_PROVIDER: "otro", GROQ_API_KEY: "gsk_prueba" }, deps)).toBe(basic);
   expect(warn).toHaveBeenCalledTimes(1);
   warn.mockRestore();
 });

@@ -24,6 +24,7 @@ import { SharpImageOptimizer } from "./images/sharp-optimizer";
 import { DrizzlePushSubscriptionRepository } from "./db/repositories/push-subscription-repository";
 import { readVapidKeys, WebPushSender } from "./push/web-push-sender";
 import { DrizzleConfirmationRepository } from "./db/repositories/confirmation-repository";
+import { DrizzleConversationRepository } from "./db/repositories/conversation-repository";
 import { DrizzleProcessedMessageRepository } from "./db/repositories/processed-message-repository";
 import { readWhatsAppConfig, WhatsAppCloudSender } from "./whatsapp/whatsapp-cloud";
 
@@ -56,6 +57,13 @@ export function getUseCases() {
   const getAvailableSlots = new GetAvailableSlotsUseCase(deps);
   const createAppointment = new CreateAppointmentUseCase(deps);
   const bookingConfirmation = new BookingConfirmationUseCase(deps);
+  const botTools = new BotToolExecutor({
+    ...deps,
+    availability: getAvailableSlots,
+    booking: createAppointment,
+    confirmation: bookingConfirmation,
+    push: managePush,
+  });
   return {
     getCatalog: new GetCatalogUseCase(deps),
     getAvailableSlots,
@@ -64,15 +72,12 @@ export function getUseCases() {
     /** Lo que escriben al número automático: se reclama cada mensaje y lo atiende el asistente elegido. */
     incomingMessages: new HandleIncomingMessageUseCase({
       processedMessages: deps.processedMessages,
-      assistant: selectAssistant(process.env, bookingConfirmation),
-    }),
-    // Lo usará el adaptador del LLM; hoy nadie lo llama.
-    botTools: new BotToolExecutor({
-      ...deps,
-      availability: getAvailableSlots,
-      booking: createAppointment,
-      confirmation: bookingConfirmation,
-      push: managePush,
+      assistant: selectAssistant(process.env, {
+        ...deps,
+        fallback: bookingConfirmation,
+        tools: botTools,
+        conversations: new DrizzleConversationRepository(db),
+      }),
     }),
     getAgenda: new GetAgendaUseCase(deps),
     manageCatalog: new ManageCatalogUseCase(deps),
