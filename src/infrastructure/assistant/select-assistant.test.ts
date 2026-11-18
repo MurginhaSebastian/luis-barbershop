@@ -10,6 +10,8 @@ const deps: AssistantDeps = {
   conversations: { recent: async () => [], append: async () => {} },
   messaging: { sendText: async () => {}, sendTemplate: async () => {} },
   siteSettings: { get: async () => ({}) as never, save: async () => {} },
+  services: { findAllActive: async () => [] } as never,
+  barbers: { findAllActive: async () => [] } as never,
   now: () => new Date(),
 };
 

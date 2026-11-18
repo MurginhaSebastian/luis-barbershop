@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { AiAssistantPort, IncomingMessage, MessageOutcome } from "@/application/ports/assistant";
 import type { IMessagingService } from "@/application/ports/messaging";
 import type { IConversationRepository } from "@/application/ports/repositories/conversation-repository";
+import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
+import type { IServiceRepository } from "@/application/ports/repositories/service-repository";
 import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import type { BotToolExecutor, ToolResult } from "@/application/use-cases/assistant/bot-tool-executor";
 import { botToolDefinitions } from "@/application/use-cases/assistant/bot-tools";
@@ -30,6 +32,8 @@ export interface GroqAssistantDeps {
   conversations: IConversationRepository;
   messaging: IMessagingService;
   siteSettings: ISiteSettingsRepository;
+  services: IServiceRepository;
+  barbers: IBarberRepository;
   /** El asistente básico: atiende los códigos y responde cuando Groq no puede. */
   fallback: AiAssistantPort;
   now: () => Date;
@@ -73,17 +77,18 @@ const limaNow = new Intl.DateTimeFormat("es-PE", {
   hour12: false,
 });
 
-export function systemPrompt(now: Date, contact: string | undefined): string {
+export function systemPrompt(now: Date, contact: string | undefined, catalog = ""): string {
   const luis = contact ? `el WhatsApp de Luis: +${contact}` : "que hable directamente con la barbería";
   return [
     "Eres el asistente virtual de reservas de Luis Barbershop, una barbería en Trujillo (Perú). Atiendes por WhatsApp.",
     `Ahora en Perú es ${limaNow.format(now)} (fecha ${shopDateOf(now)}, zona America/Lima, UTC−5).`,
+    ...(catalog ? [catalog] : []),
     "Reglas:",
     "1. Solo gestionas citas y consultas de Luis Barbershop: servicios, precios, barberos, horarios, reservar, confirmar y cancelar. Si te piden cualquier otra cosa (cultura general, tareas, programación, redacción u otros temas), responde en una frase que solo atiendes las citas y consultas de la barbería.",
-    "2. Nunca inventes servicios, precios, barberos ni horas libres: consúltalos siempre con listar_catalogo_y_mis_citas y consultar_huecos_dinamicos antes de decirlos. Para reservar usa exactamente un startTime que haya devuelto consultar_huecos_dinamicos.",
+    "2. Nunca inventes servicios, precios, barberos ni horas libres: los servicios, precios y barberos son solo los del CATÁLOGO de arriba (con sus ids) y las horas libres se consultan siempre con consultar_huecos_dinamicos. Para reservar usa exactamente un startTime que haya devuelto consultar_huecos_dinamicos.",
     "3. Antes de reservar, confirma con el cliente los servicios, el día, la hora, el barbero (o sin preferencia) y su nombre.",
     "4. Si confirmar_asistencia o cancelar_cita devuelve MULTIPLE_APPOINTMENTS_FOUND, pregunta a cuál de sus citas se refiere (día, hora y barbero) y vuelve a llamar con su appointmentId.",
-    "5. Los ids de mensajes anteriores no los conservas: antes de usar un appointmentId o un serviceId, vuelve a llamar a listar_catalogo_y_mis_citas.",
+    "5. Usa los ids del CATÁLOGO. listar_catalogo_y_mis_citas solo sirve para ver las citas del cliente: llámala antes de usar un appointmentId (no los conservas de mensajes anteriores).",
     `6. Si el cliente tiene un reclamo o pide hablar con una persona, dale ${luis}.`,
     "7. Las herramientas ya saben quién escribe: nunca pidas ni uses otro número de celular.",
     "8. Tras reservar, repite lo que diga el campo next de reservar_cita. Si la cita quedó pendiente, no digas que está confirmada: di que quedó separada y que 35 minutos antes le escribiremos por WhatsApp para que la confirme.",
@@ -136,7 +141,7 @@ export class GroqAssistant implements AiAssistantPort {
   private async converse(phone: string, text: string, now: Date, contact: string | undefined, done: Mutation[]): Promise<string> {
     const history = await this.deps.conversations.recent(phone, new Date(now.getTime() - HISTORY_WINDOW_MS), HISTORY_TURNS);
     const messages: ChatMessage[] = [
-      { role: "system", content: systemPrompt(now, contact) },
+      { role: "system", content: systemPrompt(now, contact, await this.catalogLine()) },
       ...history,
       { role: "user", content: text },
     ];
@@ -162,6 +167,14 @@ export class GroqAssistant implements AiAssistantPort {
         messages.push({ role: "tool", tool_call_id: call.id, name: call.function.name, content: JSON.stringify(result) });
       }
     }
+  }
+
+  /** Una línea terse con servicios y barberos activos (y sus ids): el modelo no gasta una herramienta en el catálogo. */
+  private async catalogLine(): Promise<string> {
+    const [services, barbers] = await Promise.all([this.deps.services.findAllActive(), this.deps.barbers.findAllActive()]);
+    const s = services.map((x) => `${x.name} ${x.durationMinutes}min S/${x.priceCents / 100} id=${x.id}`).join("; ");
+    const b = barbers.map((x) => `${x.name} id=${x.id}`).join("; ");
+    return `CATÁLOGO. Servicios: ${s || "ninguno"}. Barberos: ${b || "ninguno"}.`;
   }
 
   private async runTool(name: string, rawArgs: string | null | undefined, phone: string, now: Date): Promise<ToolResult> {

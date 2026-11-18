@@ -43,6 +43,8 @@ function makeAssistant(responses: (Response | Error)[]) {
     conversations,
     messaging: { sendText, sendTemplate: async () => {} },
     siteSettings: { get: async () => ({ ...DEFAULT_SITE_SETTINGS, contact: { whatsapp: "51900000000" } }), save: async () => {} },
+    services: { findAllActive: async () => [{ id: "s1", name: "Fade", durationMinutes: 45, priceCents: 3500, active: true }] } as never,
+    barbers: { findAllActive: async () => [{ id: "b1", name: "Luis", active: true }] } as never,
     fallback,
     now: () => NOW,
     siteUrl: "https://luis.example",
@@ -148,6 +150,12 @@ describe("contexto", () => {
     expect(t.conversations.recent).toHaveBeenCalledWith(ME, new Date(NOW.getTime() - 2 * 3600_000), 6);
     const second = t.bodies()[1].messages;
     expect(second.slice(1).map((m: { content: string }) => m.content)).toEqual(["Quiero corte y barba", "¿Para qué día?", "mañana"]);
+  });
+
+  test("el prompt lleva el catálogo resumido con ids", async () => {
+    const t = makeAssistant([groq({ content: "hola" })]);
+    await t.assistant.handleMessage(message("hola"));
+    expect(t.bodies()[0].messages[0].content).toContain("CATÁLOGO. Servicios: Fade 45min S/35 id=s1. Barberos: Luis id=b1.");
   });
 
   test("el prompt fija fecha y hora de Lima, el alcance, cero inventos, la desambiguación y el contacto de Luis", async () => {

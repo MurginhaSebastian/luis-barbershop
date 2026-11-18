@@ -1,6 +1,8 @@
 import type { AiAssistantPort } from "@/application/ports/assistant";
 import type { IMessagingService } from "@/application/ports/messaging";
 import type { IConversationRepository } from "@/application/ports/repositories/conversation-repository";
+import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
+import type { IServiceRepository } from "@/application/ports/repositories/service-repository";
 import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import type { BotToolExecutor } from "@/application/use-cases/assistant/bot-tool-executor";
 import { DEFAULT_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
@@ -12,6 +14,8 @@ export interface AssistantDeps {
   conversations: IConversationRepository;
   messaging: IMessagingService | null;
   siteSettings: ISiteSettingsRepository;
+  services: IServiceRepository;
+  barbers: IBarberRepository;
   now: () => Date;
   siteUrl?: string;
 }
