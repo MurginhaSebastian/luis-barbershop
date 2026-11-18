@@ -21,6 +21,9 @@ const RESULTS: Record<string, ToolResult> = {
   },
 };
 
+const counts = { hour: 0, day: 0 };
+beforeEach(() => Object.assign(counts, { hour: 0, day: 0 }));
+
 function makeAssistant(responses: (Response | Error)[]) {
   const queue = [...responses];
   const fetchImpl = vi.fn<typeof fetch>(async () => {
@@ -32,7 +35,7 @@ function makeAssistant(responses: (Response | Error)[]) {
   const history: ConversationTurn[] = [];
   const conversations = {
     recent: vi.fn(async () => [...history]),
-    countUserTurns: vi.fn(async () => 0),
+    countUserTurns: vi.fn(async (_phone: string, since: Date) => (NOW.getTime() - since.getTime() <= 3600_000 ? counts.hour : counts.day)),
     append: vi.fn(async (_phone: string, turns: readonly ConversationTurn[]) => void history.push(...turns)),
   };
   const sendText = vi.fn<(phone: string, text: string) => Promise<void>>(async () => {});
@@ -140,6 +143,32 @@ describe("barreras de tokens", () => {
     const t = makeAssistant([new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "" } }] }), { status: 200 })]);
     await t.assistant.handleMessage(message("hola"));
     expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+  });
+});
+
+describe("límite de uso por celular", () => {
+  const LIMITED = "Has enviado muchos mensajes seguidos. Para seguir, escribe directamente a Luis al +51900000000.";
+
+  test.each([
+    ["hora", 11, { hour: 11, day: 11 }, false],
+    ["hora", 12, { hour: 12, day: 12 }, true],
+    ["día", 24, { hour: 0, day: 24 }, false],
+    ["día", 25, { hour: 0, day: 25 }, true],
+  ])("%s con %i previos", async (_, __, c, blocked) => {
+    Object.assign(counts, c);
+    const t = makeAssistant([groq({ content: "ok" })]);
+    await t.assistant.handleMessage(message("hola"));
+    expect(t.sendText).toHaveBeenCalledWith(ME, blocked ? LIMITED : "ok");
+    expect(t.fetchImpl).toHaveBeenCalledTimes(blocked ? 0 : 1);
+    expect(t.history).toEqual(blocked ? [] : expect.any(Array));
+  });
+
+  test("un código no cuenta ni se limita", async () => {
+    Object.assign(counts, { hour: 99, day: 99 });
+    const t = makeAssistant([]);
+    await t.assistant.handleMessage(message("Confirmo mi cita KRT482"));
+    expect(t.fallback.handleMessage).toHaveBeenCalled();
+    expect(t.conversations.countUserTurns).not.toHaveBeenCalled();
   });
 });
 

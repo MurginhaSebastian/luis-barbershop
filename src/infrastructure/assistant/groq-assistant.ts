@@ -20,6 +20,8 @@ const HISTORY_WINDOW_MS = 2 * 60 * 60_000;
 /** El texto del cliente se recorta antes de guardarlo y de mandarlo: cuida el límite de tokens por minuto. */
 /** Lo que se guarda para poder contar el uso por celular (el modelo solo lee las últimas 2 h). */
 const KEEP_WINDOW_MS = 24 * 60 * 60_000;
+const MAX_PER_HOUR = 12;
+const MAX_PER_DAY = 25;
 const MAX_INPUT_CHARS = 250;
 /** En gpt-oss el razonamiento cuenta contra este tope. */
 const MAX_OUTPUT_TOKENS = 220;
@@ -122,6 +124,11 @@ export class GroqAssistant implements AiAssistantPort {
     const text = message.text.slice(0, MAX_INPUT_CHARS);
     const now = this.deps.now();
     const { whatsapp } = (await this.deps.siteSettings.get()).contact;
+    if (await this.overLimit(phone, now)) {
+      const next = whatsapp ? `escribe directamente a Luis al +${whatsapp}` : "vuelve a escribirme más tarde";
+      await this.deps.messaging.sendText(phone, `Has enviado muchos mensajes seguidos. Para seguir, ${next}.`);
+      return { kind: "answered" };
+    }
     const done: Mutation[] = [];
     let reply: string;
     try {
@@ -144,6 +151,15 @@ export class GroqAssistant implements AiAssistantPort {
     }
     await this.deliver(phone, text, reply, now, done.length > 0);
     return { kind: "answered" };
+  }
+
+  private async overLimit(phone: string, now: Date): Promise<boolean> {
+    const { conversations } = this.deps;
+    const ago = (ms: number) => new Date(now.getTime() - ms);
+    return (
+      (await conversations.countUserTurns(phone, ago(60 * 60_000))) >= MAX_PER_HOUR ||
+      (await conversations.countUserTurns(phone, ago(KEEP_WINDOW_MS))) >= MAX_PER_DAY
+    );
   }
 
   private async converse(phone: string, text: string, now: Date, contact: string | undefined, done: Mutation[]): Promise<string> {
