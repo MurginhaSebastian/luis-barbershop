@@ -42,3 +42,12 @@ export async function bookUntilData(page: Page, barber: string | RegExp = "Luis"
   await chooseDay(page);
   return chooseFirstHour(page);
 }
+
+export const pendingPill = (page: Page) => page.getByRole("button", { name: /^Por confirmar: \d+$/ });
+
+/** Abre la píldora "Por confirmar", elige la primera cita de la lista y devuelve la tarjeta de su ficha. */
+export async function openFirstPending(page: Page) {
+  await pendingPill(page).click();
+  await page.getByRole("dialog", { name: "Por confirmar" }).locator("li button").first().click();
+  return page.getByRole("dialog", { name: /^Cita de/ }).getByRole("article");
+}

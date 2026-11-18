@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { PANEL_PASSWORD, resetCatalog } from "./database";
-import { bookUntilData, chooseBarber, chooseServices, fillData } from "./helpers";
+import { bookUntilData, chooseBarber, chooseServices, fillData, openFirstPending, pendingPill } from "./helpers";
 
 test.beforeEach(() => resetCatalog());
 test.afterAll(() => resetCatalog());
@@ -76,7 +76,7 @@ test.describe("servicios", () => {
     await page.goto("/");
     await expect(page.getByRole("link", { name: /Corte clásico/ })).toContainText("S/ 99.00");
     await page.goto("/panel");
-    await expect(page.getByRole("article").first()).toContainText("S/ 30.00");
+    await expect(await openFirstPending(page)).toContainText("S/ 30.00");
   });
 
   test("ocultar un servicio lo quita de la web sin perderlo en el panel", async ({ page }) => {
@@ -286,7 +286,8 @@ test.describe("bloqueos", () => {
     const form = await blockDay(page, date);
     await expect(form.getByText(/1 cita ya reservada/)).toBeVisible();
     await page.goto("/panel");
-    await expect(page.getByRole("article").first()).toContainText("Por confirmar");
+    await expect(pendingPill(page)).toHaveText("Por confirmar: 1");
+    await expect(await openFirstPending(page)).toContainText("Por confirmar");
   });
 
   test("el fin antes del inicio se explica", async ({ page }) => {

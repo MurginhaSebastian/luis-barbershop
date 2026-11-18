@@ -12,6 +12,7 @@ import { CAL_PX_PER_MINUTE, gridHours, isOperational, limaMinuteOfDay, placeDay,
 import { cn } from "@/presentation/lib/utils";
 import { STATUS, type ChangeStatusAction } from "./agenda-card";
 import { AppointmentDialog } from "./appointment-dialog";
+import { PendingDialog } from "./pending-dialog";
 
 type View = Agenda["view"];
 
@@ -238,6 +239,7 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
   const { view } = agenda;
   const [selected, setSelected] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
+  const [listOpen, setListOpen] = useState(false);
   const barbers = [...new Set(agenda.items.map((i) => i.barberName))];
   // Al cambiar de periodo, un barbero sin citas vuelve a "Todos".
   const barber = chosen && barbers.includes(chosen) ? chosen : null;
@@ -295,6 +297,11 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
               ))}
             </div>
           )}
+          {agenda.pending.length > 0 && (
+            <button type="button" onClick={() => setListOpen(true)} className={cn(pill, "border-cal-accent/60 text-cal-pending-text")}>
+              Por confirmar: {agenda.pending.length}
+            </button>
+          )}
           <Link href="/reservar" className={cn(pill, "border-cal-accent text-cal-accent")}>
             + Nueva cita
           </Link>
@@ -321,7 +328,17 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
         </>
       )}
 
-      <AppointmentDialog item={agenda.items.find((i) => i.id === selected)} onClose={() => setSelected(null)} changeStatus={props.changeStatus} />
+      <PendingDialog
+        open={listOpen}
+        items={agenda.pending}
+        onClose={() => setListOpen(false)}
+        onPick={(id) => {
+          setListOpen(false);
+          setSelected(id);
+        }}
+      />
+      {/* Una cita por confirmar puede caer fuera del rango visible. */}
+      <AppointmentDialog item={agenda.items.find((i) => i.id === selected) ?? agenda.pending.find((i) => i.id === selected)} onClose={() => setSelected(null)} changeStatus={props.changeStatus} />
     </>
   );
 }
