@@ -43,7 +43,9 @@ const notification = z.object({
 
 type Message = NonNullable<z.infer<typeof notification>["entry"][number]["changes"][number]["value"]["messages"]>[number];
 
-/** Lo que dijo el cliente: el texto, el de la respuesta rápida o el id del botón o la opción que tocó. Fotos y audios, nada. */
+const MEDIA_TYPES = new Set(["audio", "image", "sticker", "video", "document"]);
+
+/** Lo que dijo el cliente: el texto, el de la respuesta rápida o el id del botón o la opción que tocó. */
 function messageText(m: Message): string | undefined {
   if (m.type === "text") return m.text?.body;
   if (m.type === "button") return m.button?.payload;
@@ -84,8 +86,11 @@ export async function POST(request: Request) {
     .filter((change) => change.field === "messages" && change.value.metadata?.phone_number_id === config.phoneNumberId)
     .flatMap((change) => change.value.messages ?? [])
     .flatMap((m) => {
+      if (!m.from) return [];
+      // Fotos, audios… llegan como tal: el asistente responde que solo lee texto. Reacciones y demás, en silencio.
+      if (MEDIA_TYPES.has(m.type)) return [{ id: m.id, from: m.from, text: "", media: true as const }];
       const text = messageText(m);
-      return m.from && text ? [{ id: m.id, from: m.from, text }] : [];
+      return text ? [{ id: m.id, from: m.from, text }] : [];
     });
 
   const { incomingMessages, managePush } = getUseCases();

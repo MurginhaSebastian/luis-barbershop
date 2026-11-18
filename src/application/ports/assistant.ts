@@ -6,6 +6,8 @@ export interface IncomingMessage {
   from: string;
   /** El texto escrito, o el que devuelve el botón o la opción de lista que tocó. */
   text: string;
+  /** Foto, audio, video, sticker o documento: llega sin texto. */
+  media?: true;
 }
 
 export type MessageOutcome =

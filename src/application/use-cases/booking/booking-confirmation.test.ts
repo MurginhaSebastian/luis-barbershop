@@ -232,6 +232,11 @@ describe("confirmar por WhatsApp", () => {
     expect(replied()[0].text).toContain("escríbenos a +51900000000");
   });
 
+  test("una foto o un audio (sin texto) recibe lo mismo que una consulta sin código", async () => {
+    expect((await useCase.handleMessage({ ...message(""), media: true })).kind).toBe("no-code");
+    expect(replied()[0].text).toContain("escríbenos a +51900000000");
+  });
+
   test("sin WhatsApp de contacto, la consulta se manda a la web", async () => {
     t.site.settings = { ...DEFAULT_SITE_SETTINGS, contact: {} };
     await useCase.handleMessage(message("Hola, ¿tienen hora el sábado?"));

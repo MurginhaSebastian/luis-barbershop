@@ -104,11 +104,18 @@ describe("avisos de Meta (POST)", () => {
     expect(mocks.handleMessage).not.toHaveBeenCalled();
   });
 
-  test("mensajes de otro número del negocio, fotos o sin remitente se ignoran", async () => {
-    await post(textMessage("Confirmo mi cita KRT482", { phoneNumberId: "OTRO" }));
+  test("una foto llega como multimedia, sin texto", async () => {
     const image = textMessage("x");
     image.entry[0].changes[0].value.messages[0].type = "image";
     await post(image);
+    expect(mocks.handleMessage).toHaveBeenCalledWith({ id: "wamid.1", from: "51900000001", text: "", media: true });
+  });
+
+  test("mensajes de otro número del negocio, reacciones o sin remitente se ignoran", async () => {
+    await post(textMessage("Confirmo mi cita KRT482", { phoneNumberId: "OTRO" }));
+    const reaction = textMessage("x");
+    reaction.entry[0].changes[0].value.messages[0].type = "reaction";
+    await post(reaction);
     const noSender = textMessage("Confirmo mi cita KRT482");
     delete (noSender.entry[0].changes[0].value.messages[0] as { from?: string }).from;
     await post(noSender);
