@@ -232,7 +232,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   automático recibe ese contacto.
 - El cliente envía "Confirmo mi cita KRT482" con el enlace `wa.me` de la confirmación. `/api/whatsapp` verifica
   la firma de Meta sobre el cuerpo original y `handleMessage` busca el código **junto al número** que escribe
-  (el código no es único). Cada aviso se reclama antes de atenderlo (`HandleIncomingMessageUseCase`,
+  (el código no es único). Fotos, audios, videos, stickers y documentos llegan como `media` (sin texto): el asistente
+  básico les responde el contacto de Luis, el de IA un aviso fijo; reacciones y estados se ignoran. Cada aviso se reclama antes de atenderlo (`HandleIncomingMessageUseCase`,
   `processed_messages`): un repetido de Meta mientras el primero sigue en curso no hace nada. Si el asistente
   falla, se suelta para que Meta reintente.
 - `BookingConfirmationUseCase.confirm` y `cancel` los usan también las herramientas del asistente. Confirmar sirve
@@ -260,8 +261,17 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `AI_MODEL` (por defecto `openai/gpt-oss-120b`; `llama-3.3-70b-versatile` se retiró). Hasta 3 rondas de
   `tool_calls` y una última petición sin herramientas, todo en 12 s. Los códigos ("Confirmo mi cita KRT482", los
   botones del recordatorio) van al asistente básico, sin modelo.
-- Contexto: `assistant_messages` (migración 0010), los últimos 10 turnos de las 2 últimas horas por celular; al
-  escribir se borra lo más viejo de cualquier celular. Ordenado por secuencia, no por hora.
+- Contexto: `assistant_messages` (migración 0010), los últimos 6 turnos de las 2 últimas horas por celular, ordenados
+  por secuencia, no por hora. Al escribir se borra lo de más de 24 h de cualquier celular: ese historial más largo
+  sirve para contar el uso (`countUserTurns`).
+- Barreras de ahorro de tokens (límite gratuito de Groq por minuto): el texto del cliente se recorta a 250 caracteres
+  antes de guardarlo y mandarlo; `temperature: 0.1` y `max_completion_tokens: 220` (en gpt-oss el razonamiento cuenta
+  contra el tope: `finish_reason: "length"` sin texto ni herramientas cae al aviso amable). El prompt lleva el
+  catálogo resumido con ids (servicios y barberos activos), así `listar_catalogo_y_mis_citas` queda para ver las
+  citas del cliente. Anti-desvío: ante cambios de rol, pedir las instrucciones, programar o temas ajenos, una sola
+  frase fija. Multimedia (`IncomingMessage.media`): respuesta fija sin Groq ni historial. Límite por celular de 12
+  mensajes por hora y 25 por día, tras el desvío de códigos (estos y los botones del recordatorio ni cuentan ni se
+  limitan): respuesta fija con el WhatsApp de Luis, sin Groq ni historial.
 - Si Groq falla, responde el básico. Si ya reservó, confirmó o canceló, un mensaje fijo con lo hecho; y desde ahí
   un fallo al responder se registra y no se relanza: soltar el mensaje haría que Meta lo repita y podría reservar
   otra hora.
