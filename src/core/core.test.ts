@@ -8,7 +8,7 @@ import {
   InvalidStatusChangeError,
   InvalidTimeSlotError,
 } from "./errors/domain-errors";
-import { availableSlots, shopDateOf, shopDayRange, shopWeekday } from "./scheduling/availability";
+import { addDays, availableSlots, shopDateOf, shopDayRange, shopWeekday } from "./scheduling/availability";
 
 const at = (iso: string) => new Date(iso);
 const slot = (from: string, to: string) => TimeSlot.create(at(from), at(to));
@@ -134,6 +134,13 @@ describe("calendario de la barbería (Lima, UTC−5)", () => {
     expect(shopDateOf(at("2026-11-03T04:59:00Z"))).toBe("2026-11-02");
     expect(shopDayRange("2026-11-02").start.toISOString()).toBe("2026-11-02T05:00:00.000Z");
     expect(() => shopWeekday("2026-02-30")).toThrow(InvalidDateError);
+  });
+
+  test("addDays cruza mes y año, admite negativos y valida", () => {
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+    expect(addDays("2026-11-02", 0)).toBe("2026-11-02");
+    expect(() => addDays("2026-02-30", 1)).toThrow(InvalidDateError);
   });
 });
 

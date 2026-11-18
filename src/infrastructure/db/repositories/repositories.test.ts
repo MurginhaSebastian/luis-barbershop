@@ -197,7 +197,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
 
     const before = await getAgenda.execute({ date: DATE });
     expect(before.pending.map((i) => i.id)).toEqual([booked.id]);
-    expect(before.day[0]).toMatchObject({
+    expect(before.items[0]).toMatchObject({
       customerName: "Cliente Prueba",
       phone: "51900000001",
       barberName: "Barbero A",
@@ -208,7 +208,7 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     await new ChangeAppointmentStatusUseCase(deps).execute({ id: booked.id, status: AppointmentStatus.CONFIRMED });
     const after = await getAgenda.execute({ date: DATE });
     expect(after.pending).toEqual([]);
-    expect(after.day[0].status).toBe(AppointmentStatus.CONFIRMED);
+    expect(after.items[0].status).toBe(AppointmentStatus.CONFIRMED);
     expect((await deps.appointments.findById(booked.id))?.services).toEqual(booked.services);
   });
 

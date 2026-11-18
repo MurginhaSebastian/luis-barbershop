@@ -1,3 +1,4 @@
+import { addDays } from "@/core/scheduling/availability";
 import { formatTime } from "./format";
 
 const DAY_MS = 86_400_000;
@@ -14,7 +15,7 @@ export function daysBetween(first: string, last: string): string[] {
 
 /** La fecha "YYYY-MM-DD" desplazada ese número de días. */
 export function shiftDay(date: string, days: number): string {
-  return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+  return addDays(date, days);
 }
 
 /** Separa las horas en Mañana y Tarde (según la hora de la barbería) y omite la parte vacía. */

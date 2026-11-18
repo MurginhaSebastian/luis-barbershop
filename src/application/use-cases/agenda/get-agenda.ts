@@ -4,7 +4,8 @@ import type { IConfirmationRepository } from "@/application/ports/repositories/c
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
 import type { IScheduleRepository } from "@/application/ports/repositories/schedule-repository";
 import { type Appointment, AppointmentStatus } from "@/core/entities/appointment";
-import { shopDayRange, shopInstant, shopWeekday } from "@/core/scheduling/availability";
+import { TimeSlot } from "@/core/entities/time-slot";
+import { addDays, shopDayRange, shopInstant, shopWeekday } from "@/core/scheduling/availability";
 
 /** Lo que el barbero necesita ver de una cita, en datos planos para la pantalla. */
 export interface AgendaItem {
@@ -31,11 +32,35 @@ export interface Interval {
 export interface Agenda {
   /** Todas las citas futuras que aún nadie ha confirmado, de cualquier día. */
   pending: AgendaItem[];
-  day: AgendaItem[];
-  /** Tramos de apertura del día elegido. */
-  open: Interval[];
-  /** Bloqueos de ese día por barbero activo (los de toda la barbería aparecen en cada uno). */
+  view: AgendaView;
+  /** Fechas visibles "YYYY-MM-DD", en orden (1, 7 o 35/42). */
+  days: string[];
+  /** Citas que se cruzan con el rango visible, en cualquier estado, ordenadas por inicio. */
+  items: AgendaItem[];
+  /** Tramos de apertura de cada día visible. */
+  open: (Interval & { date: string })[];
+  /** Bloqueos del rango por barbero activo (los de toda la barbería aparecen en cada uno). */
   blocks: (Interval & { barberName: string })[];
+}
+
+export type AgendaView = "dia" | "semana" | "mes";
+
+/** Lunes (inclusive) de la semana de esa fecha. */
+const mondayOf = (date: string) => addDays(date, -((shopWeekday(date) + 6) % 7));
+
+function visibleDays(date: string, view: AgendaView): string[] {
+  if (view === "dia") return [date];
+  let first = mondayOf(date);
+  let last = addDays(first, 6);
+  if (view === "mes") {
+    const monthStart = `${date.slice(0, 8)}01`;
+    const monthEnd = addDays(`${addDays(`${date.slice(0, 8)}28`, 4).slice(0, 8)}01`, -1);
+    first = mondayOf(monthStart);
+    last = addDays(mondayOf(monthEnd), 6);
+  }
+  const days: string[] = [];
+  for (let d = first; d <= last; d = addDays(d, 1)) days.push(d);
+  return days;
 }
 
 export interface GetAgendaDeps {
@@ -50,13 +75,15 @@ export interface GetAgendaDeps {
 export class GetAgendaUseCase {
   constructor(private readonly deps: GetAgendaDeps) {}
 
-  async execute({ date }: { date: string }): Promise<Agenda> {
-    const [pending, atRisk, day] = await Promise.all([
+  async execute({ date, view = "dia" }: { date: string; view?: AgendaView }): Promise<Agenda> {
+    const days = visibleDays(date, view);
+    const range = TimeSlot.create(shopDayRange(days[0]).start, shopDayRange(days[days.length - 1]).end);
+    const [pending, atRisk, inRange] = await Promise.all([
       this.deps.appointments.findByStatusFrom(AppointmentStatus.PENDING, this.deps.now()),
       this.deps.appointments.findByStatusFrom(AppointmentStatus.AT_RISK, this.deps.now()),
-      this.deps.appointments.findInRange(shopDayRange(date)),
+      this.deps.appointments.findInRange(range),
     ]);
-    const all = [...pending, ...atRisk, ...day];
+    const all = [...pending, ...atRisk, ...inRange];
     const [customers, barbers, confirmations] = await Promise.all([
       this.deps.customers.findByIds([...new Set(all.map((a) => a.customerId))]),
       this.deps.barbers.findByIds([...new Set(all.map((a) => a.barberId))]),
@@ -84,11 +111,18 @@ export class GetAgendaUseCase {
           }),
         }));
 
-    const [hours, activeBarbers] = await Promise.all([
-      this.deps.schedule.findBusinessHours(shopWeekday(date)),
+    const weekdays = [...new Set(days.map(shopWeekday))];
+    const [hoursByWeekday, activeBarbers] = await Promise.all([
+      Promise.all(weekdays.map((w) => this.deps.schedule.findBusinessHours(w))),
       this.deps.barbers.findAllActive(),
     ]);
-    const range = shopDayRange(date);
+    const open = days.flatMap((d) =>
+      hoursByWeekday[weekdays.indexOf(shopWeekday(d))].map((h) => ({
+        date: d,
+        start: shopInstant(d, h.openMinute).toISOString(),
+        end: shopInstant(d, h.closeMinute).toISOString(),
+      })),
+    );
     const blocks = await Promise.all(
       activeBarbers.map(async (barber) =>
         (await this.deps.schedule.findBlocks(barber.id, range)).map((b) => ({
@@ -100,8 +134,10 @@ export class GetAgendaUseCase {
     );
     return {
       pending: toItems([...pending, ...atRisk]),
-      day: toItems(day),
-      open: hours.map((h) => ({ start: shopInstant(date, h.openMinute).toISOString(), end: shopInstant(date, h.closeMinute).toISOString() })),
+      view,
+      days,
+      items: toItems(inRange),
+      open,
       blocks: blocks.flat(),
     };
   }

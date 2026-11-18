@@ -31,6 +31,11 @@ export function shopDateOf(instant: Date): string {
   return new Date(instant.getTime() + SHOP_UTC_OFFSET_MINUTES * MINUTE_MS).toISOString().slice(0, 10);
 }
 
+/** La fecha "YYYY-MM-DD" del calendario de la barbería, desplazada ese número de días (puede ser negativo). */
+export function addDays(date: string, days: number): string {
+  return shopDateOf(new Date(shopMidnight(date).getTime() + days * DAY_MS));
+}
+
 /** Instante de un día de la barbería, a esos minutos desde su medianoche (1440 = fin del día). */
 export function shopInstant(date: string, minute: number): Date {
   return new Date(shopMidnight(date).getTime() + minute * MINUTE_MS);

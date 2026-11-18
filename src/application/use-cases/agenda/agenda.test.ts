@@ -85,12 +85,12 @@ describe("GetAgendaUseCase", () => {
 
     const agenda = await new GetAgendaUseCase(repos).execute({ date: "2026-11-02" });
     expect(agenda.pending.map((i) => i.id)).toEqual(["a2"]);
-    expect(agenda.day.map((i) => i.id)).toEqual(["a1"]);
+    expect(agenda.items.map((i) => i.id)).toEqual(["a1"]);
   });
 
   test("ordena por hora y da lo necesario para atender la cita", async () => {
     const repos = makeRepos([book("tarde", "2026-11-02T20:00:00Z"), book("mañana", "2026-11-02T15:00:00Z")]);
-    const { day } = await new GetAgendaUseCase(repos).execute({ date: "2026-11-02" });
+    const { items: day } = await new GetAgendaUseCase(repos).execute({ date: "2026-11-02" });
 
     expect(day.map((i) => i.id)).toEqual(["mañana", "tarde"]);
     expect(day[0]).toEqual({
@@ -114,7 +114,7 @@ describe("GetAgendaUseCase", () => {
     const repos = makeRepos([book("vieja", "2026-11-02T09:00:00Z")]);
     const agenda = await new GetAgendaUseCase(repos).execute({ date: "2026-11-02" });
     expect(agenda.pending).toEqual([]);
-    expect(agenda.day.map((i) => i.id)).toEqual(["vieja"]);
+    expect(agenda.items.map((i) => i.id)).toEqual(["vieja"]);
   });
 
   test("las citas en riesgo siguen en la lista de pendientes: aún pueden confirmar", async () => {
@@ -125,13 +125,32 @@ describe("GetAgendaUseCase", () => {
 
   test("da el horario y los bloqueos del día, para no mostrar libre lo que no lo está", async () => {
     const { open, blocks } = await new GetAgendaUseCase(makeRepos([])).execute({ date: "2026-11-02" });
-    expect(open).toEqual([{ start: "2026-11-02T15:00:00.000Z", end: "2026-11-02T19:00:00.000Z" }]);
+    expect(open).toEqual([{ date: "2026-11-02", start: "2026-11-02T15:00:00.000Z", end: "2026-11-02T19:00:00.000Z" }]);
     expect(blocks).toEqual([{ barberName: "Luis", start: "2026-11-02T17:00:00.000Z", end: "2026-11-02T18:00:00.000Z" }]);
+  });
+
+  test("semana: de lunes a domingo, con las citas de varios días", async () => {
+    const repos = makeRepos([book("lun", "2026-11-02T15:00:00Z"), book("vie", "2026-11-06T15:00:00Z"), book("sig", "2026-11-09T15:00:00Z")]);
+    const agenda = await new GetAgendaUseCase(repos).execute({ date: "2026-11-04", view: "semana" }); // miércoles
+    expect(agenda.view).toBe("semana");
+    expect(agenda.days).toEqual(["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08"]);
+    expect(agenda.items.map((i) => i.id)).toEqual(["lun", "vie"]);
+    expect(agenda.open.map((o) => o.date)).toEqual(["2026-11-02"]); // solo el lunes abre en el falso
+  });
+
+  test("mes: semanas completas de lunes a domingo", async () => {
+    const nov = await new GetAgendaUseCase(makeRepos([])).execute({ date: "2026-11-17", view: "mes" });
+    expect(nov.days).toHaveLength(42);
+    expect([nov.days[0], nov.days.at(-1)]).toEqual(["2026-10-26", "2026-12-06"]);
+    const feb = await new GetAgendaUseCase(makeRepos([])).execute({ date: "2027-02-10", view: "mes" });
+    expect(feb.days).toHaveLength(28);
+    const aug = await new GetAgendaUseCase(makeRepos([])).execute({ date: "2026-08-15", view: "mes" });
+    expect([aug.days.length, aug.days[0], aug.days.at(-1)]).toEqual([42, "2026-07-27", "2026-09-06"]);
   });
 
   test("muestra el barbero aunque ya no esté activo", async () => {
     const repos = makeRepos([book("a1", "2026-11-02T15:00:00Z", "b2")]);
-    const { day } = await new GetAgendaUseCase(repos).execute({ date: "2026-11-02" });
+    const { items: day } = await new GetAgendaUseCase(repos).execute({ date: "2026-11-02" });
     expect(day[0].barberName).toBe("Antiguo");
   });
 });

@@ -26,8 +26,10 @@ export default function PanelPage({ searchParams }: PageProps<"/panel">) {
 async function Panel({ searchParams }: Pick<PageProps<"/panel">, "searchParams">) {
   await requirePanelSession();
   const today = shopDateOf(new Date());
-  const date = z.iso.date().catch(today).parse((await searchParams).dia);
-  const agenda = await getUseCases().getAgenda.execute({ date });
+  const params = await searchParams;
+  const date = z.iso.date().catch(today).parse(params.dia);
+  const view = z.enum(["dia", "semana", "mes"]).catch("dia").parse(params.vista);
+  const agenda = await getUseCases().getAgenda.execute({ date, view });
   return (
     <>
       <PushToggle

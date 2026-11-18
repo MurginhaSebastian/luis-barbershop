@@ -11,7 +11,7 @@ const dayLink =
 
 /** Arriba lo que espera respuesta, de cualquier día; debajo la agenda del día elegido. */
 export function AgendaView(props: { agenda: Agenda; date: string; today: string; changeStatus: ChangeStatusAction }) {
-  const { pending, day } = props.agenda;
+  const { pending, items: day } = props.agenda;
   const href = (date: string) => `/panel?dia=${date}`;
   return (
     <div className="mt-6 space-y-10">
