@@ -11,26 +11,29 @@ import { cancellationMessage, confirmationMessage, whatsappLink } from "@/presen
 export type ChangeStatusAction = (id: string, status: AppointmentStatus) => Promise<{ error?: string }>;
 
 // La etiqueta lleva siempre el estado en palabras: el color solo lo refuerza.
-export const STATUS: Record<AppointmentStatus, { label: string; badge: string; card?: string }> = {
+export const STATUS: Record<AppointmentStatus, { label: string; short: string; badge: string; card?: string }> = {
   PENDING: {
-    label: "Separado · Por confirmar",
+    label: "Reservado · Por confirmar",
+    short: "Reservado",
     badge: "border-status-pending bg-status-pending-surface text-status-pending-foreground",
     card: "border-status-pending bg-status-pending-surface",
   },
   CONFIRMED: {
-    label: "Confirmada",
+    label: "Confirmado",
+    short: "Confirmado",
     badge: "border-status-confirmed bg-status-confirmed-surface text-status-confirmed-foreground",
     card: "border-status-confirmed bg-status-confirmed-surface",
   },
   AT_RISK: {
-    label: "En riesgo · Hueco libre",
+    label: "En riesgo",
+    short: "En riesgo",
     badge: "border-status-risk bg-status-risk-surface text-status-risk-foreground",
     card: "border-2 border-dashed border-status-risk bg-status-risk-surface",
   },
-  COMPLETED: { label: "Atendida", badge: "border-border text-muted-foreground" },
-  CANCELLED: { label: "Cancelada", badge: "border-destructive/60 text-destructive" },
-  NO_SHOW: { label: "No vino", badge: "border-destructive/60 text-destructive" },
-  EXPIRED: { label: "Vencida, sin confirmar", badge: "border-border text-muted-foreground" },
+  COMPLETED: { label: "Atendido", short: "Atendido", badge: "border-border text-muted-foreground" },
+  CANCELLED: { label: "Cancelado", short: "Cancelado", badge: "border-destructive/60 text-destructive" },
+  NO_SHOW: { label: "No vino", short: "No vino", badge: "border-destructive/60 text-destructive" },
+  EXPIRED: { label: "Vencido", short: "Vencido", badge: "border-border text-muted-foreground" },
 };
 
 const action = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";

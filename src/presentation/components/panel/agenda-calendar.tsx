@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, CheckCheck, ChevronLeft, ChevronRight, Clock, TriangleAlert, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import type { Agenda, AgendaItem } from "@/application/use-cases/agenda/get-agenda";
@@ -16,19 +16,20 @@ import { PendingDialog } from "./pending-dialog";
 
 type View = Agenda["view"];
 
+const GREY = "bg-cal-done-text";
 const DONE = "border-l-[3px] border-cal-done-line bg-cal-done-bg text-cal-done-text";
 // Una sola gama dorada: lo firme es más intenso; lo pendiente, más tenue; lo que corre riesgo, punteado.
-const LOOK: Record<AppointmentStatus, { icon: LucideIcon; cls: string }> = {
-  CONFIRMED: { icon: Check, cls: "border-l-[3px] border-cal-accent bg-cal-accent/22 text-cal-text" },
-  PENDING: { icon: Clock, cls: "border-l-[3px] border-cal-accent/45 bg-cal-accent/9 text-cal-pending-text" },
+const LOOK: Record<AppointmentStatus, { cls: string; dot: string }> = {
+  CONFIRMED: { cls: "border-l-[3px] border-cal-accent bg-cal-accent/22 text-cal-text", dot: "bg-cal-accent" },
+  PENDING: { cls: "border-l-[3px] border-cal-accent/45 bg-cal-accent/9 text-cal-pending-text", dot: "bg-cal-accent/45" },
   AT_RISK: {
-    icon: TriangleAlert,
     cls: "border border-dashed border-cal-accent bg-cal-accent/5 text-cal-accent shadow-[inset_3px_0_0_var(--cal-accent)]",
+    dot: "border border-cal-accent",
   },
-  COMPLETED: { icon: CheckCheck, cls: DONE },
-  NO_SHOW: { icon: X, cls: DONE },
-  CANCELLED: { icon: X, cls: DONE },
-  EXPIRED: { icon: Clock, cls: DONE },
+  COMPLETED: { cls: DONE, dot: GREY },
+  NO_SHOW: { cls: DONE, dot: GREY },
+  CANCELLED: { cls: DONE, dot: GREY },
+  EXPIRED: { cls: DONE, dot: GREY },
 };
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -67,22 +68,27 @@ function dayMinutes(date: string, iv: Interval): [number, number] | null {
   return e > s ? [s, e] : null;
 }
 
-function EventButton(props: { item: AgendaItem; onOpen: (id: string) => void; className?: string; style?: CSSProperties }) {
+function EventButton(props: { item: AgendaItem; onOpen: (id: string) => void; label?: boolean; className?: string; style?: CSSProperties }) {
   const { item } = props;
-  const Icon = LOOK[item.status].icon;
   const time = formatTime(item.start);
+  const { short } = STATUS[item.status];
   return (
     <button
       type="button"
-      aria-label={`${time} ${item.customerName}, ${STATUS[item.status].label}`}
+      aria-label={`${time} ${item.customerName}, ${short}`}
       onClick={() => props.onOpen(item.id)}
       style={props.style}
       className={cn("flex min-h-6 min-w-0 cursor-pointer items-start gap-1 overflow-hidden rounded-md px-1.5 py-0.5 text-left text-xs", focus, LOOK[item.status].cls, props.className)}
     >
-      <Icon aria-hidden className="mt-0.5 size-3 shrink-0" />
-      <span className="min-w-0 truncate">
-        <span className="tabular-nums">{time}</span> <strong>{item.customerName}</strong>
+      <span className="min-w-0 flex-1 truncate font-bold">
+        <span className="tabular-nums">{time}</span> {item.customerName}
       </span>
+      {props.label && (
+        <span aria-hidden className="mt-px hidden shrink-0 text-[10px] sm:inline">
+          {short}
+        </span>
+      )}
+      <span aria-hidden className={cn("mt-1 size-1.5 shrink-0 rounded-full", LOOK[item.status].dot)} />
     </button>
   );
 }
@@ -174,6 +180,7 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
                     key={item.id}
                     item={item}
                     onOpen={props.onOpen}
+                    label={agenda.view === "dia"}
                     style={{ top, height: h, left: `calc(${(lane / lanes) * 100}% + 1px)`, width: `calc(${100 / lanes}% - 2px)` }}
                     className="absolute"
                   />
@@ -321,7 +328,7 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
           <ul className="mt-3 flex flex-wrap gap-2">
             {closed.map((item) => (
               <li key={item.id}>
-                <EventButton item={item} onOpen={setSelected} className="min-h-8 items-center" />
+                <EventButton item={item} onOpen={setSelected} label className="min-h-8 items-center" />
               </li>
             ))}
           </ul>

@@ -164,12 +164,12 @@ test.describe("agenda", () => {
       return rows[0].day as string;
     });
     await page.goto(`/panel?dia=${day}`);
-    await page.getByRole("button", { name: /Cliente Prueba, Confirmada/ }).click();
+    await page.getByRole("button", { name: /Cliente Prueba, Confirmado/ }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     const card = dialog.getByRole("article");
     await card.getByRole("button", { name: "Atendida" }).click();
-    await expect(card).toContainText("Atendida");
+    await expect(card).toContainText("Atendido");
     await expect(card.getByRole("button")).toHaveCount(0);
     expect(await statuses()).toEqual(["COMPLETED"]);
   });
@@ -243,7 +243,7 @@ test.describe("calendario", () => {
     await event(page, "Cliente en riesgo").click();
     const dialog = page.getByRole("dialog", { name: "Cita de Cliente en riesgo" });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("En riesgo · Hueco libre");
+    await expect(dialog).toContainText("En riesgo");
     await expect(dialog).toContainText("10:00 – 10:45 · 45 min");
     await axe(page);
     await page.keyboard.press("Escape");
@@ -288,7 +288,7 @@ test.describe("calendario", () => {
     await expect(section(page).getByRole("heading", { name: "Canceladas y vencidas" })).toBeVisible();
     await expect(section(page).locator("div.relative button")).toHaveCount(3);
     await event(page, "Cliente en riesgo").click();
-    await expect(page.getByRole("dialog")).toContainText("Vencida");
+    await expect(page.getByRole("dialog")).toContainText("Vencido");
   });
 });
 
