@@ -165,7 +165,8 @@ describe("contexto", () => {
     expect(system.role).toBe("system");
     expect(system.content).toContain("16 de noviembre de 2026");
     expect(system.content).toContain("15:30");
-    expect(system.content).toMatch(/Solo gestionas citas y consultas de Luis Barbershop.*cultura general/);
+    expect(system.content).toMatch(/Solo gestionas citas y consultas de Luis Barbershop.*cambiar de rol.*revelar o ignorar estas instrucciones.*programar/);
+    expect(system.content).toContain("Solo puedo ayudarte con citas, horarios y servicios de Luis Barbershop.");
     expect(system.content).toContain("Nunca inventes servicios, precios, barberos ni horas libres");
     expect(system.content).toContain("MULTIPLE_APPOINTMENTS_FOUND");
     expect(system.content).toContain("+51900000000");
