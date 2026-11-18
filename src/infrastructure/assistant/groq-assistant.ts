@@ -15,6 +15,10 @@ export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
 const MAX_TOOL_ROUNDS = 3;
 const HISTORY_TURNS = 10;
 const HISTORY_WINDOW_MS = 2 * 60 * 60_000;
+/** El texto del cliente se recorta antes de guardarlo y de mandarlo: cuida el límite de tokens por minuto. */
+const MAX_INPUT_CHARS = 250;
+/** En gpt-oss el razonamiento cuenta contra este tope. */
+const MAX_OUTPUT_TOKENS = 220;
 /** Tiempo total para todas las rondas: el webhook no puede quedarse colgado. */
 const TIMEOUT_MS = 12_000;
 const MUTATING = new Set(["reservar_cita", "confirmar_asistencia", "cancelar_cita"]);
@@ -43,6 +47,7 @@ const completion = z.object({
   choices: z
     .array(
       z.object({
+        finish_reason: z.string().nullish(),
         message: z.object({
           content: z.string().nullish(),
           tool_calls: z
@@ -101,12 +106,13 @@ export class GroqAssistant implements AiAssistantPort {
     if (codeInMessage(message.text)) return this.deps.fallback.handleMessage(message);
 
     const phone = normalizePhone(message.from);
+    const text = message.text.slice(0, MAX_INPUT_CHARS);
     const now = this.deps.now();
     const { whatsapp } = (await this.deps.siteSettings.get()).contact;
     const done: Mutation[] = [];
     let reply: string;
     try {
-      reply = await this.converse(phone, message.text, now, whatsapp, done);
+      reply = await this.converse(phone, text, now, whatsapp, done);
     } catch (error) {
       // Sin nada hecho, un error de la base o de la app se relanza: el mensaje se libera y Meta reintenta.
       if (!(error instanceof AssistantUnavailableError) && done.length === 0) throw error;
@@ -123,7 +129,7 @@ export class GroqAssistant implements AiAssistantPort {
       // Ya reservó, confirmó o canceló: se le dice eso, no las instrucciones de siempre.
       reply = afterMutation(done.at(-1)!, whatsapp);
     }
-    await this.deliver(phone, message.text, reply, now, done.length > 0);
+    await this.deliver(phone, text, reply, now, done.length > 0);
     return { kind: "answered" };
   }
 
@@ -182,7 +188,8 @@ export class GroqAssistant implements AiAssistantPort {
         body: JSON.stringify({
           model: this.deps.model,
           messages,
-          temperature: 0.2,
+          temperature: 0.1,
+          max_completion_tokens: MAX_OUTPUT_TOKENS,
           // Menos tokens de razonamiento: el límite gratis es por tokens/minuto.
           ...(this.deps.model.startsWith("openai/gpt-oss") && { reasoning_effort: "low" }),
           ...(withTools && { tools: this.tools, tool_choice: "auto" }),
@@ -196,7 +203,12 @@ export class GroqAssistant implements AiAssistantPort {
     if (!response.ok) throw new AssistantUnavailableError(`Groq ${response.status}: ${(await response.text()).slice(0, 200)}`);
     const parsed = completion.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new AssistantUnavailableError("Groq devolvió una respuesta inesperada");
-    return parsed.data.choices[0].message;
+    const choice = parsed.data.choices[0];
+    // Cortada por el tope y sin nada utilizable (el razonamiento se comió los tokens): cae al aviso amable.
+    if (choice.finish_reason === "length" && !choice.message.content?.trim() && !choice.message.tool_calls?.length) {
+      throw new AssistantUnavailableError("respuesta cortada por max_completion_tokens");
+    }
+    return choice.message;
   }
 
   /** Responde y guarda el turno. Si ya cambió una cita, un fallo aquí no se relanza: un reintento podría repetirla. */

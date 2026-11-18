@@ -123,6 +123,23 @@ describe("varias rondas de herramientas", () => {
   });
 });
 
+describe("barreras de tokens", () => {
+  test("temperature 0.1, tope de 220 tokens y entrada recortada a 250 caracteres (también en el historial)", async () => {
+    const t = makeAssistant([groq({ content: "ok" })]);
+    await t.assistant.handleMessage(message("a".repeat(400)));
+    const body = t.bodies()[0];
+    expect(body).toMatchObject({ temperature: 0.1, max_completion_tokens: 220 });
+    expect(body.messages.at(-1).content).toBe("a".repeat(250));
+    expect(t.history[0]).toEqual({ role: "user", content: "a".repeat(250) });
+  });
+
+  test("cortada por length y sin texto ni herramientas: aviso amable", async () => {
+    const t = makeAssistant([new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "" } }] }), { status: 200 })]);
+    await t.assistant.handleMessage(message("hola"));
+    expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+  });
+});
+
 describe("contexto", () => {
   test("pasa los últimos 10 turnos de las 2 últimas horas, y el siguiente mensaje los recibe", async () => {
     const t = makeAssistant([groq({ content: "¿Para qué día?" }), groq({ content: "¿A qué hora?" })]);
