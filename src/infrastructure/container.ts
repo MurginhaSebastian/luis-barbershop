@@ -11,7 +11,7 @@ import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create
 import { BookingConfirmationUseCase } from "@/application/use-cases/booking/booking-confirmation";
 import { ConfirmationCycleUseCase } from "@/application/use-cases/booking/confirmation-cycle";
 import { GetCatalogUseCase } from "@/application/use-cases/catalog/get-catalog";
-import { selectAssistant } from "./assistant/select-assistant";
+import { aiAssistantEnabled, selectAssistant } from "./assistant/select-assistant";
 import { getDb } from "./db/client";
 import { DrizzleAppointmentRepository } from "./db/repositories/appointment-repository";
 import { DrizzleBarberRepository, DrizzleProductRepository, DrizzleServiceRepository } from "./db/repositories/catalog-repositories";
@@ -106,4 +106,9 @@ export function getVapidPublicKey(): string | null {
 /** Credenciales de WhatsApp, o null si no está configurado. Las usa el webhook para verificar a Meta. */
 export function getWhatsAppConfig() {
   return readWhatsAppConfig(process.env);
+}
+
+/** El número de WhatsApp del asistente de IA, o null si no está activo (reservar por ahí solo tiene sentido con IA). */
+export function getAssistantWhatsApp(): string | null {
+  return aiAssistantEnabled(process.env) ? (readWhatsAppConfig(process.env)?.displayNumber ?? null) : null;
 }

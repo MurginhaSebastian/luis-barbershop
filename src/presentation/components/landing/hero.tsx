@@ -1,3 +1,4 @@
+import { MessageCircle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { HeroVideo } from "./hero-video";
@@ -7,7 +8,7 @@ import { container, ctaClass, ghostCtaClass } from "./styles";
  * Portada a pantalla completa: un barbero trabajando en video y, abajo a la izquierda, el nombre y las dos
  * acciones. La foto (la subida en el panel o un fotograma del video) se ve mientras carga o si no se reproduce.
  */
-export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: string }) {
+export function Hero({ whatsappHref, assistantHref, image }: { whatsappHref?: string; assistantHref?: string; image?: string }) {
   return (
     // Llena la pantalla bajo la cabecera fija; en el móvil deja sitio también a la barra de "Reservar cita".
     <section className="relative isolate flex min-h-[calc(100svh-8.25rem)] items-end overflow-hidden md:min-h-[calc(100svh-4.75rem)]">
@@ -33,8 +34,14 @@ export function Hero({ whatsappHref, image }: { whatsappHref?: string; image?: s
           Cortes a tijera y máquina, fades y afeitado con navaja. Reserva tu hora en un minuto.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/reservar" className={ctaClass}>
-            Reservar cita
+          {assistantHref && (
+            <a href={assistantHref} target="_blank" rel="noopener noreferrer" className={`${ctaClass} gap-2`}>
+              <MessageCircle aria-hidden className="size-5" />
+              Reservar por WhatsApp
+            </a>
+          )}
+          <Link href="/reservar" className={assistantHref ? ghostCtaClass : ctaClass}>
+            {assistantHref ? "Reservar en la web" : "Reservar cita"}
           </Link>
           {whatsappHref && (
             <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={ghostCtaClass}>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getUseCases } from "@/infrastructure/container";
+import { getAssistantWhatsApp, getUseCases } from "@/infrastructure/container";
 import { Hero } from "@/presentation/components/landing/hero";
 import { ScrollToHash } from "@/presentation/components/landing/scroll-to-hash";
 import { About, ClosingCta, HowToBook, Products, Testimonials, VisitUs, WhyUs } from "@/presentation/components/landing/sections";
@@ -39,7 +39,15 @@ export default function Home() {
 
 async function HeroWithSettings() {
   const { contact, images } = await getSiteSettings();
-  return <Hero whatsappHref={contact.whatsapp && whatsappLink(contact.whatsapp)} image={images.hero} />;
+  // Se lee tras esperar los ajustes (dentro de Suspense, en la petición); si la portada pasara a estática, quedaría fijado en el build.
+  const assistant = getAssistantWhatsApp();
+  return (
+    <Hero
+      whatsappHref={contact.whatsapp && whatsappLink(contact.whatsapp)}
+      assistantHref={assistant ? whatsappLink(assistant, "Hola, quiero reservar una cita") : undefined}
+      image={images.hero}
+    />
+  );
 }
 
 async function ClosingWithSettings() {

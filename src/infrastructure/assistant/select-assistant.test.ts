@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import type { AiAssistantPort } from "@/application/ports/assistant";
 import { GroqAssistant } from "./groq-assistant";
-import { type AssistantDeps, selectAssistant } from "./select-assistant";
+import { aiAssistantEnabled, type AssistantDeps, selectAssistant } from "./select-assistant";
 
 const basic: AiAssistantPort = { handleMessage: async () => ({ kind: "no-code" }) };
 const deps: AssistantDeps = {
@@ -28,4 +28,11 @@ test("sin clave, sin WhatsApp o con un proveedor desconocido avisa una vez y no 
   expect(selectAssistant({ AI_PROVIDER: "otro", GROQ_API_KEY: "gsk_prueba" }, deps)).toBe(basic);
   expect(warn).toHaveBeenCalledTimes(1);
   warn.mockRestore();
+});
+
+test("aiAssistantEnabled pide proveedor groq y su clave", () => {
+  expect(aiAssistantEnabled({ AI_PROVIDER: "groq", GROQ_API_KEY: "gsk_prueba" })).toBe(true);
+  expect(aiAssistantEnabled({ AI_PROVIDER: "groq" })).toBe(false);
+  expect(aiAssistantEnabled({ GROQ_API_KEY: "gsk_prueba" })).toBe(false);
+  expect(aiAssistantEnabled({ AI_PROVIDER: "otro", GROQ_API_KEY: "gsk_prueba" })).toBe(false);
 });

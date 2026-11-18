@@ -18,6 +18,9 @@ export interface AssistantDeps {
 
 let warned = false;
 
+/** El asistente de IA está activo (WhatsApp aparte): sin él, el número automático solo confirma o cancela. */
+export const aiAssistantEnabled = (env: Record<string, string | undefined>): boolean => env.AI_PROVIDER === "groq" && !!env.GROQ_API_KEY;
+
 /**
  * Quién atiende el texto libre de WhatsApp. Sin AI_PROVIDER, el asistente básico. Con AI_PROVIDER=groq,
  * GROQ_API_KEY y WhatsApp configurado, el de IA (modelo en AI_MODEL). Cualquier otra combinación no rompe nada
@@ -26,8 +29,8 @@ let warned = false;
 export function selectAssistant(env: Record<string, string | undefined>, deps: AssistantDeps): AiAssistantPort {
   const provider = env.AI_PROVIDER;
   if (!provider) return deps.fallback;
-  if (provider === "groq" && env.GROQ_API_KEY && deps.messaging) {
-    return new GroqAssistant({ ...deps, messaging: deps.messaging, apiKey: env.GROQ_API_KEY, model: env.AI_MODEL || DEFAULT_GROQ_MODEL });
+  if (aiAssistantEnabled(env) && deps.messaging) {
+    return new GroqAssistant({ ...deps, messaging: deps.messaging, apiKey: env.GROQ_API_KEY!, model: env.AI_MODEL || DEFAULT_GROQ_MODEL });
   }
   if (!warned) {
     warned = true;
