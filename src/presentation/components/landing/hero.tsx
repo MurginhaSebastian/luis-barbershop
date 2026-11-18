@@ -34,19 +34,22 @@ export function Hero({ whatsappHref, assistantHref, image }: { whatsappHref?: st
           Cortes a tijera y máquina, fades y afeitado con navaja. Reserva tu hora en un minuto.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          {assistantHref && (
+          {assistantHref ? (
             <a href={assistantHref} target="_blank" rel="noopener noreferrer" className={`${ctaClass} gap-2`}>
               <MessageCircle aria-hidden className="size-5" />
               Reservar por WhatsApp
             </a>
-          )}
-          <Link href="/reservar" className={assistantHref ? ghostCtaClass : ctaClass}>
-            {assistantHref ? "Reservar en la web" : "Reservar cita"}
-          </Link>
-          {whatsappHref && (
-            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={ghostCtaClass}>
-              Escríbenos por WhatsApp
-            </a>
+          ) : (
+            <>
+              <Link href="/reservar" className={ctaClass}>
+                Reservar cita
+              </Link>
+              {whatsappHref && (
+                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={ghostCtaClass}>
+                  Escríbenos por WhatsApp
+                </a>
+              )}
+            </>
           )}
         </div>
       </div>
