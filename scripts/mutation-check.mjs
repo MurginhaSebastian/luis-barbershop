@@ -56,7 +56,7 @@ const mutants = [
   ["WhatsApp: una cita vencida se reabre", "src/application/use-cases/booking/booking-confirmation.ts", "if (status !== AppointmentStatus.PENDING && status !== AppointmentStatus.AT_RISK) return this.closedOutcome(appointment);", "if (status === AppointmentStatus.CANCELLED) return this.closedOutcome(appointment);"],
   ["WhatsApp: \"no podré ir\" confirma la cita", "src/application/use-cases/booking/booking-confirmation.ts", "return wantsToCancel(text) ? this.cancel(appointment) : this.confirm(appointment);", "return this.confirm(appointment);"],
   ["Vencida: una pendiente vence sin pasar por en riesgo", "src/core/entities/appointment.ts", '  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "AT_RISK"],', '  PENDING: ["CONFIRMED", "CANCELLED", "NO_SHOW", "AT_RISK", "EXPIRED"],'],
-  ["Panel: un bloqueo sale como libre", "src/presentation/lib/timeline.ts", "for (const block of blocks) {", "for (const block of blocks.slice(0, 0)) {"],
+  ["Panel: las citas que se cruzan van todas en el mismo carril", "src/presentation/lib/timeline.ts", "if (lane < 0) lane = laneEnds.length;", "if (lane < 0) lane = 0;"],
   ["IA: las herramientas usan otro celular que el del remitente", "src/infrastructure/assistant/groq-assistant.ts", "{ verifiedPhone: phone, now }", '{ verifiedPhone: "51999999999", now }'],
   ["IA: el historial no se limita a las 2 últimas horas", "src/infrastructure/assistant/groq-assistant.ts", "new Date(now.getTime() - HISTORY_WINDOW_MS), HISTORY_TURNS", "new Date(0), HISTORY_TURNS"],
   ["IA: sin tope de rondas de herramientas", "src/infrastructure/assistant/groq-assistant.ts", "const withTools = round < MAX_TOOL_ROUNDS;", "const withTools = round < 99;"],

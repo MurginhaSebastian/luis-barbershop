@@ -1,18 +1,10 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import Link from "next/link";
 import type { Agenda } from "@/application/use-cases/agenda/get-agenda";
-import { shiftDay } from "@/presentation/lib/days";
-import { formatLongDate } from "@/presentation/lib/format";
 import { AgendaCard, type ChangeStatusAction } from "./agenda-card";
-import { AgendaDay } from "./agenda-day";
-
-const dayLink =
-  "inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-full border border-input px-3 text-sm transition-colors duration-200 hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+import { AgendaCalendar } from "./agenda-calendar";
 
 /** Arriba lo que espera respuesta, de cualquier día; debajo la agenda del día elegido. */
 export function AgendaView(props: { agenda: Agenda; date: string; today: string; changeStatus: ChangeStatusAction }) {
-  const { pending, items: day } = props.agenda;
-  const href = (date: string) => `/panel?dia=${date}`;
+  const { pending } = props.agenda;
   return (
     <div className="mt-6 space-y-10">
       <section aria-labelledby="por-confirmar">
@@ -33,27 +25,7 @@ export function AgendaView(props: { agenda: Agenda; date: string; today: string;
       </section>
 
       <section aria-labelledby="agenda-dia">
-        <h2 id="agenda-dia" className="font-heading text-3xl first-letter:uppercase">
-          {props.date === props.today ? "Hoy" : formatLongDate(`${props.date}T12:00:00-05:00`)}
-        </h2>
-        <nav aria-label="Cambiar de día" className="mt-3 flex items-center gap-2">
-          <Link href={href(shiftDay(props.date, -1))} aria-label="Día anterior" className={dayLink}>
-            <ChevronLeft aria-hidden className="size-4" />
-          </Link>
-          {props.date !== props.today && (
-            <Link href={href(props.today)} className={dayLink}>
-              Hoy
-            </Link>
-          )}
-          <Link href={href(shiftDay(props.date, 1))} aria-label="Día siguiente" className={dayLink}>
-            <ChevronRight aria-hidden className="size-4" />
-          </Link>
-        </nav>
-        {day.length === 0 ? (
-          <p className="mt-4 text-muted-foreground">No hay citas este día.</p>
-        ) : (
-          <AgendaDay items={day} open={props.agenda.open} blocks={props.agenda.blocks} changeStatus={props.changeStatus} />
-        )}
+        <AgendaCalendar agenda={props.agenda} date={props.date} today={props.today} changeStatus={props.changeStatus} />
       </section>
     </div>
   );

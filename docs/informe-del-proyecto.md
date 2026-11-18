@@ -477,6 +477,6 @@ Cifras comprobadas en las páginas oficiales en noviembre de 2026. Conviene revi
 | Ciclo de confirmaciones | `src/application/use-cases/booking/confirmation-cycle.ts` |
 | Herramientas del asistente con IA | `src/application/use-cases/assistant/` |
 | Asistente con Groq | `src/infrastructure/assistant/groq-assistant.ts` |
-| Línea de tiempo del panel | `src/presentation/components/panel/agenda-day.tsx`, `src/presentation/lib/timeline.ts` |
+| Línea de tiempo del panel | `src/presentation/components/panel/agenda-calendar.tsx`, `src/presentation/lib/timeline.ts` |
 | Reglas de tiempo (2 h, 35 min, 15 min, 5 min) | `src/core/scheduling/booking-policy.ts` |
 | Historial de cambios | `git log` (172 commits desde el 29 de octubre de 2026) |

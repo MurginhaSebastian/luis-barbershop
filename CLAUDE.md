@@ -181,11 +181,13 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Confirmar y cancelar abren WhatsApp con el mensaje escrito (`presentation/lib/whatsapp.ts`). El
   `window.open` va antes de cualquier `await`, o el navegador lo bloquea. La agenda se refresca sola cada
   minuto (`AutoRefresh`).
-- La agenda del día es una línea de tiempo (`AgendaDay`, `presentation/lib/timeline.ts`): cada cita mide
-  `PX_PER_MINUTE` por minuto con mínimo de 64 px, las que se cruzan se apilan en su franja (nunca
-  `position: absolute`) y entre franjas se ve el hueco libre. Filtro por barbero con botones `aria-pressed`;
-  canceladas y vencidas van aparte. Colores por estado: tokens `--status-*` de `globals.css`, sólidos y con el
-  texto por encima de 4.5:1 (axe lo vigila); la etiqueta siempre dice el estado en palabras.
+- La agenda es un calendario estilo Apple (`AgendaCalendar`) con vistas Día, Semana y Mes (`?vista=&dia=`; `GetAgendaUseCase`
+  recibe `{ date, view }`). Día y semana son una grilla de `CAL_PX_PER_MINUTE` por minuto (`presentation/lib/timeline.ts`:
+  `gridHours`, `toGrid`, `placeDay`): las citas que se cruzan van en carriles lado a lado, con `position: absolute` solo
+  dentro de la grilla; cerrado y bloqueos van sombreados. Cada cita es un botón sin precio ni acciones: abre su ficha,
+  un `<dialog>` nativo (`AppointmentDialog`) con `AgendaCard` y todas las acciones. Filtro por barbero con `aria-pressed`;
+  canceladas y vencidas, en una lista bajo la vista Día. Paleta dorada monocromática: tokens `--cal-*` y `--status-*` de
+  `globals.css`, sólidos y con el texto por encima de 4.5:1 (axe lo vigila); la etiqueta siempre dice el estado en palabras.
 - Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`): acciones en
   `app/panel/admin-actions.ts`, formato en `admin-schema.ts` y reglas en `core/catalog/rules.ts`. Los casos de
   uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple.

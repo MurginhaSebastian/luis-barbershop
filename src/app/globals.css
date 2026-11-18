@@ -14,6 +14,15 @@
     --color-status-risk: var(--status-risk);
     --color-status-risk-surface: var(--status-risk-surface);
     --color-status-risk-foreground: var(--status-risk-foreground);
+    --color-cal-canvas: var(--cal-canvas);
+    --color-cal-surface: var(--cal-surface);
+    --color-cal-line: var(--cal-line);
+    --color-cal-accent: var(--cal-accent);
+    --color-cal-text: var(--cal-text);
+    --color-cal-pending-text: var(--cal-pending-text);
+    --color-cal-done-bg: var(--cal-done-bg);
+    --color-cal-done-line: var(--cal-done-line);
+    --color-cal-done-text: var(--cal-done-text);
     --font-heading: var(--font-display);
     --font-sans: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
@@ -127,15 +136,25 @@
     --sidebar-ring: #c9a45c;
     /* Estados de cita en el panel. Colores sólidos: sobre cada superficie, el texto normal y el apagado
        superan 4.5:1 (comprobado con la fórmula de WCAG; axe lo vigila en las pruebas). */
-    --status-pending: #e0b04a;
-    --status-pending-surface: #30260e;
-    --status-pending-foreground: #f6d98f;
-    --status-confirmed: #3fbf8f;
-    --status-confirmed-surface: #0f2e26;
-    --status-confirmed-foreground: #93e6c4;
-    --status-risk: #f08a3c;
-    --status-risk-surface: #3a1c0b;
-    --status-risk-foreground: #ffc08f;
+    --status-pending: #6a5938;
+    --status-pending-surface: #251f17;
+    --status-pending-foreground: #e6c98a;
+    --status-confirmed: #d4b26a;
+    --status-confirmed-surface: #31291d;
+    --status-confirmed-foreground: #f5efe6;
+    --status-risk: #d4b26a;
+    --status-risk-surface: #1e1914;
+    --status-risk-foreground: #d4b26a;
+    /* Calendario del panel: una sola gama dorada sobre café oscuro. */
+    --cal-canvas: #14110f;
+    --cal-surface: #1c1815;
+    --cal-line: #332b22;
+    --cal-accent: #d4b26a;
+    --cal-text: #f5efe6;
+    --cal-pending-text: #e6c98a;
+    --cal-done-bg: #1a1613;
+    --cal-done-line: #4a3f35;
+    --cal-done-text: #a89f91;
 }
 
 @layer base {

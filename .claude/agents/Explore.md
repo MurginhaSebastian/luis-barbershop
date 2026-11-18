@@ -26,7 +26,7 @@ Clean Architecture). Solo lees: nunca editas archivos ni ejecutas comandos.
   - `whatsapp/whatsapp-cloud.ts` (WhatsApp Cloud API, Graph v27.0), `push/` (Web Push),
     `assistant/` (`GroqAssistant`, `selectAssistant`).
   - `container.ts`: el único punto de ensamblaje.
-- `src/presentation/`: vista. `components/panel/agenda-day.tsx`, `lib/timeline.ts`, `components/booking/`.
+- `src/presentation/`: vista. `components/panel/agenda-calendar.tsx`, `lib/timeline.ts`, `components/booking/`.
 - `src/app/`: rutas Next.js 16. `api/whatsapp/` (webhook), `api/cron/vencer/` (ciclo de confirmaciones),
   `reservar/`, `panel/`.
 - `e2e/`: Playwright. `scripts/mutation-check.mjs`: mutantes. `CLAUDE.md`: reglas completas.

@@ -11,7 +11,7 @@ import { cancellationMessage, confirmationMessage, whatsappLink } from "@/presen
 export type ChangeStatusAction = (id: string, status: AppointmentStatus) => Promise<{ error?: string }>;
 
 // La etiqueta lleva siempre el estado en palabras: el color solo lo refuerza.
-const STATUS: Record<AppointmentStatus, { label: string; badge: string; card?: string }> = {
+export const STATUS: Record<AppointmentStatus, { label: string; badge: string; card?: string }> = {
   PENDING: {
     label: "Separado · Por confirmar",
     badge: "border-status-pending bg-status-pending-surface text-status-pending-foreground",
@@ -80,6 +80,13 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
       </div>
 
       <p className="mt-2 text-lg font-medium">{item.customerName}</p>
+      {item.phone && (
+        <p className="text-sm tabular-nums">
+          <a href={`tel:+${item.phone}`} className="underline underline-offset-2 hover:text-primary">
+            +{item.phone}
+          </a>
+        </p>
+      )}
       <p className="text-sm text-muted-foreground">
         {item.services.join(", ")} con {item.barberName}
       </p>
