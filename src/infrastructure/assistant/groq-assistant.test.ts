@@ -141,11 +141,11 @@ describe("barreras de tokens", () => {
 });
 
 describe("contexto", () => {
-  test("pasa los últimos 10 turnos de las 2 últimas horas, y el siguiente mensaje los recibe", async () => {
+  test("pasa los últimos 6 turnos de las 2 últimas horas, y el siguiente mensaje los recibe", async () => {
     const t = makeAssistant([groq({ content: "¿Para qué día?" }), groq({ content: "¿A qué hora?" })]);
     await t.assistant.handleMessage(message("Quiero corte y barba"));
     await t.assistant.handleMessage(message("mañana"));
-    expect(t.conversations.recent).toHaveBeenCalledWith(ME, new Date(NOW.getTime() - 2 * 3600_000), 10);
+    expect(t.conversations.recent).toHaveBeenCalledWith(ME, new Date(NOW.getTime() - 2 * 3600_000), 6);
     const second = t.bodies()[1].messages;
     expect(second.slice(1).map((m: { content: string }) => m.content)).toEqual(["Quiero corte y barba", "¿Para qué día?", "mañana"]);
   });

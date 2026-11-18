@@ -13,7 +13,7 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 /** llama-3.3-70b-versatile se retiró el 16-ago-2026 (salvo contratos empresariales); este es su reemplazo. */
 export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
 const MAX_TOOL_ROUNDS = 3;
-const HISTORY_TURNS = 10;
+const HISTORY_TURNS = 6;
 const HISTORY_WINDOW_MS = 2 * 60 * 60_000;
 /** El texto del cliente se recorta antes de guardarlo y de mandarlo: cuida el límite de tokens por minuto. */
 const MAX_INPUT_CHARS = 250;
