@@ -7,7 +7,7 @@ const basic: AiAssistantPort = { handleMessage: async () => ({ kind: "no-code" }
 const deps: AssistantDeps = {
   fallback: basic,
   tools: { executeTool: async () => ({ ok: true, data: {} }) },
-  conversations: { recent: async () => [], append: async () => {} },
+  conversations: { recent: async () => [], countUserTurns: async () => 0, append: async () => {} },
   messaging: { sendText: async () => {}, sendTemplate: async () => {} },
   siteSettings: { get: async () => ({}) as never, save: async () => {} },
   services: { findAllActive: async () => [] } as never,

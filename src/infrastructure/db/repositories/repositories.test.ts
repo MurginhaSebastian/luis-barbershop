@@ -320,6 +320,10 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     const left = await db.select({ content: schema.assistantMessages.content }).from(schema.assistantMessages);
     expect(left.map((r) => r.content)).not.toContain("hola de ayer");
     expect(left.map((r) => r.content)).toContain("otro cliente"); // 09:00, dentro de las 2 h
+    // Contar: solo mensajes del cliente, de ese celular y desde `since` (borde incluido).
+    expect(await repo.countUserTurns("51900000001", at("10:05"))).toBe(3); // p5, p6, p7
+    expect(await repo.countUserTurns("51900000001", new Date(now.getTime() + 1))).toBe(0);
+    expect(await repo.countUserTurns("51900000002", at("00:00"))).toBe(1);
   });
 
   test("mensajes atendidos: de dos reclamos simultáneos del mismo aviso, solo uno lo consigue", async () => {

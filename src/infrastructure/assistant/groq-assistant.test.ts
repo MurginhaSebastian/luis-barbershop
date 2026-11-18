@@ -32,6 +32,7 @@ function makeAssistant(responses: (Response | Error)[]) {
   const history: ConversationTurn[] = [];
   const conversations = {
     recent: vi.fn(async () => [...history]),
+    countUserTurns: vi.fn(async () => 0),
     append: vi.fn(async (_phone: string, turns: readonly ConversationTurn[]) => void history.push(...turns)),
   };
   const sendText = vi.fn<(phone: string, text: string) => Promise<void>>(async () => {});

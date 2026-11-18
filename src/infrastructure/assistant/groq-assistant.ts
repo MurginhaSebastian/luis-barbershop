@@ -18,6 +18,8 @@ const MAX_TOOL_ROUNDS = 3;
 const HISTORY_TURNS = 6;
 const HISTORY_WINDOW_MS = 2 * 60 * 60_000;
 /** El texto del cliente se recorta antes de guardarlo y de mandarlo: cuida el límite de tokens por minuto. */
+/** Lo que se guarda para poder contar el uso por celular (el modelo solo lee las últimas 2 h). */
+const KEEP_WINDOW_MS = 24 * 60 * 60_000;
 const MAX_INPUT_CHARS = 250;
 /** En gpt-oss el razonamiento cuenta contra este tope. */
 const MAX_OUTPUT_TOKENS = 220;
@@ -243,7 +245,7 @@ export class GroqAssistant implements AiAssistantPort {
         { role: "user" as const, content: text },
         { role: "assistant" as const, content: reply },
       ];
-      await this.deps.conversations.append(phone, turns, now, new Date(now.getTime() - HISTORY_WINDOW_MS));
+      await this.deps.conversations.append(phone, turns, now, new Date(now.getTime() - KEEP_WINDOW_MS));
     } catch (error) {
       console.error("asistente de IA: no se guardó el historial", { error: String(error), phone: mask(phone) });
     }
