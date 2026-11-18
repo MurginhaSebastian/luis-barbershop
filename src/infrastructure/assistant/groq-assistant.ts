@@ -23,6 +23,7 @@ const MAX_INPUT_CHARS = 250;
 const MAX_OUTPUT_TOKENS = 220;
 /** Tiempo total para todas las rondas: el webhook no puede quedarse colgado. */
 const TIMEOUT_MS = 12_000;
+const MEDIA_REPLY = "Por ahora solo leo mensajes de texto. Escríbeme qué servicio, día y hora quieres y te ayudo con tu cita.";
 const MUTATING = new Set(["reservar_cita", "confirmar_asistencia", "cancelar_cita"]);
 
 export interface GroqAssistantDeps {
@@ -107,6 +108,11 @@ export class GroqAssistant implements AiAssistantPort {
   constructor(private readonly deps: GroqAssistantDeps) {}
 
   async handleMessage(message: IncomingMessage): Promise<MessageOutcome> {
+    // Foto, audio…: respuesta fija, sin modelo ni historial.
+    if (message.media) {
+      await this.deps.messaging.sendText(normalizePhone(message.from), MEDIA_REPLY);
+      return { kind: "answered" };
+    }
     // "Confirmo mi cita KRT482" o el botón del recordatorio: el camino exacto, sin modelo.
     if (codeInMessage(message.text)) return this.deps.fallback.handleMessage(message);
 

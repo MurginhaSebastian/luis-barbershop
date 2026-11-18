@@ -142,6 +142,16 @@ describe("barreras de tokens", () => {
   });
 });
 
+describe("multimedia", () => {
+  test("respuesta fija, sin llamar a Groq ni guardar historial", async () => {
+    const t = makeAssistant([]);
+    expect(await t.assistant.handleMessage({ ...message(""), media: true })).toEqual({ kind: "answered" });
+    expect(t.fetchImpl).not.toHaveBeenCalled();
+    expect(t.sendText).toHaveBeenCalledWith(ME, expect.stringContaining("solo leo mensajes de texto"));
+    expect(t.history).toEqual([]);
+  });
+});
+
 describe("contexto", () => {
   test("pasa los últimos 6 turnos de las 2 últimas horas, y el siguiente mensaje los recibe", async () => {
     const t = makeAssistant([groq({ content: "¿Para qué día?" }), groq({ content: "¿A qué hora?" })]);
