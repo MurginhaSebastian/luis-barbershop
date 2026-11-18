@@ -210,7 +210,7 @@ function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; t
                 <span
                   className={cn(
                     "flex size-6 items-center justify-center rounded-full text-xs",
-                    d === props.today ? "bg-cal-accent font-semibold text-cal-canvas" : d.slice(0, 7) === props.date.slice(0, 7) ? "text-cal-text" : "text-cal-done-text/60",
+                    d === props.today ? "bg-cal-accent font-semibold text-cal-canvas" : d.slice(0, 7) === props.date.slice(0, 7) ? "text-cal-text" : "text-cal-done-text",
                   )}
                 >
                   {Number(d.slice(8))}

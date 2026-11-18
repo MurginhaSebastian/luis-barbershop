@@ -161,7 +161,10 @@ test.describe("agenda", () => {
       return rows[0].day as string;
     });
     await page.goto(`/panel?dia=${day}`);
-    const card = page.getByRole("region", { name: /^(Hoy|.*de .*)$/ }).getByRole("article");
+    await page.getByRole("button", { name: /Cliente Prueba, Confirmada/ }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    const card = dialog.getByRole("article");
     await card.getByRole("button", { name: "Atendida" }).click();
     await expect(card).toContainText("Atendida");
     await expect(card.getByRole("button")).toHaveCount(0);
@@ -208,56 +211,81 @@ test.describe("agenda", () => {
   });
 });
 
-test.describe("línea de tiempo del día", () => {
-  test("en 320 px: las citas que se cruzan se apilan, miden según su duración y se filtra por barbero", async ({ page }) => {
+test.describe("calendario", () => {
+  const section = (page: Page) => page.locator('section[aria-labelledby="agenda-dia"]');
+  const events = (page: Page) => section(page).getByRole("button", { name: /^\d{2}:\d{2} .+, / });
+  const event = (page: Page, name: string) => section(page).getByRole("button", { name: new RegExp(`^\\d{2}:\\d{2} ${name},`) });
+  const noOverflow = async (page: Page) =>
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  const axe = async (page: Page) => {
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+  };
+
+  test("día en 320 px: las citas que se cruzan van lado a lado, la ficha se abre y se filtra por barbero", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     const day = await seedDay();
     await login(page);
     await page.goto(`/panel?dia=${day}`);
-    const region = page.getByRole("region", { name: /^(Hoy|.*de .*)$/ });
-    const card = (name: string) => region.getByRole("article", { name: new RegExp(name) });
-    await expect(region.getByRole("article")).toHaveCount(4);
+    await expect(events(page)).toHaveCount(4);
 
-    // La cita en riesgo y la que tomó su hora no se tapan: una debajo de la otra.
-    const risk = (await card("Cliente en riesgo").boundingBox())!;
-    const hunter = (await card("Cazador de huecos").boundingBox())!;
-    expect(risk.y + risk.height <= hunter.y || hunter.y + hunter.height <= risk.y).toBe(true);
-    await expect(card("Cliente en riesgo")).toContainText("En riesgo · Hueco libre");
-    await expect(card("Cliente largo")).toContainText("11:30 – 13:30 · 120 min");
-    // Dos horas miden más que media hora.
-    expect((await card("Cliente largo").boundingBox())!.height).toBeGreaterThan(hunter.height);
-    await expect(region.getByText(/^Libre 10:45 – 11:30 · 45 min$/)).toBeVisible();
-    // Un bloqueo de toda la barbería dentro de ese hueco: lo libre se acorta y nunca lo incluye.
-    await withE2eDatabase((db) =>
-      db.query("INSERT INTO schedule_blocks (barber_id, starts_at, ends_at) VALUES (NULL, $1, $2)", [
-        `${day}T10:45:00-05:00`,
-        `${day}T11:15:00-05:00`,
-      ]),
-    );
-    await page.reload();
-    await expect(region.getByText(/^Libre 11:15 – 11:30 · 15 min$/)).toBeVisible();
-    await expect(region.getByText(/^Libre 10:45/)).toHaveCount(0);
+    const risk = (await event(page, "Cliente en riesgo").boundingBox())!;
+    const hunter = (await event(page, "Cazador de huecos").boundingBox())!;
+    expect(risk.x + risk.width <= hunter.x || hunter.x + hunter.width <= risk.x).toBe(true);
+    expect(Math.abs(risk.y - hunter.y)).toBeLessThan(4);
+    expect((await event(page, "Cliente largo").boundingBox())!.height).toBeGreaterThan(hunter.height);
 
-    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
-    expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    await axe(page);
+    await noOverflow(page);
+    await event(page, "Cliente en riesgo").click();
+    const dialog = page.getByRole("dialog", { name: "Cita de Cliente en riesgo" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("En riesgo · Hueco libre");
+    await expect(dialog).toContainText("10:00 – 10:45 · 45 min");
+    await axe(page);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
 
-    await region.getByRole("button", { name: "Barbero invitado" }).click();
-    await expect(region.getByRole("button", { name: "Barbero invitado" })).toHaveAttribute("aria-pressed", "true");
-    await expect(region.getByRole("article")).toHaveCount(1);
-    await region.getByRole("button", { name: "Todos" }).click();
-    await expect(region.getByRole("article")).toHaveCount(4);
+    const guest = section(page).getByRole("button", { name: "Barbero invitado" });
+    await guest.click();
+    await expect(guest).toHaveAttribute("aria-pressed", "true");
+    await expect(events(page)).toHaveCount(1);
+    await section(page).getByRole("button", { name: "Todos" }).click();
+    await expect(events(page)).toHaveCount(4);
   });
 
-  test("canceladas y vencidas van aparte, debajo de la línea de tiempo", async ({ page }) => {
+  test("semana en 320 px", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 900 });
+    const day = await seedDay();
+    await login(page);
+    await page.goto(`/panel?vista=semana&dia=${day}`);
+    await expect(page.getByRole("link", { name: "Semana", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(events(page)).toHaveCount(4);
+    await noOverflow(page);
+    await axe(page);
+  });
+
+  test("mes: tres píldoras y +1 más lleva a la vista día", async ({ page }) => {
+    const day = await seedDay();
+    await login(page);
+    await page.goto(`/panel?vista=mes&dia=${day}`);
+    await expect(events(page)).toHaveCount(3);
+    await axe(page);
+    await section(page).getByRole("link", { name: "+1 más" }).click();
+    await expect(page).toHaveURL(new RegExp(`vista=dia&dia=${day}`));
+    await expect(page.getByRole("link", { name: "Día", exact: true })).toHaveAttribute("aria-current", "page");
+    await expect(events(page)).toHaveCount(4);
+  });
+
+  test("canceladas y vencidas van aparte, debajo de la grilla", async ({ page }) => {
     const day = await seedDay();
     await withE2eDatabase((db) => db.query("UPDATE appointments SET status = 'EXPIRED' WHERE customer_name = 'Cliente en riesgo'"));
     await login(page);
     await page.goto(`/panel?dia=${day}`);
-    const timeline = page.getByRole("list", { name: "Línea de tiempo del día" });
-    await expect(timeline.getByRole("article")).toHaveCount(3);
-    await expect(page.getByRole("heading", { name: "Canceladas y vencidas" })).toBeVisible();
-    await expect(page.getByRole("article", { name: /Cliente en riesgo/ })).toContainText("Vencida");
+    await expect(section(page).getByRole("heading", { name: "Canceladas y vencidas" })).toBeVisible();
+    await expect(section(page).locator("div.relative button")).toHaveCount(3);
+    await event(page, "Cliente en riesgo").click();
+    await expect(page.getByRole("dialog")).toContainText("Vencida");
   });
 });
 

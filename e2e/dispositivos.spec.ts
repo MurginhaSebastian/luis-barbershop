@@ -76,7 +76,7 @@ test("reserva completa de principio a fin", async ({ page }, testInfo) => {
   expect(errors).toEqual([]);
 });
 
-test("agenda del panel: la línea de tiempo cabe y nada se tapa", async ({ page, browserName }, testInfo) => {
+test("agenda del panel: el calendario cabe y nada se tapa", async ({ page, browserName }, testInfo) => {
   // La cookie del panel es Secure en producción (next start) y WebKit no la guarda en http://localhost; con
   // HTTPS sí. El diseño en 320 px lo cubren Galaxy S9+ y Pixel.
   test.skip(browserName === "webkit", "WebKit no guarda cookies Secure en http://localhost");
@@ -87,9 +87,10 @@ test("agenda del panel: la línea de tiempo cabe y nada se tapa", async ({ page,
   await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("heading", { name: "Agenda", level: 1 })).toBeVisible();
   await page.goto(`/panel?dia=${day}`);
-  const timeline = page.getByRole("list", { name: "Línea de tiempo del día" });
-  await expect(timeline.getByRole("article")).toHaveCount(4);
-  const boxes = await timeline.getByRole("article").evaluateAll((cards) => cards.map((c) => c.getBoundingClientRect().toJSON()));
+  const section = page.locator('section[aria-labelledby="agenda-dia"]');
+  const events = section.getByRole("button", { name: /^\d{2}:\d{2} .+, / });
+  await expect(events).toHaveCount(4);
+  const boxes = await events.evaluateAll((cards) => cards.map((c) => c.getBoundingClientRect().toJSON()));
   for (const [i, a] of boxes.entries()) {
     for (const b of boxes.slice(i + 1)) {
       const apart = a.bottom <= b.top || b.bottom <= a.top || a.right <= b.left || b.right <= a.left;
@@ -98,7 +99,19 @@ test("agenda del panel: la línea de tiempo cabe y nada se tapa", async ({ page,
   }
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow, "desplazamiento horizontal").toBeLessThanOrEqual(0);
-  await capture(page, testInfo, "panel-agenda");
+  await capture(page, testInfo, "panel-agenda-dia");
+
+  await events.filter({ hasText: "Cliente largo" }).click();
+  await expect(page.getByRole("dialog", { name: "Cita de Cliente largo" })).toBeVisible();
+  await capture(page, testInfo, "panel-agenda-ficha");
+  await page.keyboard.press("Escape");
+
+  await page.goto(`/panel?vista=semana&dia=${day}`);
+  await expect(events).toHaveCount(4);
+  await capture(page, testInfo, "panel-agenda-semana");
+  await page.goto(`/panel?vista=mes&dia=${day}`);
+  await expect(section.getByRole("link", { name: "+1 más" })).toBeVisible();
+  await capture(page, testInfo, "panel-agenda-mes");
   expect(errors).toEqual([]);
 });
 
