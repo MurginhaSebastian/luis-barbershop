@@ -62,14 +62,21 @@ const steps = [
   { title: "Te confirmamos por WhatsApp", body: "Pagas en el local, junto con los productos que hayas pedido." },
 ];
 
-export function HowToBook() {
+const whatsappSteps = [
+  { title: "Escríbenos por WhatsApp", body: "Dile al asistente qué servicio quieres." },
+  { title: "Elige entre horas libres", body: "El asistente te ofrece las horas disponibles y te reserva." },
+  { title: "Te lo recordamos", body: "Te avisamos 35 minutos antes; pagas en el local." },
+];
+
+export function HowToBook({ assistant }: { assistant?: string | null }) {
+  const list = assistant ? whatsappSteps : steps;
   return (
     <section aria-labelledby="como-t" className={`${container} py-20`}>
       <h2 id="como-t" className={sectionTitle}>
         Cómo reservar
       </h2>
       <ol className="mt-12 grid gap-10 md:grid-cols-3">
-        {steps.map((step, i) => (
+        {list.map((step, i) => (
           <li key={step.title}>
             <span aria-hidden className="font-heading text-7xl leading-none text-primary">
               {i + 1}

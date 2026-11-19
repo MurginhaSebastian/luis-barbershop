@@ -95,7 +95,7 @@ async function CatalogSections() {
       </section>
       {sections.about && <About image={images.about} />}
       {sections.whyUs && <WhyUs />}
-      {sections.howToBook && <HowToBook />}
+      {sections.howToBook && <HowToBook assistant={assistant} />}
       {sections.products && <Products products={products} image={images.products} />}
       <Testimonials items={testimonials} />
       {sections.visit && <VisitUs weeklyHours={weeklyHours} address={contact.address} mapsUrl={contact.mapsUrl} />}
