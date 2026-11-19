@@ -8,7 +8,7 @@ import type { AppointmentStatus } from "@/core/entities/appointment";
 import { shopDateOf } from "@/core/scheduling/availability";
 import { shiftPeriod, weeks } from "@/presentation/lib/days";
 import { formatDayParts, formatTime } from "@/presentation/lib/format";
-import { CAL_PX_PER_MINUTE, gridHours, isOperational, limaMinuteOfDay, placeDay, type Interval } from "@/presentation/lib/timeline";
+import { CAL_PX_PER_MINUTE, freeGaps, gridHours, isOperational, limaMinuteOfDay, placeDay, type Interval } from "@/presentation/lib/timeline";
 import { cn } from "@/presentation/lib/utils";
 import { STATUS } from "./appointment-status";
 
@@ -91,7 +91,7 @@ function EventButton(props: { item: AgendaItem; onOpen: Open; label?: boolean; c
 
 const dayOf = (item: AgendaItem) => shopDateOf(new Date(item.start));
 
-function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string | null; today: string; onOpen: Open }) {
+function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string | null; gapsFor: string | null; today: string; onOpen: Open }) {
   const { agenda, items, today } = props;
   const [now, setNow] = useState<string>();
   useEffect(() => {
@@ -151,6 +151,17 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
             cursor = Math.max(cursor, e);
           }
           if (cursor < grid.endMinute) closed.push([cursor, grid.endMinute]);
+          // Huecos libres (solo con un barbero a la vista): lo abierto, desde ahora si es hoy, menos sus citas y bloqueos.
+          // AT_RISK no ocupa: esa hora se puede tomar.
+          const gaps = props.gapsFor
+            ? freeGaps(
+                agenda.open.filter((o) => o.date === d).map((o) => (isToday && now && o.start < now ? { ...o, start: now < o.end ? now : o.end } : o)),
+                [
+                  ...agenda.items.filter((i) => i.barberName === props.gapsFor && ["PENDING", "CONFIRMED", "COMPLETED", "NO_SHOW"].includes(i.status)),
+                  ...agenda.blocks.filter((b) => b.barberName === props.gapsFor),
+                ],
+              )
+            : [];
           return (
             <div key={d} className="min-w-0 flex-1 border-l border-cal-line">
               <div className="flex h-14 flex-col items-center justify-center text-xs text-cal-done-text">
@@ -170,6 +181,22 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
                 {blocks.map((b, i) => {
                   const m = dayMinutes(d, b);
                   return m && shade(m[0], m[1], "bg-cal-line/80", `b${i}`);
+                })}
+                {gaps.map((g, i) => {
+                  const m = dayMinutes(d, g);
+                  const [from, to] = m ? [Math.max(m[0], grid.startMinute), Math.min(m[1], grid.endMinute)] : [0, 0];
+                  return (
+                    to > from && (
+                      <div
+                        key={`g${i}`}
+                        aria-hidden
+                        style={{ top: px(from) + 1, height: (to - from) * CAL_PX_PER_MINUTE - 2 }}
+                        className="pointer-events-none absolute inset-x-1 rounded-md border border-dashed border-cal-line px-1.5 py-0.5 text-[11px] text-cal-done-text"
+                      >
+                        Libre
+                      </div>
+                    )
+                  );
                 })}
                 {placeDay(items.filter((i) => dayOf(i) === d), grid).map(({ item, top, height: h, lane, lanes }) => (
                   <EventButton
@@ -307,7 +334,7 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
       {view === "mes" ? (
         <MonthGrid agenda={agenda} items={operational} date={date} today={today} onOpen={props.onOpen} />
       ) : (
-        <TimeGrid agenda={agenda} items={operational} barber={barber} today={today} onOpen={props.onOpen} />
+        <TimeGrid agenda={agenda} items={operational} barber={barber} gapsFor={view === "dia" ? (barber ?? (barbers.length === 1 ? barbers[0] : null)) : null} today={today} onOpen={props.onOpen} />
       )}
 
       {view === "dia" && agenda.items.length === 0 && <p className="mt-4 text-muted-foreground">No hay citas este día.</p>}

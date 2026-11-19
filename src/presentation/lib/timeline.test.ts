@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { gridHours, isOperational, limaMinuteOfDay, placeDay, toGrid } from "./timeline";
+import { freeGaps, gridHours, isOperational, limaMinuteOfDay, placeDay, toGrid } from "./timeline";
 
 const at = (hhmm: string) => `2026-11-12T${hhmm}:00-05:00`;
 const item = (id: string, from: string, to: string) => ({ id, start: at(from), end: at(to) });
@@ -31,5 +31,27 @@ describe("maquetación del calendario", () => {
     expect(lanes([item("a", "10:00", "10:45"), item("b", "10:00", "10:30")])).toEqual([[0, 2], [1, 2]]);
     expect(lanes([item("a", "10:00", "11:00"), item("b", "10:30", "11:30"), item("c", "11:00", "12:00")])).toEqual([[0, 2], [1, 2], [0, 2]]);
     expect(lanes([item("a", "10:00", "10:30"), item("b", "11:00", "11:30")])).toEqual([[0, 1], [0, 1]]);
+  });
+});
+
+describe("freeGaps", () => {
+  const iv = (from: string, to: string) => ({ start: at(from), end: at(to) });
+  const open = [iv("10:00", "14:00"), iv("15:00", "20:00")];
+  const gaps = (busy: ReturnType<typeof iv>[], min?: number) =>
+    freeGaps(open, busy, min).map((g) => `${limaMinuteOfDay(g.start)}-${limaMinuteOfDay(g.end)}`);
+
+  test("sin nada ocupado, cada tramo abierto es un hueco", () => {
+    expect(gaps([])).toEqual(["600-840", "900-1200"]);
+  });
+  test("hueco al inicio, en medio y al final", () => {
+    expect(gaps([iv("10:30", "11:00"), iv("13:00", "14:00"), iv("15:00", "19:00")])).toEqual(["600-630", "660-780", "1140-1200"]);
+  });
+  test("citas solapadas y fuera del horario no rompen nada", () => {
+    expect(gaps([iv("10:00", "12:00"), iv("11:00", "13:00"), iv("08:00", "09:00"), iv("14:00", "15:00")])).toEqual(["780-840", "900-1200"]);
+    expect(gaps([iv("09:00", "21:00")])).toEqual([]);
+  });
+  test("los huecos menores al mínimo se descartan", () => {
+    expect(gaps([iv("10:20", "13:50")])).toEqual(["900-1200"]);
+    expect(gaps([iv("10:20", "13:50")], 10)).toEqual(["600-620", "830-840", "900-1200"]);
   });
 });

@@ -76,3 +76,24 @@ export function placeDay<T extends { start: string; end: string }>(items: readon
   close();
   return placed;
 }
+
+/** Huecos libres: lo abierto menos lo ocupado, sin los de menos de `minMinutes` (no cabe un corte). */
+export function freeGaps(open: readonly Interval[], busy: readonly Interval[], minMinutes = 30): Interval[] {
+  const taken = busy.map((b) => [Date.parse(b.start), Date.parse(b.end)]).sort((a, b) => a[0] - b[0]);
+  const gaps: Interval[] = [];
+  for (const o of open) {
+    let cursor = Date.parse(o.start);
+    const end = Date.parse(o.end);
+    const push = (to: number) => {
+      if ((to - cursor) / 60_000 >= minMinutes) gaps.push({ start: new Date(cursor).toISOString(), end: new Date(to).toISOString() });
+    };
+    for (const [s, e] of taken) {
+      if (e <= cursor) continue;
+      if (s >= end) break;
+      push(s);
+      cursor = Math.max(cursor, e);
+    }
+    push(end);
+  }
+  return gaps;
+}
