@@ -157,6 +157,10 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Secciones en `src/presentation/components/landing/` (hero, mosaico de servicios, nosotros,
   por qué venir, cómo reservar, productos, testimonios, horario/ubicación, cierre, pie y botón de
   WhatsApp). Los mosaicos enlazan a `/reservar?servicios=<id>`, que solo marca el servicio.
+- Con la IA activa (`getAssistantWhatsApp()`, leído en componentes dinámicos bajo `<Suspense>`), todos los botones de
+  reservar (cabecera, portada, barra móvil, mosaicos, cierre, pie) van al WhatsApp del asistente (`bookingCta`,
+  `BookLink`) y "Cómo reservar" describe esos pasos; `/reservar` queda como plan B (panel "+ Nueva cita" y sin IA). El
+  botón flotante sigue siendo el contacto de Luis.
 - Contacto, secciones visibles y fotos de la portada viven en la tabla `site_settings` (una fila JSON),
   editables en `/panel/web`. `readSiteSettings` (`core/entities/site.ts`) lee lo guardado sin fiarse y
   completa con `DEFAULT_SITE_SETTINGS`; los enlaces solo admiten `https:`. Nunca en el código: el repo es
