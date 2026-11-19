@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { PANEL_PASSWORD, resetBookings, seedAgendaDay as seedDay, withE2eDatabase } from "./database";
-import { bookUntilData, fillData, openFirstPending, pendingCards } from "./helpers";
+import { bookUntilData, fillData, openFirstPending, pendingCards, pendingList } from "./helpers";
 
 test.beforeEach(async ({ context }) => {
   await resetBookings();
@@ -284,6 +284,54 @@ test.describe("calendario", () => {
     await expect(page).toHaveURL(new RegExp(`vista=dia&dia=${day}`));
     await expect(page.getByRole("link", { name: "Día", exact: true })).toHaveAttribute("aria-current", "page");
     await expect(events(page)).toHaveCount(4);
+  });
+
+  test("escritorio: la ficha se abre junto a la cita, confirma y ofrece WhatsApp; la columna lateral cumple axe", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const day = await seedDay();
+    await login(page);
+    await page.goto(`/panel?dia=${day}`);
+    await expect(events(page)).toHaveCount(4);
+    await axe(page);
+
+    const anchor = (await event(page, "Cliente largo").boundingBox())!;
+    await event(page, "Cliente largo").click();
+    const dialog = page.getByRole("dialog", { name: "Cita de Cliente largo" });
+    await expect(dialog).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(1280);
+    expect(box.y + box.height).toBeLessThanOrEqual(800);
+    // En la vista Día la cita ocupa casi todo el ancho y no queda sitio a los lados: la ficha se recorta a la pantalla, a la altura de la cita.
+    expect(box.y <= anchor.y + anchor.height && box.y + box.height >= anchor.y, "la ficha no está a la altura de la cita").toBe(true);
+    await expect(dialog.getByRole("link", { name: "Enviar WhatsApp" })).toHaveAttribute("href", /^https:\/\/wa\.me\/51900000103\?text=/);
+    await axe(page);
+
+    await dialog.getByRole("button", { name: "Confirmar cita" }).click();
+    await expect(dialog).toContainText("Confirmado");
+    await expect(dialog.getByRole("button", { name: "Confirmar cita" })).toHaveCount(0);
+  });
+
+  test("320 px: la columna lateral va debajo del calendario y la ficha es una hoja inferior", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 700 });
+    const day = await seedDay();
+    await login(page);
+    await page.goto(`/panel?dia=${day}`);
+    await expect(events(page)).toHaveCount(4);
+    const [cal, side] = [(await section(page).boundingBox())!, (await pendingList(page).boundingBox())!];
+    expect(side.y).toBeGreaterThanOrEqual(cal.y + cal.height - 1);
+    await noOverflow(page);
+    await axe(page);
+
+    await event(page, "Cliente largo").click();
+    const dialog = page.getByRole("dialog", { name: "Cita de Cliente largo" });
+    await expect(dialog).toBeVisible();
+    const box = (await dialog.boundingBox())!;
+    expect(Math.abs(box.y + box.height - 700)).toBeLessThanOrEqual(2);
+    expect(box.width).toBeGreaterThanOrEqual(318);
+    await noOverflow(page);
+    await axe(page);
   });
 
   test("canceladas y vencidas van aparte, debajo de la grilla", async ({ page }) => {
