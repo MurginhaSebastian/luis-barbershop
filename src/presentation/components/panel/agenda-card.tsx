@@ -1,14 +1,12 @@
 "use client";
 
-import { MessageCircle } from "lucide-react";
-import { useState, useTransition } from "react";
 import type { AgendaItem } from "@/application/use-cases/agenda/get-agenda";
 import type { AppointmentStatus } from "@/core/entities/appointment";
 import { formatLongDate, formatPrice, formatTime } from "@/presentation/lib/format";
 import { cn } from "@/presentation/lib/utils";
-import { cancellationMessage, confirmationMessage, whatsappLink } from "@/presentation/lib/whatsapp";
+import { AppointmentActions, type ChangeStatusAction } from "./appointment-actions";
 
-export type ChangeStatusAction = (id: string, status: AppointmentStatus) => Promise<{ error?: string }>;
+export type { ChangeStatusAction };
 
 // La etiqueta lleva siempre el estado en palabras: el color solo lo refuerza.
 export const STATUS: Record<AppointmentStatus, { label: string; short: string; badge: string; card?: string }> = {
@@ -36,29 +34,11 @@ export const STATUS: Record<AppointmentStatus, { label: string; short: string; b
   EXPIRED: { label: "Vencido", short: "Vencido", badge: "border-border text-muted-foreground" },
 };
 
-const action = "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-const primary = `${action} bg-primary font-semibold text-primary-foreground hover:bg-accent hover:text-accent-foreground`;
-const secondary = `${action} border border-input hover:border-primary`;
-
 /** Una cita con lo que hace falta para atenderla y las acciones que su estado permite. */
 export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; changeStatus: ChangeStatusAction }) {
   const { item } = props;
-  const [error, setError] = useState<string>();
-  const [pending, startTransition] = useTransition();
   const finished = item.status !== "PENDING" && item.status !== "CONFIRMED" && item.status !== "AT_RISK";
   const minutes = Math.round((Date.parse(item.end) - Date.parse(item.start)) / 60_000);
-
-  const change = (status: AppointmentStatus, message?: string) => {
-    // Se abre aquí, durante el toque: después del await el navegador lo bloquearía.
-    if (message) window.open(whatsappLink(item.phone, message), "_blank", "noopener");
-    startTransition(async () => setError((await props.changeStatus(item.id, status)).error));
-  };
-
-  const cancel = () => {
-    if (window.confirm(`¿Cancelar la cita de ${item.customerName}? Se abrirá WhatsApp para avisarle.`)) {
-      change("CANCELLED", cancellationMessage(item));
-    }
-  };
 
   return (
     <article
@@ -107,43 +87,7 @@ export function AgendaCard(props: { item: AgendaItem; showDate?: boolean; change
         </p>
       )}
 
-      {!finished && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {item.status !== "CONFIRMED" && (
-            <>
-              <button type="button" disabled={pending} className={primary} onClick={() => change("CONFIRMED", confirmationMessage(item))}>
-                <MessageCircle aria-hidden className="size-4" />
-                Confirmar y avisar
-              </button>
-              <button type="button" disabled={pending} className={secondary} onClick={() => change("CONFIRMED")}>
-                Confirmar sin avisar
-              </button>
-            </>
-          )}
-          {item.status !== "PENDING" && (
-            <>
-              <button type="button" disabled={pending} className={primary} onClick={() => change("COMPLETED")}>
-                Atendida
-              </button>
-              <button type="button" disabled={pending} className={secondary} onClick={() => change("NO_SHOW")}>
-                No vino
-              </button>
-              <a href={whatsappLink(item.phone, "")} target="_blank" rel="noopener noreferrer" className={secondary}>
-                <MessageCircle aria-hidden className="size-4" />
-                Escribirle
-              </a>
-            </>
-          )}
-          <button type="button" disabled={pending} className={secondary} onClick={cancel}>
-            Cancelar
-          </button>
-        </div>
-      )}
-      {error && (
-        <p role="alert" className="mt-2 text-sm text-destructive">
-          {error}
-        </p>
-      )}
+      <AppointmentActions item={item} changeStatus={props.changeStatus} />
     </article>
   );
 }

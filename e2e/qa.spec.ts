@@ -145,10 +145,10 @@ test.describe("uso real y torpe", () => {
     const other = await context.newPage();
     await other.goto("/panel");
 
-    await page.getByRole("button", { name: "Confirmar sin avisar" }).click();
+    await page.getByRole("button", { name: "Confirmar cita" }).click();
     await expect(page.getByText("Todas las citas están respondidas.")).toBeVisible();
 
-    await other.getByRole("button", { name: "Confirmar sin avisar" }).click();
+    await other.getByRole("button", { name: "Confirmar cita" }).click();
     await expect(other.getByRole("main").getByRole("alert")).toContainText("ya no admite");
     await other.close();
   });

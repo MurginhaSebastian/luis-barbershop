@@ -15,3 +15,7 @@ export const confirmationMessage = ({ customerName, barberName, start }: Appoint
 
 export const cancellationMessage = ({ customerName, start }: AppointmentMessage) =>
   `Hola ${customerName}, tuvimos que cancelar tu cita en Luis Barbershop del ${formatLongDate(start)} a las ${formatTime(start)}. Escríbenos para buscar otra hora.`;
+
+/** Primer mensaje neutro para una cita que aún no está confirmada: no afirma nada que no sea cierto. */
+export const contactMessage = ({ customerName, start }: AppointmentMessage) =>
+  `Hola ${customerName}, te escribo de Luis Barbershop por tu cita del ${formatLongDate(start)} a las ${formatTime(start)}.`;

@@ -97,7 +97,7 @@ test.describe("acceso", () => {
     await login(page);
     const card = await openFirstPending(page);
     await context.clearCookies();
-    await card.getByRole("button", { name: "Confirmar sin avisar" }).click();
+    await card.getByRole("button", { name: "Confirmar cita" }).click();
     await expect(page).toHaveURL(/\/panel\/entrar$/);
     expect(await statuses()).toEqual(["PENDING"]);
   });
@@ -120,13 +120,18 @@ test.describe("agenda", () => {
     await expect(card).toContainText("S/ 30.00");
   });
 
-  test("confirmar abre WhatsApp con el mensaje y saca la cita de pendientes", async ({ page, context }) => {
+  test("confirmar cambia el estado sin abrir WhatsApp; enviar WhatsApp lleva al chat", async ({ page, context }) => {
     await bookAppointment(page);
     await login(page);
     const card = await openFirstPending(page);
-    const message = await whatsappMessage(context, () => card.getByRole("button", { name: "Confirmar y avisar" }).click());
-    expect(message).toMatch(/^Hola Cliente Prueba, tu cita en Luis Barbershop está confirmada: .+ con Luis/);
+    const link = card.getByRole("link", { name: "Enviar WhatsApp" });
+    await expect(link).toHaveAttribute("href", /^https:\/\/wa\.me\/\d+\?text=/);
+    expect(decodeURIComponent((await link.getAttribute("href")) ?? "")).toMatch(/^.+text=Hola Cliente Prueba, te escribo de Luis Barbershop por tu cita/);
+    let opened = false;
+    context.on("page", () => (opened = true));
+    await card.getByRole("button", { name: "Confirmar cita" }).click();
     await expect(pendingPill(page)).toHaveCount(0);
+    expect(opened).toBe(false);
     expect(await statuses()).toEqual(["CONFIRMED"]);
   });
 
@@ -154,7 +159,7 @@ test.describe("agenda", () => {
     await bookAppointment(page);
     await login(page);
     const pending = await openFirstPending(page);
-    await pending.getByRole("button", { name: "Confirmar sin avisar" }).click();
+    await pending.getByRole("button", { name: "Confirmar cita" }).click();
     await expect(pendingPill(page)).toHaveCount(0);
 
     const day = await withE2eDatabase(async (db) => {
