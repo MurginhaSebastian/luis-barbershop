@@ -182,16 +182,23 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - `GetAgendaUseCase` devuelve datos planos (`AgendaItem`): las citas futuras sin confirmar (pendientes y en
   riesgo) de cualquier día y la agenda del día elegido. Qué cambios de estado se permiten lo decide
   `Appointment.changeStatus()`; una cita cancelada no se reabre.
-- Confirmar y cancelar abren WhatsApp con el mensaje escrito (`presentation/lib/whatsapp.ts`). El
-  `window.open` va antes de cualquier `await`, o el navegador lo bloquea. La agenda se refresca sola cada
-  minuto (`AutoRefresh`).
-- La agenda es un calendario estilo Apple (`AgendaCalendar`) con vistas Día, Semana y Mes (`?vista=&dia=`; `GetAgendaUseCase`
-  recibe `{ date, view }`). Día y semana son una grilla de `CAL_PX_PER_MINUTE` por minuto (`presentation/lib/timeline.ts`:
-  `gridHours`, `toGrid`, `placeDay`): las citas que se cruzan van en carriles lado a lado, con `position: absolute` solo
-  dentro de la grilla; cerrado y bloqueos van sombreados. Cada cita es un botón sin precio ni acciones: abre su ficha,
-  un `<dialog>` nativo (`AppointmentDialog`) con `AgendaCard` y todas las acciones. Filtro por barbero con `aria-pressed`;
-  canceladas y vencidas, en una lista bajo la vista Día. Paleta dorada monocromática: tokens `--cal-*` y `--status-*` de
-  `globals.css`, sólidos y con el texto por encima de 4.5:1 (axe lo vigila); la etiqueta siempre dice el estado en palabras.
+- Acciones de una cita en un solo componente, `AppointmentActions` (`panel/appointment-actions.tsx`, lo usan la ficha
+  y la columna lateral): "Confirmar cita" cambia el estado sin abrir nada; "Enviar WhatsApp" es un enlace `wa.me` con
+  mensaje (`presentation/lib/whatsapp.ts`: confirmado para `CONFIRMED`, neutro `contactMessage` para el resto);
+  "Cancelar" pide confirmación y abre WhatsApp con el aviso (`window.open` antes de cualquier `await`, o el navegador
+  lo bloquea). La agenda se refresca sola cada minuto (`AutoRefresh`).
+- La agenda es un calendario estilo Apple en dos columnas (`AgendaView`): a la izquierda `AgendaCalendar` (`section`
+  `#agenda-dia`), a la derecha `<aside>` "Pendientes / En riesgo" (`PendingColumn`: citas sin confirmar de cualquier día,
+  con sus acciones, y al final `PushToggle`); en pantallas pequeñas va debajo. Vistas Día, Semana y Mes (`?vista=&dia=`;
+  `GetAgendaUseCase` recibe `{ date, view }`) y barra superior de 52 px (título, ‹ Hoy ›, control Día | Semana | Mes,
+  filtro por barbero con `aria-pressed` y "+ Nueva cita"). Día y semana son una grilla de `CAL_PX_PER_MINUTE` por minuto
+  (`presentation/lib/timeline.ts`: `gridHours`, `toGrid`, `placeDay`): las citas que se cruzan van en carriles lado a
+  lado, con `position: absolute` solo dentro de la grilla; cerrado y bloqueos van sombreados. Con un barbero a la vista
+  (filtro o único), la vista Día dibuja los huecos libres (`freeGaps`, un recuadro punteado no interactivo; `AT_RISK` no
+  ocupa). Cada cita es un botón: abre su ficha, un `<dialog>` nativo (`AppointmentDialog`) que en escritorio se coloca
+  junto a la cita (recortado a la pantalla) y en el móvil es una hoja inferior. Canceladas y vencidas, en una lista bajo
+  la vista Día. Paleta dorada monocromática: tokens `--cal-*` y `--status-*` de `globals.css`, sólidos y con el texto por
+  encima de 4.5:1 (axe lo vigila); la etiqueta siempre dice el estado en palabras.
 - Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`): acciones en
   `app/panel/admin-actions.ts`, formato en `admin-schema.ts` y reglas en `core/catalog/rules.ts`. Los casos de
   uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple.
