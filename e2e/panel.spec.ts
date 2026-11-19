@@ -175,7 +175,8 @@ test.describe("agenda", () => {
     const card = dialog.getByRole("article");
     await card.getByRole("button", { name: "Atendida" }).click();
     await expect(card).toContainText("Atendido");
-    await expect(card.getByRole("button")).toHaveCount(0);
+    await expect(card.getByRole("button", { name: "Cerrar", exact: true })).toHaveCount(1);
+    await expect(card.getByRole("button")).toHaveCount(1);
     expect(await statuses()).toEqual(["COMPLETED"]);
   });
 
@@ -249,7 +250,7 @@ test.describe("calendario", () => {
     const dialog = page.getByRole("dialog", { name: "Cita de Cliente en riesgo" });
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("En riesgo");
-    await expect(dialog).toContainText("10:00 – 10:45 · 45 min");
+    await expect(dialog).toContainText(/10:00 – 10:45 \(45 min\)/);
     await axe(page);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();

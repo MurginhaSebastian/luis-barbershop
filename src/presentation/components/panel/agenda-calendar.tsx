@@ -10,7 +10,8 @@ import { shiftPeriod, weeks } from "@/presentation/lib/days";
 import { formatDayParts, formatLongDate, formatTime } from "@/presentation/lib/format";
 import { CAL_PX_PER_MINUTE, gridHours, isOperational, limaMinuteOfDay, placeDay, type Interval } from "@/presentation/lib/timeline";
 import { cn } from "@/presentation/lib/utils";
-import { STATUS, type ChangeStatusAction } from "./agenda-card";
+import { type ChangeStatusAction } from "./appointment-actions";
+import { STATUS } from "./appointment-status";
 import { AppointmentDialog } from "./appointment-dialog";
 import { PendingDialog } from "./pending-dialog";
 
@@ -68,7 +69,7 @@ function dayMinutes(date: string, iv: Interval): [number, number] | null {
   return e > s ? [s, e] : null;
 }
 
-function EventButton(props: { item: AgendaItem; onOpen: (id: string) => void; label?: boolean; className?: string; style?: CSSProperties }) {
+function EventButton(props: { item: AgendaItem; onOpen: (id: string, anchor?: HTMLElement) => void; label?: boolean; className?: string; style?: CSSProperties }) {
   const { item } = props;
   const time = formatTime(item.start);
   const { short } = STATUS[item.status];
@@ -76,7 +77,7 @@ function EventButton(props: { item: AgendaItem; onOpen: (id: string) => void; la
     <button
       type="button"
       aria-label={`${time} ${item.customerName}, ${short}`}
-      onClick={() => props.onOpen(item.id)}
+      onClick={(event) => props.onOpen(item.id, event.currentTarget)}
       style={props.style}
       className={cn("flex min-h-6 min-w-0 cursor-pointer items-start gap-1 overflow-hidden rounded-md px-1.5 py-0.5 text-left text-xs", focus, LOOK[item.status].cls, props.className)}
     >
@@ -95,7 +96,7 @@ function EventButton(props: { item: AgendaItem; onOpen: (id: string) => void; la
 
 const dayOf = (item: AgendaItem) => shopDateOf(new Date(item.start));
 
-function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string | null; today: string; onOpen: (id: string) => void }) {
+function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string | null; today: string; onOpen: (id: string, anchor?: HTMLElement) => void }) {
   const { agenda, items, today } = props;
   const [now, setNow] = useState<string>();
   useEffect(() => {
@@ -199,7 +200,7 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
   );
 }
 
-function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; today: string; onOpen: (id: string) => void }) {
+function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; today: string; onOpen: (id: string, anchor?: HTMLElement) => void }) {
   return (
     <div className="rounded-b-xl border border-t-0 border-cal-line bg-cal-canvas">
       <div className="grid grid-cols-7 border-b border-cal-line text-center text-[11px] text-cal-done-text">
@@ -244,7 +245,8 @@ function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; t
 export function AgendaCalendar(props: { agenda: Agenda; date: string; today: string; changeStatus: ChangeStatusAction }) {
   const { agenda, date, today } = props;
   const { view } = agenda;
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<{ id: string; anchor?: HTMLElement } | null>(null);
+  const open = (id: string, anchor?: HTMLElement) => setSelected({ id, anchor });
   const [chosen, setChosen] = useState<string | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const barbers = [...new Set(agenda.items.map((i) => i.barberName))];
@@ -316,9 +318,9 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
       </div>
 
       {view === "mes" ? (
-        <MonthGrid agenda={agenda} items={operational} date={date} today={today} onOpen={setSelected} />
+        <MonthGrid agenda={agenda} items={operational} date={date} today={today} onOpen={open} />
       ) : (
-        <TimeGrid agenda={agenda} items={operational} barber={barber} today={today} onOpen={setSelected} />
+        <TimeGrid agenda={agenda} items={operational} barber={barber} today={today} onOpen={open} />
       )}
 
       {view === "dia" && agenda.items.length === 0 && <p className="mt-4 text-muted-foreground">No hay citas este día.</p>}
@@ -328,7 +330,7 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
           <ul className="mt-3 flex flex-wrap gap-2">
             {closed.map((item) => (
               <li key={item.id}>
-                <EventButton item={item} onOpen={setSelected} label className="min-h-8 items-center" />
+                <EventButton item={item} onOpen={open} label className="min-h-8 items-center" />
               </li>
             ))}
           </ul>
@@ -341,11 +343,14 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
         onClose={() => setListOpen(false)}
         onPick={(id) => {
           setListOpen(false);
-          setSelected(id);
+          open(id);
         }}
       />
       {/* Una cita por confirmar puede caer fuera del rango visible. */}
-      <AppointmentDialog item={agenda.items.find((i) => i.id === selected) ?? agenda.pending.find((i) => i.id === selected)} onClose={() => setSelected(null)} changeStatus={props.changeStatus} />
+      <AppointmentDialog
+        item={agenda.items.find((i) => i.id === selected?.id) ?? agenda.pending.find((i) => i.id === selected?.id)}
+        anchor={selected?.anchor}
+        onClose={() => setSelected(null)} changeStatus={props.changeStatus} />
     </>
   );
 }
