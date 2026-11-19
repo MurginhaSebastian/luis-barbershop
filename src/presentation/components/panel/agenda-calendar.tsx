@@ -7,7 +7,7 @@ import type { Agenda, AgendaItem } from "@/application/use-cases/agenda/get-agen
 import type { AppointmentStatus } from "@/core/entities/appointment";
 import { shopDateOf } from "@/core/scheduling/availability";
 import { shiftPeriod, weeks } from "@/presentation/lib/days";
-import { formatDayParts, formatLongDate, formatTime } from "@/presentation/lib/format";
+import { formatDayParts, formatTime } from "@/presentation/lib/format";
 import { CAL_PX_PER_MINUTE, gridHours, isOperational, limaMinuteOfDay, placeDay, type Interval } from "@/presentation/lib/timeline";
 import { cn } from "@/presentation/lib/utils";
 import { STATUS } from "./appointment-status";
@@ -50,14 +50,11 @@ const pill =
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cal-accent";
 
 function title(view: View, date: string, today: string, days: readonly string[]): string {
-  if (view === "dia") return date === today ? "Hoy" : formatLongDate(`${date}T12:00:00-05:00`);
   const month = (d: string) => MONTHS[Number(d.slice(5, 7)) - 1];
-  if (view === "mes") return `${month(date)[0].toUpperCase()}${month(date).slice(1)} de ${date.slice(0, 4)}`;
-  const [first, last] = [days[0], days[days.length - 1]];
-  const [d1, d2] = [Number(first.slice(8)), Number(last.slice(8))];
-  return first.slice(5, 7) === last.slice(5, 7)
-    ? `${d1} – ${d2} de ${month(last)} de ${last.slice(0, 4)}`
-    : `${d1} de ${month(first)} – ${d2} de ${month(last)} de ${last.slice(0, 4)}`;
+  if (view === "dia") return date === today ? "Hoy" : `${Number(date.slice(8))} de ${month(date)} de ${date.slice(0, 4)}`;
+  // Una semana que cruza de mes lleva el de su mitad, como en el calendario de Apple.
+  const ref = view === "semana" ? days[Math.floor(days.length / 2)] : date;
+  return `${month(ref)} ${ref.slice(0, 4)}`;
 }
 
 /** Tramo de un instante recortado a un día de Lima, en minutos (0–1440); null si no lo toca. */
@@ -254,9 +251,9 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
 
   return (
     <>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-xl border border-cal-line bg-cal-surface px-3 py-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 id="agenda-dia" className="font-heading text-2xl first-letter:uppercase sm:text-3xl">
+      <div className="mt-3 flex flex-col gap-2 rounded-t-xl border border-cal-line bg-cal-surface px-3 py-2 sm:grid sm:min-h-[52px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-x-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 id="agenda-dia" className="font-heading text-2xl first-letter:uppercase sm:text-2xl">
             {title(view, date, today, agenda.days)}
           </h2>
           <nav aria-label="Cambiar de día" className="flex items-center gap-2">
@@ -273,19 +270,19 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
             </Link>
           </nav>
         </div>
-        <nav aria-label="Vista" className="flex rounded-full border border-cal-line p-0.5">
+        <nav aria-label="Vista" className="flex self-start rounded-full border border-cal-line p-0.5 sm:self-auto">
           {VIEWS.map((v) => (
             <Link
               key={v.view}
               href={href(v.view, date)}
               aria-current={v.view === view ? "page" : undefined}
-              className={cn("inline-flex min-h-11 items-center rounded-full px-4 text-sm", focus, v.view === view ? "bg-cal-accent font-semibold text-cal-canvas" : "hover:text-cal-accent")}
+              className={cn("inline-flex min-h-11 cursor-pointer items-center rounded-full px-4 text-sm transition-colors duration-200", focus, v.view === view ? "bg-cal-accent font-semibold text-cal-canvas" : "hover:text-cal-accent")}
             >
               {v.label}
             </Link>
           ))}
         </nav>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           {barbers.length > 1 && (
             <div role="group" aria-label="Ver la agenda de" className="flex flex-wrap gap-2">
               {[null, ...barbers].map((name) => (
