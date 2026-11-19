@@ -91,12 +91,14 @@ async function SectionLinks() {
 
 async function Footer() {
   const { contact } = await getSiteSettings();
-  const whatsappHref = contact.whatsapp && whatsappLink(contact.whatsapp);
+  const assistant = getAssistantWhatsApp();
+  // Con el asistente activo, las reservas van a él: el contacto de Luis es solo para consultas.
+  const whatsappHref = contact.whatsapp && whatsappLink(contact.whatsapp, assistant ? "Hola, tengo una consulta." : undefined);
   return (
     <>
       <SiteFooter
         whatsappHref={whatsappHref}
-        assistant={getAssistantWhatsApp()}
+        assistant={assistant}
         address={contact.address}
         mapsUrl={contact.mapsUrl}
         complaintsUrl={contact.complaintsUrl}
