@@ -81,7 +81,7 @@ function EventButton(props: { item: AgendaItem; onOpen: Open; label?: boolean; c
       </span>
       {props.label && (
         <span aria-hidden className="mt-px hidden shrink-0 text-[10px] sm:inline">
-          {short}
+          · {short}
         </span>
       )}
       <span aria-hidden className={cn("mt-1 size-1.5 shrink-0 rounded-full", LOOK[item.status].dot)} />
