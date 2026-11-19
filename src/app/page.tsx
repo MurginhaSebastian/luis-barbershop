@@ -1,6 +1,7 @@
-import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { getAssistantWhatsApp, getUseCases } from "@/infrastructure/container";
+import { BookLink } from "@/presentation/components/landing/book-link";
 import { Hero } from "@/presentation/components/landing/hero";
 import { ScrollToHash } from "@/presentation/components/landing/scroll-to-hash";
 import { About, ClosingCta, HowToBook, Products, Testimonials, VisitUs, WhyUs } from "@/presentation/components/landing/sections";
@@ -29,11 +30,22 @@ export default function Home() {
       </Suspense>
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 p-3 backdrop-blur md:hidden">
-        <Link href="/reservar" className={`${ctaClass} w-full`}>
-          Reservar cita
-        </Link>
+        <Suspense fallback={<BookLink className={barClass}>Reservar cita</BookLink>}>
+          <MobileBookBar />
+        </Suspense>
       </div>
     </main>
+  );
+}
+
+const barClass = `${ctaClass} w-full`;
+
+async function MobileBookBar() {
+  await connection();
+  return (
+    <BookLink assistant={getAssistantWhatsApp()} className={barClass}>
+      Reservar cita
+    </BookLink>
   );
 }
 
@@ -52,11 +64,12 @@ async function HeroWithSettings() {
 
 async function ClosingWithSettings() {
   const { images } = await getSiteSettings();
-  return <ClosingCta image={images.closing} />;
+  return <ClosingCta image={images.closing} assistant={getAssistantWhatsApp()} />;
 }
 
 async function CatalogSections() {
   const { sections, contact, images } = await getSiteSettings();
+  const assistant = getAssistantWhatsApp();
   const { getCatalog } = getUseCases();
   const [{ services, products, weeklyHours }, opening] = await Promise.all([getCatalog.execute(), getCatalog.openingStatus()]);
   return (
@@ -77,7 +90,7 @@ async function CatalogSections() {
           Toca un servicio para reservarlo. Puedes sumar otros en el siguiente paso.
         </p>
         <div className="mt-10">
-          <ServiceGallery services={services} />
+          <ServiceGallery services={services} assistant={assistant} />
         </div>
       </section>
       {sections.about && <About image={images.about} />}

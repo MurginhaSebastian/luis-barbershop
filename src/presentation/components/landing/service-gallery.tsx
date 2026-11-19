@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { Service } from "@/core/entities/catalog";
+import { BookLink } from "./book-link";
 import { formatPrice } from "@/presentation/lib/format";
 
 const PHOTOS: [RegExp, string][] = [
@@ -16,14 +16,16 @@ export function photoFor(service: Pick<Service, "name">) {
 }
 
 /** Mosaico de servicios con foto; cada uno abre la reserva con ese servicio ya marcado. */
-export function ServiceGallery({ services }: { services: Service[] }) {
+export function ServiceGallery({ services, assistant }: { services: Service[]; assistant?: string | null }) {
   if (services.length === 0) return <p className="text-muted-foreground">Pronto publicaremos nuestros servicios.</p>;
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {services.toSorted((a, b) => b.priceCents - a.priceCents).map((s) => (
         <li key={s.id}>
-          <Link
-            href={`/reservar?servicios=${s.id}`}
+          <BookLink
+            assistant={assistant}
+            text={`Hola, quiero reservar un ${s.name}`}
+            webHref={`/reservar?servicios=${s.id}`}
             className="group relative flex aspect-[4/5] cursor-pointer flex-col justify-end overflow-hidden rounded-2xl ring-1 ring-border focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary"
           >
             <Image
@@ -44,7 +46,7 @@ export function ServiceGallery({ services }: { services: Service[] }) {
                 Reservar este servicio
               </span>
             </div>
-          </Link>
+          </BookLink>
         </li>
       ))}
     </ul>

@@ -1,10 +1,11 @@
-import Link from "next/link";
+import { BookLink } from "./book-link";
 import { container } from "./styles";
 
 const linkClass = "inline-flex min-h-11 items-center text-muted-foreground transition-colors duration-200 hover:text-primary";
 
 export function SiteFooter(props: {
   whatsappHref?: string;
+  assistant?: string | null;
   address?: string;
   mapsUrl?: string;
   socials: { label: string; href?: string }[];
@@ -26,9 +27,9 @@ export function SiteFooter(props: {
           <p className="font-semibold">Contacto</p>
           <ul className="mt-2">
             <li>
-              <Link href="/reservar" className={linkClass}>
+              <BookLink assistant={props.assistant} className={linkClass}>
                 Reservar cita
-              </Link>
+              </BookLink>
             </li>
             {props.whatsappHref && (
               <li>

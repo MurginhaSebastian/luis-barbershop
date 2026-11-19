@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Bodoni_Moda, Manrope } from "next/font/google";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
+import { getAssistantWhatsApp } from "@/infrastructure/container";
+import { BookLink } from "@/presentation/components/landing/book-link";
 import { MobileMenu } from "@/presentation/components/landing/mobile-menu";
 import { SiteFooter } from "@/presentation/components/landing/site-footer";
 import { container } from "@/presentation/components/landing/styles";
@@ -33,12 +36,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Suspense fallback={null}>
                 <SectionLinks />
               </Suspense>
-              <Link
-                href="/reservar"
-                className="ml-2 inline-flex min-h-11 items-center rounded-full border border-primary/60 px-4 text-sm md:px-5 text-primary transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-              >
-                Reservar
-              </Link>
+              <Suspense fallback={<BookLink className={headerBookClass}>Reservar</BookLink>}>
+                <HeaderBook />
+              </Suspense>
             </nav>
           </div>
         </header>
@@ -48,6 +48,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </Suspense>
       </body>
     </html>
+  );
+}
+
+const headerBookClass =
+  "ml-2 inline-flex min-h-11 items-center rounded-full border border-primary/60 px-4 text-sm md:px-5 text-primary transition-colors duration-200 hover:bg-primary hover:text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+async function HeaderBook() {
+  await connection(); // el número se lee de process.env en cada petición, no en el build
+  return (
+    <BookLink assistant={getAssistantWhatsApp()} className={headerBookClass}>
+      Reservar
+    </BookLink>
   );
 }
 
@@ -84,6 +96,7 @@ async function Footer() {
     <>
       <SiteFooter
         whatsappHref={whatsappHref}
+        assistant={getAssistantWhatsApp()}
         address={contact.address}
         mapsUrl={contact.mapsUrl}
         complaintsUrl={contact.complaintsUrl}

@@ -1,9 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { Product } from "@/core/entities/catalog";
 import type { BusinessHours } from "@/core/scheduling/availability";
 import { WeeklyHours } from "@/presentation/components/shop/weekly-hours";
 import { formatPrice } from "@/presentation/lib/format";
+import { BookLink } from "./book-link";
 import { container, ctaClass, sectionTitle } from "./styles";
 
 /** `image`: foto subida desde el panel; sin ella, la de ejemplo. Igual en Products y ClosingCta. */
@@ -179,7 +179,7 @@ export function VisitUs({
   );
 }
 
-export function ClosingCta({ image }: { image?: string }) {
+export function ClosingCta({ image, assistant }: { image?: string; assistant?: string | null }) {
   return (
     <section className="relative isolate overflow-hidden">
       <Image src={image ?? "/images/tijeras.jpg"} alt="" fill sizes="100vw" className="-z-10 object-cover" />
@@ -187,9 +187,9 @@ export function ClosingCta({ image }: { image?: string }) {
       <div className={`${container} py-24 text-center`}>
         <p className="font-heading text-[clamp(2.5rem,8vw,5rem)] leading-tight">¿Toca corte?</p>
         <p className="mx-auto mt-4 max-w-md text-lg">Elige tu hora y te esperamos.</p>
-        <Link href="/reservar" className={`${ctaClass} mt-8`}>
+        <BookLink assistant={assistant} className={`${ctaClass} mt-8`}>
           Reservar cita
-        </Link>
+        </BookLink>
       </div>
     </section>
   );
