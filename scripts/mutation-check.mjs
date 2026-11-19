@@ -73,6 +73,10 @@ const mutants = [
   ["Panel: un cambio pisa a otro simultáneo", "src/application/use-cases/agenda/change-appointment-status.ts", "    if (!changed) throw new InvalidStatusChangeError();", ""],
   ["Cron: se puede llamar sin el secreto", "src/app/api/cron/vencer/route.ts", '  if (!secret || !sameSecret(request.headers.get("authorization"), `Bearer ${secret}`)) {', "  if (false) {"],
   ["Error inesperado: se filtra el mensaje interno", "src/app/reservar/actions.ts", 'return { status: "error", message: "No pudimos registrar tu reserva. Inténtalo de nuevo en unos minutos." };', 'return { status: "error", message: String(error) };'],
+  ["Asistente: el límite por hora deja pasar un mensaje de más", "src/infrastructure/assistant/groq-assistant.ts", ">= MAX_PER_HOUR", "> MAX_PER_HOUR"],
+  ["Asistente: el límite por día deja pasar un mensaje de más", "src/infrastructure/assistant/groq-assistant.ts", ">= MAX_PER_DAY", "> MAX_PER_DAY"],
+  ["Asistente: la multimedia llega a Groq", "src/infrastructure/assistant/groq-assistant.ts", "if (message.media) {", "if (false) {"],
+  ["Asistente: pasado el límite, además se llama a Groq", "src/infrastructure/assistant/groq-assistant.ts", "Para seguir, ${next}.`);\n      return { kind: \"answered\" };", "Para seguir, ${next}.`);"],
 ];
 
 const runTests = () => spawnSync("npx vitest run", { shell: true, stdio: "ignore" }).status;
