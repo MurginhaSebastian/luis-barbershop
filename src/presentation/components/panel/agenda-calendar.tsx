@@ -268,8 +268,8 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
   const { agenda, date, today } = props;
   const { view } = agenda;
   const [chosen, setChosen] = useState<string | null>(null);
-  const barbers = [...new Set(agenda.items.map((i) => i.barberName))];
-  // Al cambiar de periodo, un barbero sin citas vuelve a "Todos".
+  // Solo hay filtro con más de un barbero activo, tengan o no citas.
+  const barbers = agenda.activeBarbers.length > 1 ? agenda.activeBarbers : [];
   const barber = chosen && barbers.includes(chosen) ? chosen : null;
   const shown = agenda.items.filter((i) => !barber || i.barberName === barber);
   const operational = shown.filter((i) => isOperational(i.status));
@@ -334,7 +334,7 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
       {view === "mes" ? (
         <MonthGrid agenda={agenda} items={operational} date={date} today={today} onOpen={props.onOpen} />
       ) : (
-        <TimeGrid agenda={agenda} items={operational} barber={barber} gapsFor={view === "dia" ? (barber ?? (barbers.length === 1 ? barbers[0] : null)) : null} today={today} onOpen={props.onOpen} />
+        <TimeGrid agenda={agenda} items={operational} barber={barber} gapsFor={view === "dia" ? (barber ?? (agenda.activeBarbers.length === 1 ? agenda.activeBarbers[0] : null)) : null} today={today} onOpen={props.onOpen} />
       )}
 
       {view === "dia" && agenda.items.length === 0 && <p className="mt-4 text-muted-foreground">No hay citas este día.</p>}

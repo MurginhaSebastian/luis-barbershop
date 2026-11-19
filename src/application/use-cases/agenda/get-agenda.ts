@@ -41,6 +41,8 @@ export interface Agenda {
   open: (Interval & { date: string })[];
   /** Bloqueos del rango por barbero activo (los de toda la barbería aparecen en cada uno). */
   blocks: (Interval & { barberName: string })[];
+  /** Nombres de los barberos activos, tengan o no citas en el rango. */
+  activeBarbers: string[];
 }
 
 export type AgendaView = "dia" | "semana" | "mes";
@@ -139,6 +141,7 @@ export class GetAgendaUseCase {
       items: toItems(inRange),
       open,
       blocks: blocks.flat(),
+      activeBarbers: activeBarbers.map((b) => b.name),
     };
   }
 }

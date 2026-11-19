@@ -129,6 +129,11 @@ describe("GetAgendaUseCase", () => {
     expect(blocks).toEqual([{ barberName: "Luis", start: "2026-11-02T17:00:00.000Z", end: "2026-11-02T18:00:00.000Z" }]);
   });
 
+  test("da los barberos activos aunque no tengan citas", async () => {
+    const { activeBarbers } = await new GetAgendaUseCase(makeRepos([])).execute({ date: "2026-11-02" });
+    expect(activeBarbers).toEqual(["Luis"]);
+  });
+
   test("semana: de lunes a domingo, con las citas de varios días", async () => {
     const repos = makeRepos([book("lun", "2026-11-02T15:00:00Z"), book("vie", "2026-11-06T15:00:00Z"), book("sig", "2026-11-09T15:00:00Z")]);
     const agenda = await new GetAgendaUseCase(repos).execute({ date: "2026-11-04", view: "semana" }); // miércoles

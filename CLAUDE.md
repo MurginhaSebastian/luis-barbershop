@@ -194,7 +194,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   filtro por barbero con `aria-pressed` y "+ Nueva cita"). Día y semana son una grilla de `CAL_PX_PER_MINUTE` por minuto
   (`presentation/lib/timeline.ts`: `gridHours`, `toGrid`, `placeDay`): las citas que se cruzan van en carriles lado a
   lado, con `position: absolute` solo dentro de la grilla; cerrado y bloqueos van sombreados. Con un barbero a la vista
-  (filtro o único), la vista Día dibuja los huecos libres (`freeGaps`, un recuadro punteado no interactivo; `AT_RISK` no
+  (elegido en el filtro, que se arma con `Agenda.activeBarbers`, o único barbero activo), la vista Día dibuja los huecos libres (`freeGaps`, un recuadro punteado no interactivo; `AT_RISK` no
   ocupa). Cada cita es un botón: abre su ficha, un `<dialog>` nativo (`AppointmentDialog`) que en escritorio se coloca
   junto a la cita (recortado a la pantalla) y en el móvil es una hoja inferior. Canceladas y vencidas, en una lista bajo
   la vista Día. Paleta dorada monocromática: tokens `--cal-*` y `--status-*` de `globals.css`, sólidos y con el texto por
