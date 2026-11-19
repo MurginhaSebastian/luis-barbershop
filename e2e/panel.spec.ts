@@ -1,6 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { PANEL_PASSWORD, resetBookings, seedAgendaDay as seedDay, withE2eDatabase } from "./database";
+
+const todayTitle = () =>
+  new Date().toLocaleDateString("es-PE", { timeZone: "America/Lima", day: "numeric", month: "long", year: "numeric" });
 import { bookUntilData, fillData, openFirstPending, pendingCards, pendingList } from "./helpers";
 
 test.beforeEach(async ({ context }) => {
@@ -182,14 +185,14 @@ test.describe("agenda", () => {
 
   test("se puede cambiar de día y volver a hoy; una fecha inválida muestra hoy", async ({ page }) => {
     await login(page);
-    await expect(page.getByRole("heading", { name: "Hoy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: todayTitle() })).toBeVisible();
     await page.getByRole("link", { name: "Día siguiente" }).click();
-    await expect(page.getByRole("heading", { name: "Hoy" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: todayTitle() })).toHaveCount(0);
     await page.getByRole("link", { name: "Hoy" }).click();
-    await expect(page.getByRole("heading", { name: "Hoy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: todayTitle() })).toBeVisible();
 
     await page.goto("/panel?dia=basura");
-    await expect(page.getByRole("heading", { name: "Hoy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: todayTitle() })).toBeVisible();
   });
 
   test("las reservas nuevas aparecen solas, sin recargar", async ({ page, browser }) => {

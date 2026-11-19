@@ -49,9 +49,9 @@ const pill =
   "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-cal-line px-3 text-sm transition-colors duration-200 hover:border-cal-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cal-accent";
 
-function title(view: View, date: string, today: string, days: readonly string[]): string {
+function title(view: View, date: string, days: readonly string[]): string {
   const month = (d: string) => MONTHS[Number(d.slice(5, 7)) - 1];
-  if (view === "dia") return date === today ? "Hoy" : `${Number(date.slice(8))} de ${month(date)} de ${date.slice(0, 4)}`;
+  if (view === "dia") return `${Number(date.slice(8))} de ${month(date)} de ${date.slice(0, 4)}`;
   // Una semana que cruza de mes lleva el de su mitad, como en el calendario de Apple.
   const ref = view === "semana" ? days[Math.floor(days.length / 2)] : date;
   return `${month(ref)} ${ref.slice(0, 4)}`;
@@ -281,7 +281,7 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
       <div className="mt-3 flex flex-col gap-2 rounded-t-xl border border-cal-line bg-cal-surface px-3 py-2 sm:grid sm:min-h-[52px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-x-4">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h2 id="agenda-dia" className="font-heading text-2xl first-letter:uppercase sm:text-2xl">
-            {title(view, date, today, agenda.days)}
+            {title(view, date, agenda.days)}
           </h2>
           <nav aria-label="Cambiar de día" className="flex items-center gap-2">
             <Link href={href(view, shiftPeriod(view, date, -1))} aria-label={before} className={pill}>

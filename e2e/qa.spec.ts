@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 import { PANEL_PASSWORD, resetBookings, withE2eDatabase } from "./database";
+
+const todayTitle = () =>
+  new Date().toLocaleDateString("es-PE", { timeZone: "America/Lima", day: "numeric", month: "long", year: "numeric" });
 import { bookUntilData, chooseBarber, chooseDay, chooseFirstHour, chooseServices, fillData, newPhone } from "./helpers";
 
 test.beforeEach(() => resetBookings());
@@ -156,7 +159,7 @@ test.describe("uso real y torpe", () => {
   test("una fecha imposible en el panel muestra hoy", async ({ page }) => {
     await login(page);
     await page.goto("/panel?dia=2026-02-30");
-    await expect(page.getByRole("heading", { name: "Hoy" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: todayTitle() })).toBeVisible();
   });
 });
 
