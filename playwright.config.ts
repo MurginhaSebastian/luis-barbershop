@@ -35,6 +35,7 @@ export default defineConfig({
       DATABASE_URL: e2eDatabaseUrl(),
       ...e2ePanelEnv(),
       ...e2eWhatsAppEnv(),
+      AI_PROVIDER: "", // sin IA aunque el .env la active: las pruebas cubren el camino por la web
       IMAGE_STORAGE: "local",
       UPLOADS_DIR: E2E_UPLOADS_DIR,
     },
