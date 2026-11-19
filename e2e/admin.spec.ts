@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { PANEL_PASSWORD, resetCatalog } from "./database";
-import { bookUntilData, chooseBarber, chooseServices, fillData, openFirstPending, pendingPill } from "./helpers";
+import { bookUntilData, chooseBarber, chooseServices, fillData, openFirstPending, pendingCards } from "./helpers";
 
 test.beforeEach(() => resetCatalog());
 test.afterAll(() => resetCatalog());
@@ -286,7 +286,7 @@ test.describe("bloqueos", () => {
     const form = await blockDay(page, date);
     await expect(form.getByText(/1 cita ya reservada/)).toBeVisible();
     await page.goto("/panel");
-    await expect(pendingPill(page)).toHaveText("Por confirmar: 1");
+    await expect(pendingCards(page)).toHaveCount(1);
     await expect(await openFirstPending(page)).toContainText("Por confirmar");
   });
 

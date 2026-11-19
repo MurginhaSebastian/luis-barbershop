@@ -4,7 +4,6 @@ import { MessageCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { AgendaItem } from "@/application/use-cases/agenda/get-agenda";
 import type { AppointmentStatus } from "@/core/entities/appointment";
-import { cn } from "@/presentation/lib/utils";
 import { cancellationMessage, confirmationMessage, contactMessage, whatsappLink } from "@/presentation/lib/whatsapp";
 
 export type ChangeStatusAction = (id: string, status: AppointmentStatus) => Promise<{ error?: string }>;
@@ -36,7 +35,7 @@ export function AppointmentActions(props: { item: AgendaItem; changeStatus: Chan
   };
 
   return (
-    <div className={cn(!props.compact && "mt-4")}>
+    <div className={props.compact ? "mt-2" : "mt-4"}>
       <div className="flex flex-wrap gap-2">
         {status !== "CONFIRMED" && (
           <button type="button" disabled={pending} className={primary} onClick={() => change("CONFIRMED")}>

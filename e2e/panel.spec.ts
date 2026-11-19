@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 import { PANEL_PASSWORD, resetBookings, seedAgendaDay as seedDay, withE2eDatabase } from "./database";
-import { bookUntilData, fillData, openFirstPending, pendingPill } from "./helpers";
+import { bookUntilData, fillData, openFirstPending, pendingCards } from "./helpers";
 
 test.beforeEach(async ({ context }) => {
   await resetBookings();
@@ -112,7 +112,7 @@ test.describe("agenda", () => {
   test("una reserva nueva aparece por confirmar con sus datos", async ({ page }) => {
     await bookAppointment(page);
     await login(page);
-    await expect(pendingPill(page)).toHaveText("Por confirmar: 1");
+    await expect(pendingCards(page)).toHaveCount(1);
     const card = await openFirstPending(page);
     await expect(card).toHaveCount(1);
     await expect(card).toContainText("Cliente Prueba");
@@ -130,7 +130,7 @@ test.describe("agenda", () => {
     let opened = false;
     context.on("page", () => (opened = true));
     await card.getByRole("button", { name: "Confirmar cita" }).click();
-    await expect(pendingPill(page)).toHaveCount(0);
+    await expect(pendingCards(page)).toHaveCount(0);
     expect(opened).toBe(false);
     expect(await statuses()).toEqual(["CONFIRMED"]);
   });
@@ -147,7 +147,7 @@ test.describe("agenda", () => {
     page.once("dialog", (dialog) => dialog.accept());
     const message = await whatsappMessage(context, () => card.getByRole("button", { name: "Cancelar" }).click());
     expect(message).toContain("tuvimos que cancelar");
-    await expect(pendingPill(page)).toHaveCount(0);
+    await expect(pendingCards(page)).toHaveCount(0);
     expect(await statuses()).toEqual(["CANCELLED"]);
 
     // Esa misma hora vuelve a estar libre para otro cliente.
@@ -160,7 +160,7 @@ test.describe("agenda", () => {
     await login(page);
     const pending = await openFirstPending(page);
     await pending.getByRole("button", { name: "Confirmar cita" }).click();
-    await expect(pendingPill(page)).toHaveCount(0);
+    await expect(pendingCards(page)).toHaveCount(0);
 
     const day = await withE2eDatabase(async (db) => {
       const { rows } = await db.query(
@@ -195,14 +195,14 @@ test.describe("agenda", () => {
   test("las reservas nuevas aparecen solas, sin recargar", async ({ page, browser }) => {
     await page.clock.install();
     await login(page);
-    await expect(pendingPill(page)).toHaveCount(0);
+    await expect(pendingCards(page)).toHaveCount(0);
 
     const client = await browser.newPage({ baseURL: "http://localhost:3100" });
     await bookAppointment(client);
     await client.close();
 
     await page.clock.fastForward(61_000);
-    await expect(pendingPill(page)).toHaveText("Por confirmar: 1");
+    await expect(pendingCards(page)).toHaveCount(1);
   });
 
   test("es accesible y cabe en la pantalla", async ({ page }) => {
@@ -388,7 +388,7 @@ test.describe("avisos push", () => {
     const data = JSON.stringify({ title: "Nueva reserva", body: "Cliente Prueba", url: "/panel" });
     await cdp.send("ServiceWorker.deliverPushMessage", { origin, registrationId: await registrationId, data });
     // Mucho antes del minuto del refresco automático.
-    await expect(pendingPill(page)).toHaveText("Por confirmar: 1", { timeout: 10_000 });
+    await expect(pendingCards(page)).toHaveCount(1, { timeout: 10_000 });
   });
 
   test("con los avisos bloqueados explica cómo permitirlos", async ({ page, context }) => {

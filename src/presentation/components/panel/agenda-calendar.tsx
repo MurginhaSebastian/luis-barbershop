@@ -10,12 +10,10 @@ import { shiftPeriod, weeks } from "@/presentation/lib/days";
 import { formatDayParts, formatLongDate, formatTime } from "@/presentation/lib/format";
 import { CAL_PX_PER_MINUTE, gridHours, isOperational, limaMinuteOfDay, placeDay, type Interval } from "@/presentation/lib/timeline";
 import { cn } from "@/presentation/lib/utils";
-import { type ChangeStatusAction } from "./appointment-actions";
 import { STATUS } from "./appointment-status";
-import { AppointmentDialog } from "./appointment-dialog";
-import { PendingDialog } from "./pending-dialog";
 
 type View = Agenda["view"];
+type Open = (id: string, anchor?: HTMLElement) => void;
 
 const GREY = "bg-cal-done-text";
 const DONE = "border-l-[3px] border-cal-done-line bg-cal-done-bg text-cal-done-text";
@@ -69,7 +67,7 @@ function dayMinutes(date: string, iv: Interval): [number, number] | null {
   return e > s ? [s, e] : null;
 }
 
-function EventButton(props: { item: AgendaItem; onOpen: (id: string, anchor?: HTMLElement) => void; label?: boolean; className?: string; style?: CSSProperties }) {
+function EventButton(props: { item: AgendaItem; onOpen: Open; label?: boolean; className?: string; style?: CSSProperties }) {
   const { item } = props;
   const time = formatTime(item.start);
   const { short } = STATUS[item.status];
@@ -96,7 +94,7 @@ function EventButton(props: { item: AgendaItem; onOpen: (id: string, anchor?: HT
 
 const dayOf = (item: AgendaItem) => shopDateOf(new Date(item.start));
 
-function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string | null; today: string; onOpen: (id: string, anchor?: HTMLElement) => void }) {
+function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string | null; today: string; onOpen: Open }) {
   const { agenda, items, today } = props;
   const [now, setNow] = useState<string>();
   useEffect(() => {
@@ -200,7 +198,7 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
   );
 }
 
-function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; today: string; onOpen: (id: string, anchor?: HTMLElement) => void }) {
+function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; today: string; onOpen: Open }) {
   return (
     <div className="rounded-b-xl border border-t-0 border-cal-line bg-cal-canvas">
       <div className="grid grid-cols-7 border-b border-cal-line text-center text-[11px] text-cal-done-text">
@@ -242,13 +240,10 @@ function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; t
 }
 
 /** Calendario Día/Semana/Mes: barra superior, grilla (o mes) y ficha de la cita al tocarla. */
-export function AgendaCalendar(props: { agenda: Agenda; date: string; today: string; changeStatus: ChangeStatusAction }) {
+export function AgendaCalendar(props: { agenda: Agenda; date: string; today: string; onOpen: Open }) {
   const { agenda, date, today } = props;
   const { view } = agenda;
-  const [selected, setSelected] = useState<{ id: string; anchor?: HTMLElement } | null>(null);
-  const open = (id: string, anchor?: HTMLElement) => setSelected({ id, anchor });
   const [chosen, setChosen] = useState<string | null>(null);
-  const [listOpen, setListOpen] = useState(false);
   const barbers = [...new Set(agenda.items.map((i) => i.barberName))];
   // Al cambiar de periodo, un barbero sin citas vuelve a "Todos".
   const barber = chosen && barbers.includes(chosen) ? chosen : null;
@@ -306,11 +301,6 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
               ))}
             </div>
           )}
-          {agenda.pending.length > 0 && (
-            <button type="button" onClick={() => setListOpen(true)} className={cn(pill, "border-cal-accent/60 text-cal-pending-text")}>
-              Por confirmar: {agenda.pending.length}
-            </button>
-          )}
           <Link href="/reservar" className={cn(pill, "border-cal-accent text-cal-accent")}>
             + Nueva cita
           </Link>
@@ -318,9 +308,9 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
       </div>
 
       {view === "mes" ? (
-        <MonthGrid agenda={agenda} items={operational} date={date} today={today} onOpen={open} />
+        <MonthGrid agenda={agenda} items={operational} date={date} today={today} onOpen={props.onOpen} />
       ) : (
-        <TimeGrid agenda={agenda} items={operational} barber={barber} today={today} onOpen={open} />
+        <TimeGrid agenda={agenda} items={operational} barber={barber} today={today} onOpen={props.onOpen} />
       )}
 
       {view === "dia" && agenda.items.length === 0 && <p className="mt-4 text-muted-foreground">No hay citas este día.</p>}
@@ -330,27 +320,12 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
           <ul className="mt-3 flex flex-wrap gap-2">
             {closed.map((item) => (
               <li key={item.id}>
-                <EventButton item={item} onOpen={open} label className="min-h-8 items-center" />
+                <EventButton item={item} onOpen={props.onOpen} label className="min-h-8 items-center" />
               </li>
             ))}
           </ul>
         </>
       )}
-
-      <PendingDialog
-        open={listOpen}
-        items={agenda.pending}
-        onClose={() => setListOpen(false)}
-        onPick={(id) => {
-          setListOpen(false);
-          open(id);
-        }}
-      />
-      {/* Una cita por confirmar puede caer fuera del rango visible. */}
-      <AppointmentDialog
-        item={agenda.items.find((i) => i.id === selected?.id) ?? agenda.pending.find((i) => i.id === selected?.id)}
-        anchor={selected?.anchor}
-        onClose={() => setSelected(null)} changeStatus={props.changeStatus} />
     </>
   );
 }

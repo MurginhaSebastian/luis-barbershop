@@ -146,7 +146,7 @@ test.describe("uso real y torpe", () => {
     await other.goto("/panel");
 
     await page.getByRole("button", { name: "Confirmar cita" }).click();
-    await expect(page.getByText("Todas las citas están respondidas.")).toBeVisible();
+    await expect(page.getByText("Nada por confirmar.")).toBeVisible();
 
     await other.getByRole("button", { name: "Confirmar cita" }).click();
     await expect(other.getByRole("main").getByRole("alert")).toContainText("ya no admite");

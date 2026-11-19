@@ -43,11 +43,11 @@ export async function bookUntilData(page: Page, barber: string | RegExp = "Luis"
   return chooseFirstHour(page);
 }
 
-export const pendingPill = (page: Page) => page.getByRole("button", { name: /^Por confirmar: \d+$/ });
+export const pendingList = (page: Page) => page.getByRole("complementary", { name: /Pendientes/ });
+export const pendingCards = (page: Page) => pendingList(page).getByRole("button", { name: /^Ver la cita de/ });
 
-/** Abre la píldora "Por confirmar", elige la primera cita de la lista y devuelve la tarjeta de su ficha. */
+/** Abre la primera cita de la columna "Pendientes / En riesgo" y devuelve la tarjeta de su ficha. */
 export async function openFirstPending(page: Page) {
-  await pendingPill(page).click();
-  await page.getByRole("dialog", { name: "Por confirmar" }).locator("li button").first().click();
+  await pendingCards(page).first().click();
   return page.getByRole("dialog", { name: /^Cita de/ }).getByRole("article");
 }
