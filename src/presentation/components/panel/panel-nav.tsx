@@ -7,6 +7,7 @@ import { cn } from "@/presentation/lib/utils";
 
 const SECTIONS = [
   { href: "/panel", label: "Agenda" },
+  { href: "/panel/chats", label: "Chats" },
   { href: "/panel/servicios", label: "Servicios" },
   { href: "/panel/productos", label: "Productos" },
   { href: "/panel/barberos", label: "Barberos" },
