@@ -266,6 +266,33 @@ test.describe("calendario", () => {
     await expect(events(page)).toHaveCount(4);
   });
 
+  test("con un barbero a la vista, la vista día dibuja huecos libres sin pisar sus citas; una en riesgo no ocupa", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 1000 });
+    const day = await seedDay();
+    await login(page);
+    await page.goto(`/panel?dia=${day}`);
+    await expect(events(page)).toHaveCount(4);
+    // Con dos barberos y sin filtro no hay huecos.
+    const gaps = section(page).locator("[aria-hidden]", { hasText: /^Libre$/ });
+    await expect(gaps).toHaveCount(0);
+
+    await section(page).getByRole("button", { name: "Luis", exact: true }).click();
+    await expect(gaps.first()).toBeVisible();
+    const boxes = await Promise.all((await gaps.all()).map((g) => g.boundingBox()));
+    const confirmed = (await event(page, "Cazador de huecos").boundingBox())!;
+    const pending = (await event(page, "Cliente largo").boundingBox())!;
+    const risk = (await event(page, "Cliente en riesgo").boundingBox())!;
+    const overlaps = (a: { y: number; height: number }, b: { y: number; height: number }) => a.y < b.y + b.height - 1 && b.y < a.y + a.height - 1;
+    for (const g of boxes) {
+      expect(overlaps(g!, confirmed)).toBe(false);
+      expect(overlaps(g!, pending)).toBe(false);
+    }
+    // El tramo entre la cita confirmada y la pendiente es libre, y cubre la cola de la cita en riesgo (10:30-10:45).
+    const between = boxes.find((g) => Math.abs(g!.y - (confirmed.y + confirmed.height)) < 4);
+    expect(between).toBeTruthy();
+    expect(overlaps(between!, risk)).toBe(true);
+  });
+
   test("semana en 320 px", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     const day = await seedDay();
