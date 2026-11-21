@@ -449,3 +449,77 @@ test.describe("avisos push", () => {
     await expect(page.getByRole("region", { name: "Avisos en este dispositivo" })).toContainText("Bloqueaste los avisos");
   });
 });
+
+test.describe("chats", () => {
+  const ANA = "51900000001";
+  const OTRO = "51900000002";
+
+  test.beforeEach(() =>
+    withE2eDatabase(async (db) => {
+      await db.query("DELETE FROM assistant_messages WHERE phone IN ($1, $2)", [ANA, OTRO]);
+      await db.query("INSERT INTO customers (id, name, phone) VALUES ('30000000-0000-4000-8000-0000000000a1', 'Ana de Prueba', $1)", [ANA]);
+      const ago = (min: number) => new Date(Date.now() - min * 60_000);
+      const add = (phone: string, role: string, content: string, min: number) =>
+        db.query("INSERT INTO assistant_messages (phone, role, content, created_at) VALUES ($1, $2, $3, $4)", [phone, role, content, ago(min)]);
+      await add(ANA, "user", "Quiero un corte mañana", 30);
+      await add(ANA, "assistant", "Claro, te muestro los horarios", 29);
+      await add(OTRO, "user", "Hola, precios?", 10);
+    }),
+  );
+  test.afterEach(() => withE2eDatabase((db) => db.query("DELETE FROM assistant_messages WHERE phone IN ($1, $2)", [ANA, OTRO])));
+
+  const accessible = async (page: Page, where: string) => {
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), where).toEqual([]);
+  };
+
+  test("escritorio: lista, hilo de solo lectura, navegación y accesibilidad", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await login(page);
+    await page.goto("/panel/chats");
+    await expect(page.getByRole("link", { name: "Chats" })).toHaveAttribute("aria-current", "page");
+    const list = page.getByRole("navigation", { name: "Conversaciones" });
+    await expect(list.getByRole("link", { name: /Ana de Prueba/ })).toBeVisible();
+    await expect(list.getByRole("link", { name: `+${OTRO}` })).toBeVisible();
+    await list.getByRole("link", { name: /Ana de Prueba/ }).click();
+    const thread = page.getByRole("region", { name: "Conversación" });
+    await expect(thread.getByText("Quiero un corte mañana")).toBeVisible();
+    await expect(thread.getByText("Claro, te muestro los horarios")).toBeVisible();
+    await expect(thread.getByText("Solo lectura · Bot automático")).toBeVisible();
+    await expect(thread.getByRole("link", { name: "Escribirle por WhatsApp" })).toHaveAttribute("href", `https://wa.me/${ANA}`);
+    await expect(list.getByRole("link", { name: /Ana de Prueba/ })).toHaveAttribute("aria-current", "true");
+    await accessible(page, "chats escritorio");
+  });
+
+  test("320 px: la lista o el hilo, sin desbordar", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await login(page);
+    const noOverflow = async () => expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    await page.goto("/panel/chats");
+    await expect(page.getByRole("navigation", { name: "Conversaciones" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Conversación" })).toBeHidden();
+    await noOverflow();
+    await accessible(page, "lista 320");
+    await page.goto(`/panel/chats?c=${ANA}`);
+    await expect(page.getByRole("navigation", { name: "Conversaciones" })).toBeHidden();
+    await expect(page.getByRole("link", { name: "‹ Todos los chats" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Conversación" }).getByText("Claro, te muestro los horarios")).toBeVisible();
+    await noOverflow();
+    await accessible(page, "hilo 320");
+  });
+
+  test("el foco se ve en la lista", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await login(page);
+    await page.goto("/panel/chats");
+    const inList = () => page.evaluate(() => !!document.activeElement?.closest('nav[aria-label="Conversaciones"]'));
+    for (let i = 0; i < 30 && !(await inList()); i++) await page.keyboard.press("Tab");
+    expect(await inList()).toBe(true);
+    const outline = await page.evaluate(() => {
+      const s = getComputedStyle(document.activeElement!);
+      return { style: s.outlineStyle, width: parseFloat(s.outlineWidth) };
+    });
+    expect(outline.style).not.toBe("none");
+    expect(outline.width).toBeGreaterThan(0);
+  });
+});
