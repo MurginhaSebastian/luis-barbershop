@@ -202,6 +202,9 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`): acciones en
   `app/panel/admin-actions.ts`, formato en `admin-schema.ts` y reglas en `core/catalog/rules.ts`. Los casos de
   uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple.
+- `/panel/chats`: pestaña de solo lectura con las conversaciones de las últimas 24 h del asistente de IA
+  (`GetChatsUseCase`, `ChatsView`; la selección es `?c=<celular>`). Solo lo que atiende el asistente de IA: no hay
+  nada si usa el básico. Texto plano y enlace a `wa.me` para escribirle al cliente.
 - Nada con citas se borra: servicios, productos y barberos solo se ocultan (`active: false`). Editar un
   precio no toca citas existentes, porque guardan su foto de precio.
 - Ocultar un barbero o bloquear un periodo nunca cancela citas: la acción devuelve un `warning` con cuántas
@@ -283,6 +286,18 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   frase fija. Multimedia (`IncomingMessage.media`): respuesta fija sin Groq ni historial. Límite por celular de 12
   mensajes por hora y 25 por día, tras el desvío de códigos (estos y los botones del recordatorio ni cuentan ni se
   limitan): respuesta fija con el WhatsApp de Luis, sin Groq ni historial.
+- Respuestas fijas sin Groq (`quickReplyKind`, `use-cases/assistant/quick-replies.ts`), en este orden: multimedia →
+  código → respuestas fijas → límite → Groq. Saludo solo ("hola", "buenas tardes") y mensaje sin sentido (sin letras
+  ni cifras, o una letra suelta) solo cuando no hay conversación en las últimas 2 h: a mitad de una reserva un "👍" o
+  un "ok" es un sí y va al modelo. Pedir hablar con una persona o un reclamo ("hablar con Luis", "queja"; "dueño" solo
+  con un verbo de contacto) responde `humanHandoffText` con el WhatsApp de Luis, el mismo texto que el prompt
+  (regla 6) ordena dar. Se guardan en el historial (Luis las ve en Chats) y cuentan para el límite de 12/25.
+- Agrupador de mensajes (`MessageBatcher`, `use-cases/assistant/message-batcher.ts`; `getMessageBatcher()` en el
+  contenedor): con la IA activa, los textos escritos (no códigos, botones ni multimedia) de un celular se juntan
+  `WHATSAPP_DEBOUNCE_MS` (3500; 0 lo apaga), con tope de 5 mensajes o 10 s desde el primero, y se atienden como un
+  solo mensaje (cada texto recortado a 250, y si no cabe se conserva el final). El webhook reclama el mensaje
+  (`claim`) y responde 200 antes de atenderlo (`after()`): si el lote falla, Meta ya no reintenta y solo se
+  registra. El búfer vive en la memoria del proceso (varias instancias lo partirían).
 - Si Groq falla, responde el básico. Si ya reservó, confirmó o canceló, un mensaje fijo con lo hecho; y desde ahí
   un fallo al responder se registra y no se relanza: soltar el mensaje haría que Meta lo repita y podría reservar
   otra hora.
