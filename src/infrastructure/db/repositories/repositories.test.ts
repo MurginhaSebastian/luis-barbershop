@@ -326,6 +326,18 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
     expect(await repo.countUserTurns("51900000002", at("00:00"))).toBe(1);
   });
 
+  test("conversaciones desde una hora: todos los celulares, sin lo anterior, en orden de id", async () => {
+    const repo = new DrizzleConversationRepository(db);
+    await repo.append("51900000001", [{ role: "user", content: "viejo" }], utc("07:00"), new Date(0));
+    await repo.append("51900000001", [{ role: "user", content: "hola" }, { role: "assistant", content: "buenas" }], utc("09:00"), new Date(0));
+    await repo.append("51900000002", [{ role: "user", content: "otro" }], utc("09:30"), new Date(0));
+    expect(await repo.since(utc("08:00"))).toEqual([
+      { phone: "51900000001", role: "user", content: "hola", at: utc("09:00") },
+      { phone: "51900000001", role: "assistant", content: "buenas", at: utc("09:00") },
+      { phone: "51900000002", role: "user", content: "otro", at: utc("09:30") },
+    ]);
+  });
+
   test("mensajes atendidos: de dos reclamos simultáneos del mismo aviso, solo uno lo consigue", async () => {
     const repo = new DrizzleProcessedMessageRepository(db);
     const claims = await Promise.all(Array.from({ length: 5 }, () => repo.claim("wamid.1")));
