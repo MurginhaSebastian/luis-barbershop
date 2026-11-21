@@ -24,12 +24,12 @@ datos reales (teléfonos, direcciones, clientes) ni contraseñas.
 
 | Prueba | Resultado |
 |---|---|
-| Lógica (unitarias e integración) | 520 (medido el 16 de noviembre, sin recontar) |
-| Navegador | 214 (ídem) |
-| Errores sembrados a propósito | 73 definidos (69 de 69 detectados el 16 de noviembre; los 4 nuevos se comprobaron a mano contra su prueba) |
-| Cobertura de la lógica | 96 % (16 de noviembre) |
-| Lighthouse | 95–100 (12 de noviembre) |
-| Dispositivos emulados | 7 |
+| Lógica (unitarias e integración) | 601 en 45 archivos, todas pasan (21 de noviembre) |
+| Navegador | 230 pasadas, 0 fallidas y 4 omitidas de 234 (21 de noviembre; las omitidas son los `test.skip` por proyecto de `site.spec.ts`) |
+| Errores sembrados a propósito | 73 de 73 detectados (21 de noviembre; la corrida completa dio 72 porque el texto de un mutante había quedado desfasado, se corrigió y se comprobó a mano contra su prueba) |
+| Cobertura de la lógica | 96,2 % de sentencias, 90,5 % de ramas, 96,76 % de funciones y 97,3 % de líneas (21 de noviembre) |
+| Lighthouse | Accesibilidad y buenas prácticas 100 en las 10 mediciones; rendimiento 91–100 (21 de noviembre; ver tabla en la sección de pruebas) |
+| Dispositivos emulados | 7: 25 pruebas pasadas, 0 fallidas y 3 omitidas de 28 (21 de noviembre) |
 
 ---
 
@@ -345,12 +345,22 @@ el sábado en la tarde?") usando cinco herramientas que siguen las mismas reglas
 
 | Tipo | Comando | Qué comprueba |
 |---|---|---|
-| Lógica | `npm test` | 520 pruebas (16 de noviembre, sin recontar): reglas, casos de uso, acciones, herramientas y adaptador de IA (con Groq simulado) y repositorios contra Postgres real |
-| Cobertura | `npm run test:coverage` | 96 % de líneas (mínimo exigido: 90 %) |
-| Mutación | `npm run test:mutation` | Rompe 73 reglas críticas a propósito y exige que alguna prueba lo note. Los 4 nuevos (bordes de 12 y 25 mensajes, multimedia y límite sin Groq) se comprobaron a mano contra su prueba |
-| Navegador | `npm run test:e2e` | 214 pruebas (16 de noviembre, sin recontar): agenda en 320 px y escritorio, reserva, panel, WhatsApp de punta a punta (recordatorio, en riesgo, vencida, tomar una hora en riesgo), accesibilidad (axe), teclado, seguridad, móvil y escritorio |
-| Dispositivos | `npm run test:devices` | iPhone 15, iPad Mini, Pixel 7, Galaxy S9+ (320 px), Safari, Firefox y Edge 1920. Con capturas. La agenda del panel no se prueba en Safari/iPhone en local (no guardan la cookie segura sin HTTPS) |
-| Lighthouse | `npm run lighthouse` | Portada móvil 95; resto 100 en rendimiento, accesibilidad, buenas prácticas y SEO (medido el 12 de noviembre) |
+| Lógica | `npm test` | 601 pruebas (21 de noviembre): reglas, casos de uso, acciones, herramientas y adaptador de IA (con Groq simulado) y repositorios contra Postgres real |
+| Cobertura | `npm run test:coverage` | 97,3 % de líneas, 96,2 % de sentencias, 90,5 % de ramas y 96,76 % de funciones (21 de noviembre; mínimo exigido: 90 %) |
+| Mutación | `npm run test:mutation` | Rompe 73 reglas críticas a propósito y exige que alguna prueba lo note: 73 de 73 detectadas el 21 de noviembre (un mutante con el texto desfasado se corrigió y se comprobó a mano) |
+| Navegador | `npm run test:e2e` | 230 pasadas, 0 fallidas y 4 omitidas de 234 (21 de noviembre): agenda en 320 px y escritorio, reserva, panel, WhatsApp de punta a punta (recordatorio, en riesgo, vencida, tomar una hora en riesgo), accesibilidad (axe), teclado, seguridad, móvil y escritorio |
+| Dispositivos | `npm run test:devices` | iPhone 15, iPad Mini, Pixel 7, Galaxy S9+ (320 px), Safari, Firefox y Edge 1920. Con capturas; 25 pasadas, 0 fallidas y 3 omitidas de 28 (21 de noviembre). La agenda del panel no se prueba en Safari/iPhone en local (no guardan la cookie segura sin HTTPS) |
+| Lighthouse | `npm run lighthouse` | Medido el 21 de noviembre sobre el build real, ahora también con el calendario y Chats del panel (sesión firmada). Accesibilidad y buenas prácticas, 100 en todas. SEO, 100 en las páginas públicas; 60 en las del panel, que llevan noindex a propósito. Rendimiento: |
+
+| Página | Móvil | Escritorio |
+|---|---|---|
+| Portada `/` | 92 | 100 |
+| `/reservar` | 99 | 100 |
+| `/panel/entrar` | 99 | 100 |
+| `/panel` (calendario) | 91 | 100 |
+| `/panel/chats` | 100 | 100 |
+
+En una primera corrida la portada móvil dio 83 (ruido de la máquina local: LCP 3,3 s, TBT 380 ms); en la segunda, 92. |
 | Lint | `npm run lint` | ESLint estricto, cero avisos |
 | Todo junto | `npm run check` | Solo al final del proyecto, cuando se pida |
 
@@ -358,8 +368,8 @@ el sábado en la tarde?") usando cinco herramientas que siguen las mismas reglas
 si es visual, pruebas de navegador puntuales con axe a 320 px y en escritorio. Las pruebas de navegador corren
 sin IA (`AI_PROVIDER=""`); el camino con IA se comprobó a mano en Edge.
 
-**Pendiente para la suite completa** (cuando se pida): `panel.spec`, `admin.spec` y `whatsapp.spec` enteros,
-dispositivos en otros navegadores, Lighthouse, `test:mutation` completo y los huecos libres en el navegador.
+**Suite completa.** La corrida de cierre (21 de noviembre) cubrió `npm run check`, la suite E2E entera, la
+mutación, los dispositivos y Lighthouse; no queda nada pendiente de recontar.
 
 Detalle en [`qa-2026-11.md`](qa-2026-11.md) y [`auditoria-2026-11.md`](auditoria-2026-11.md).
 
