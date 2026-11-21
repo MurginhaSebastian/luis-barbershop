@@ -5,11 +5,24 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import * as chromeLauncher from "chrome-launcher";
 import lighthouse from "lighthouse";
 import desktopConfig from "lighthouse/core/config/desktop-config.js";
+import { createSessionToken } from "../src/infrastructure/auth/session.ts";
+
+try {
+  process.loadEnvFile();
+} catch {}
 
 const base = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "");
 const PAGES = ["/", "/reservar", "/panel/entrar"];
 // El panel lleva noindex a propósito: su SEO bajo no es un fallo.
 const PRIVATE = new Set(["/panel/entrar"]);
+// Con PANEL_SESSION_SECRET válido, mide también la agenda y Chats con una sesión firmada (el token no se imprime).
+const secret = process.env.PANEL_SESSION_SECRET;
+const AUTH_PAGES = ["/panel", "/panel/chats"];
+const sessionHeaders = secret && secret.length >= 32 ? { Cookie: `panel_session=${createSessionToken(secret, new Date())}` } : null;
+if (sessionHeaders) {
+  PAGES.push(...AUTH_PAGES);
+  AUTH_PAGES.forEach((p) => PRIVATE.add(p));
+} else console.log("Sin PANEL_SESSION_SECRET válido (32+ caracteres): se saltan /panel y /panel/chats.");
 const DEVICES = [
   ["móvil", undefined],
   ["escritorio", desktopConfig],
@@ -27,7 +40,7 @@ const below = [];
 try {
   for (const [device, config] of DEVICES) {
     for (const path of PAGES) {
-      const { lhr, report } = await lighthouse(`${base}${path}`, { port: chrome.port, output: "html", logLevel: "error" }, config);
+      const { lhr, report } = await lighthouse(`${base}${path}`, { port: chrome.port, output: "html", logLevel: "error", ...(AUTH_PAGES.includes(path) && { extraHeaders: sessionHeaders }) }, config);
       writeFileSync(`.lighthouse/${device}${path === "/" ? "-portada" : path.replaceAll("/", "-")}.html`, report);
       const score = (id) => Math.round((lhr.categories[id]?.score ?? 0) * 100);
       rows.push({
