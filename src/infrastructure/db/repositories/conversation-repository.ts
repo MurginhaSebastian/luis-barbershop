@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, lt } from "drizzle-orm";
 import type { ConversationTurn, IConversationRepository } from "@/application/ports/repositories/conversation-repository";
 import type { Db } from "../client";
 import { assistantMessages } from "../schema";
@@ -14,6 +14,15 @@ export class DrizzleConversationRepository implements IConversationRepository {
       .orderBy(desc(assistantMessages.id))
       .limit(limit);
     return rows.reverse().map(({ role, content }) => ({ role: role === "assistant" ? "assistant" : "user", content }));
+  }
+
+  async since(since: Date) {
+    const rows = await this.db
+      .select({ phone: assistantMessages.phone, role: assistantMessages.role, content: assistantMessages.content, at: assistantMessages.createdAt })
+      .from(assistantMessages)
+      .where(gte(assistantMessages.createdAt, since))
+      .orderBy(asc(assistantMessages.id));
+    return rows.map((r) => ({ ...r, role: r.role === "assistant" ? ("assistant" as const) : ("user" as const) }));
   }
 
   async countUserTurns(phone: string, since: Date): Promise<number> {

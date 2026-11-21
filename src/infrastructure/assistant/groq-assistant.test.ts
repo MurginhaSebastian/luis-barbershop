@@ -37,6 +37,7 @@ function makeAssistant(responses: (Response | Error)[]) {
   const history: ConversationTurn[] = [];
   const conversations = {
     recent: vi.fn(async () => [...history]),
+    since: vi.fn(async () => []),
     countUserTurns: vi.fn(async (_phone: string, since: Date) => (NOW.getTime() - since.getTime() <= 3600_000 ? counts.hour : counts.day)),
     append: vi.fn(async (_phone: string, turns: readonly ConversationTurn[]) => void history.push(...turns)),
   };
