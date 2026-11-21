@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { getUseCases, getWhatsAppConfig } from "@/infrastructure/container";
+import { codeInMessage } from "@/core/entities/confirmation";
+import { getMessageBatcher, getUseCases, getWhatsAppConfig } from "@/infrastructure/container";
 import { isSignedByMeta } from "@/infrastructure/whatsapp/whatsapp-cloud";
 
 // Webhook de WhatsApp: Meta lo llama una vez al configurarlo (GET) y luego con cada mensaje o estado (POST).
@@ -88,14 +89,24 @@ export async function POST(request: Request) {
     .flatMap((m) => {
       if (!m.from) return [];
       // Fotos, audios… llegan como tal: el asistente responde que solo lee texto. Reacciones y demás, en silencio.
-      if (MEDIA_TYPES.has(m.type)) return [{ id: m.id, from: m.from, text: "", media: true as const }];
+      if (MEDIA_TYPES.has(m.type)) return [{ batchable: false, message: { id: m.id, from: m.from, text: "", media: true as const } }];
       const text = messageText(m);
-      return text ? [{ id: m.id, from: m.from, text }] : [];
+      // Solo el texto escrito se agrupa: los botones y los códigos se atienden al momento.
+      return text ? [{ batchable: m.type === "text" && !codeInMessage(text), message: { id: m.id, from: m.from, text } }] : [];
     });
 
   const { incomingMessages, managePush } = getUseCases();
+  const batcher = getMessageBatcher();
   try {
-    for (const message of messages) {
+    for (const { message, batchable } of messages) {
+      if (batcher && batchable) {
+        // Se reclama antes del 200 (un repetido de Meta no entra) y se atiende después, junto a los que lleguen
+        // seguidos. Si el lote falla Meta ya no reintenta: se registra.
+        if (await incomingMessages.claim(message.id)) {
+          after(() => batcher.add(message).catch((error) => console.error(`lote de mensajes (…${message.from.slice(-3)})`, error)));
+        }
+        continue;
+      }
       // Reclamado al empezar: un aviso repetido por Meta mientras este sigue en curso no se atiende dos veces.
       const outcome = await incomingMessages.execute(message);
       if (outcome.kind === "confirmed" || outcome.kind === "cancelled") {

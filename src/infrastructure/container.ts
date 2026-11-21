@@ -1,3 +1,4 @@
+import { MessageBatcher } from "@/application/use-cases/assistant/message-batcher";
 import { BotToolExecutor } from "@/application/use-cases/assistant/bot-tool-executor";
 import { HandleIncomingMessageUseCase } from "@/application/use-cases/assistant/handle-incoming-message";
 import { ChangeAppointmentStatusUseCase } from "@/application/use-cases/agenda/change-appointment-status";
@@ -111,4 +112,21 @@ export function getWhatsAppConfig() {
 /** El número de WhatsApp del asistente de IA, o null si no está activo (reservar por ahí solo tiene sentido con IA). */
 export function getAssistantWhatsApp(): string | null {
   return aiAssistantEnabled(process.env) ? (readWhatsAppConfig(process.env)?.displayNumber ?? null) : null;
+}
+
+let batcher: MessageBatcher | null | undefined;
+
+/**
+ * Agrupa los textos seguidos de un celular (WHATSAPP_DEBOUNCE_MS, 3500 por defecto; 0 lo apaga). Solo con la IA
+ * activa: el asistente básico responde a códigos, que no se agrupan. Memoizado: el búfer vive en el proceso.
+ */
+export function getMessageBatcher(): MessageBatcher | null {
+  if (batcher !== undefined) return batcher;
+  const raw = process.env.WHATSAPP_DEBOUNCE_MS?.trim();
+  const delayMs = raw ? Number(raw) : 3500;
+  batcher =
+    aiAssistantEnabled(process.env) && delayMs > 0
+      ? new MessageBatcher({ delayMs, flush: (message) => getUseCases().incomingMessages.handleClaimed(message) })
+      : null;
+  return batcher;
 }

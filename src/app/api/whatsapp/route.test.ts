@@ -10,11 +10,14 @@ const mocks = vi.hoisted(() => ({
   notifyConfirmed: vi.fn(),
   notifyCancelled: vi.fn(),
   afterResponse: [] as (() => unknown)[],
+  claim: vi.fn(),
+  batcher: null as null | { add: ReturnType<typeof vi.fn> },
 }));
 vi.mock("@/infrastructure/container", () => ({
   getWhatsAppConfig: () => mocks.config,
+  getMessageBatcher: () => mocks.batcher,
   getUseCases: () => ({
-    incomingMessages: { execute: mocks.handleMessage },
+    incomingMessages: { execute: mocks.handleMessage, claim: mocks.claim },
     managePush: { notifyConfirmed: mocks.notifyConfirmed, notifyCancelled: mocks.notifyCancelled },
   }),
 }));
@@ -54,6 +57,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.config = CONFIG;
   mocks.afterResponse.length = 0;
+  mocks.batcher = null;
+  mocks.claim.mockResolvedValue(true);
   mocks.handleMessage.mockResolvedValue({ kind: "no-code" });
 });
 
@@ -71,6 +76,53 @@ describe("verificación de Meta (GET)", () => {
     expect(verify("otro").status).toBe(403);
     mocks.config = null;
     expect(verify("verificame").status).toBe(403);
+  });
+});
+
+describe("agrupador de textos", () => {
+  beforeEach(() => {
+    mocks.batcher = { add: vi.fn().mockResolvedValue(undefined) };
+  });
+
+  test("un texto se reclama, responde 200 sin atenderlo y se agrupa después", async () => {
+    const response = await post(textMessage("quiero un fade"));
+    expect(response.status).toBe(200);
+    expect(mocks.claim).toHaveBeenCalledWith("wamid.1");
+    expect(mocks.handleMessage).not.toHaveBeenCalled();
+    expect(mocks.batcher!.add).not.toHaveBeenCalled();
+    await mocks.afterResponse[0]();
+    expect(mocks.batcher!.add).toHaveBeenCalledWith({ id: "wamid.1", from: "51900000001", text: "quiero un fade" });
+  });
+
+  test("un repetido de Meta (ya reclamado) no se agrupa", async () => {
+    mocks.claim.mockResolvedValue(false);
+    expect((await post(textMessage("quiero un fade"))).status).toBe(200);
+    expect(mocks.afterResponse).toHaveLength(0);
+  });
+
+  test("un lote que falla se registra, no rompe el aviso", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.batcher!.add.mockRejectedValue(new Error("caído"));
+    await post(textMessage("quiero un fade"));
+    await mocks.afterResponse[0]();
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  test("un código, un botón o una foto se atienden al momento", async () => {
+    await post(textMessage("Confirmo mi cita KRT482"));
+    const button = textMessage("x");
+    const m = button.entry[0].changes[0].value.messages[0] as Record<string, unknown>;
+    m.type = "button";
+    delete m.text;
+    m.button = { payload: "quiero un fade" };
+    await post(button);
+    const image = textMessage("x");
+    image.entry[0].changes[0].value.messages[0].type = "image";
+    await post(image);
+    expect(mocks.handleMessage).toHaveBeenCalledTimes(3);
+    expect(mocks.claim).not.toHaveBeenCalled();
+    expect(mocks.afterResponse).toHaveLength(0);
   });
 });
 

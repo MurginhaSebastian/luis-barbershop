@@ -4,6 +4,7 @@ import type { ConversationTurn } from "@/application/ports/repositories/conversa
 import type { ToolCall, ToolContext, ToolResult } from "@/application/use-cases/assistant/bot-tool-executor";
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { humanHandoffText } from "@/application/use-cases/assistant/quick-replies";
+import { MessageBatcher } from "@/application/use-cases/assistant/message-batcher";
 import { GroqAssistant } from "./groq-assistant";
 
 const NOW = new Date("2026-11-16T15:30:00-05:00");
@@ -201,6 +202,24 @@ describe("respuestas fijas", () => {
     const t = makeAssistant([groq({ content: "ok" })]);
     await t.assistant.handleMessage(message("quiero info"));
     expect(t.bodies()[0].messages[0].content).toContain(humanHandoffText("51900000000"));
+  });
+});
+
+describe("agrupador de mensajes seguidos", () => {
+  test("3 mensajes seguidos → 1 sola llamada a Groq con el texto unido", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = makeAssistant([groq({ content: "Listo" })]);
+      const batcher = new MessageBatcher({ delayMs: 3500, flush: (m) => t.assistant.handleMessage(m) });
+      const done = [batcher.add({ ...message("quiero un corte"), id: "1" }), batcher.add({ ...message("con barba"), id: "2" }), batcher.add({ ...message("mañana 5 pm"), id: "3" })];
+      await vi.advanceTimersByTimeAsync(3500);
+      await Promise.all(done);
+      expect(t.fetchImpl).toHaveBeenCalledTimes(1);
+      expect(t.bodies()[0].messages.at(-1).content).toBe("quiero un corte\ncon barba\nmañana 5 pm");
+      expect(t.sendText).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

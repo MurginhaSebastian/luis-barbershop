@@ -8,8 +8,18 @@ import type { IProcessedMessageRepository } from "@/application/ports/repositori
 export class HandleIncomingMessageUseCase {
   constructor(private readonly deps: { processedMessages: IProcessedMessageRepository; assistant: AiAssistantPort }) {}
 
+  /** Reclama el mensaje: false si otro aviso ya lo tomó. */
+  claim(id: string): Promise<boolean> {
+    return this.deps.processedMessages.claim(id);
+  }
+
   async execute(message: IncomingMessage): Promise<MessageOutcome> {
-    if (!(await this.deps.processedMessages.claim(message.id))) return { kind: "ignored" };
+    if (!(await this.claim(message.id))) return { kind: "ignored" };
+    return this.handleClaimed(message);
+  }
+
+  /** Atiende un mensaje que ya se reclamó con `claim` (el agrupador lo hace tras responderle 200 a Meta). */
+  async handleClaimed(message: IncomingMessage): Promise<MessageOutcome> {
     try {
       return await this.deps.assistant.handleMessage(message);
     } catch (error) {
