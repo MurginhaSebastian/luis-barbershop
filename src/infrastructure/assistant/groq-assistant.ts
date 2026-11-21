@@ -10,6 +10,7 @@ import { botToolDefinitions } from "@/application/use-cases/assistant/bot-tools"
 import { codeInMessage } from "@/core/entities/confirmation";
 import { normalizePhone } from "@/core/entities/customer";
 import { shopDateOf } from "@/core/scheduling/availability";
+import { humanHandoffText, quickReplyKind } from "@/application/use-cases/assistant/quick-replies";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 /** llama-3.3-70b-versatile se retiró el 16-ago-2026 (salvo contratos empresariales); este es su reemplazo. */
@@ -28,6 +29,9 @@ const MAX_OUTPUT_TOKENS = 220;
 /** Tiempo total para todas las rondas: el webhook no puede quedarse colgado. */
 const TIMEOUT_MS = 12_000;
 const MEDIA_REPLY = "Por ahora solo leo mensajes de texto. Escríbeme qué servicio, día y hora quieres y te ayudo con tu cita.";
+const GREETING_REPLY =
+  "¡Hola! Soy el asistente automático de reservas de Luis Barbershop. Escríbeme qué servicio y horario buscas (ej: 'Fade mañana a las 5 pm') y te ayudo al instante.";
+const NONSENSE_REPLY = "No logré entenderte. Escríbeme en texto qué corte deseas y para qué día y hora quieres tu cita.";
 const MUTATING = new Set(["reservar_cita", "confirmar_asistencia", "cancelar_cita"]);
 
 export interface GroqAssistantDeps {
@@ -94,7 +98,9 @@ export function systemPrompt(now: Date, contact: string | undefined, catalog = "
     "3. Antes de reservar, confirma con el cliente los servicios, el día, la hora, el barbero (o sin preferencia) y su nombre.",
     "4. Si confirmar_asistencia o cancelar_cita devuelve MULTIPLE_APPOINTMENTS_FOUND, pregunta a cuál de sus citas se refiere (día, hora y barbero) y vuelve a llamar con su appointmentId.",
     "5. Usa los ids del CATÁLOGO. listar_catalogo_y_mis_citas solo sirve para ver las citas del cliente: llámala antes de usar un appointmentId (no los conservas de mensajes anteriores).",
-    `6. Si el cliente tiene un reclamo o pide hablar con una persona, dale ${luis}.`,
+    contact
+      ? `6. Si el cliente tiene un reclamo o pide hablar con una persona, responde exactamente: ${humanHandoffText(contact)}`
+      : `6. Si el cliente tiene un reclamo o pide hablar con una persona, dile ${luis}.`,
     "7. Las herramientas ya saben quién escribe: nunca pidas ni uses otro número de celular.",
     "8. Tras reservar, repite lo que diga el campo next de reservar_cita. Si la cita quedó pendiente, no digas que está confirmada: di que quedó separada y que 35 minutos antes le escribiremos por WhatsApp para que la confirme.",
     "9. Responde en español, breve y cordial, en texto plano de WhatsApp (sin tablas ni markdown). Precios en soles (S/) y horas de Perú en formato 24 h.",
@@ -124,6 +130,12 @@ export class GroqAssistant implements AiAssistantPort {
     const text = message.text.slice(0, MAX_INPUT_CHARS);
     const now = this.deps.now();
     const { whatsapp } = (await this.deps.siteSettings.get()).contact;
+    // Respuestas fijas, sin Groq. Se guardan en el historial (Luis las ve en Chats) y cuentan para el límite.
+    const quick = await this.quickReply(phone, text, now, whatsapp);
+    if (quick) {
+      await this.deliver(phone, text, quick, now, false);
+      return { kind: "answered" };
+    }
     if (await this.overLimit(phone, now)) {
       const next = whatsapp ? `escribe directamente a Luis al +${whatsapp}` : "vuelve a escribirme más tarde";
       await this.deps.messaging.sendText(phone, `Has enviado muchos mensajes seguidos. Para seguir, ${next}.`);
@@ -151,6 +163,16 @@ export class GroqAssistant implements AiAssistantPort {
     }
     await this.deliver(phone, text, reply, now, done.length > 0);
     return { kind: "answered" };
+  }
+
+  private async quickReply(phone: string, text: string, now: Date, whatsapp: string | undefined): Promise<string | null> {
+    const kind = quickReplyKind(text);
+    if (kind === "human") return whatsapp ? humanHandoffText(whatsapp) : null;
+    if (!kind) return null;
+    // A mitad de una reserva, un "👍" o un "ok" es un sí: va al modelo.
+    const open = await this.deps.conversations.recent(phone, new Date(now.getTime() - HISTORY_WINDOW_MS), 1);
+    if (open.length > 0) return null;
+    return kind === "greeting" ? GREETING_REPLY : NONSENSE_REPLY;
   }
 
   private async overLimit(phone: string, now: Date): Promise<boolean> {

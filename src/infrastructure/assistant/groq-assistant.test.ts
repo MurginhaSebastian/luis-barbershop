@@ -3,6 +3,7 @@ import type { MessageOutcome } from "@/application/ports/assistant";
 import type { ConversationTurn } from "@/application/ports/repositories/conversation-repository";
 import type { ToolCall, ToolContext, ToolResult } from "@/application/use-cases/assistant/bot-tool-executor";
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
+import { humanHandoffText } from "@/application/use-cases/assistant/quick-replies";
 import { GroqAssistant } from "./groq-assistant";
 
 const NOW = new Date("2026-11-16T15:30:00-05:00");
@@ -97,7 +98,7 @@ describe("varias rondas de herramientas", () => {
 
   test("el prompt prohíbe decir confirmada si quedó pendiente, y la negrita sale en formato WhatsApp", async () => {
     const t = makeAssistant([groq({ content: "Tu cita de **Fade** con **Luis**" })]);
-    await t.assistant.handleMessage(message("hola"));
+    await t.assistant.handleMessage(message("quiero info"));
     expect(t.bodies()[0].messages[0].content).toContain("no digas que está confirmada");
     expect(t.sendText).toHaveBeenCalledWith(ME, "Tu cita de *Fade* con *Luis*");
     expect(t.history.at(-1)).toEqual({ role: "assistant", content: "Tu cita de *Fade* con *Luis*" });
@@ -106,7 +107,7 @@ describe("varias rondas de herramientas", () => {
   test("como mucho 3 rondas: si el modelo sigue pidiendo herramientas, no se ejecutan más", async () => {
     const always = () => groq({ tool_calls: [call("c", "listar_catalogo_y_mis_citas")] });
     const t = makeAssistant([always(), always(), always(), always(), always()]);
-    await t.assistant.handleMessage(message("hola"));
+    await t.assistant.handleMessage(message("quiero info"));
     expect(t.executeTool).toHaveBeenCalledTimes(3);
     expect(t.fetchImpl).toHaveBeenCalledTimes(4);
     expect(t.bodies()[3]).not.toHaveProperty("tools"); // la última petición, sin herramientas
@@ -141,7 +142,7 @@ describe("barreras de tokens", () => {
 
   test("cortada por length y sin texto ni herramientas: aviso amable", async () => {
     const t = makeAssistant([new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "" } }] }), { status: 200 })]);
-    await t.assistant.handleMessage(message("hola"));
+    await t.assistant.handleMessage(message("quiero info"));
     expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
   });
 });
@@ -157,7 +158,7 @@ describe("límite de uso por celular", () => {
   ])("%s con %i previos", async (_, __, c, blocked) => {
     Object.assign(counts, c);
     const t = makeAssistant([groq({ content: "ok" })]);
-    await t.assistant.handleMessage(message("hola"));
+    await t.assistant.handleMessage(message("quiero info"));
     expect(t.sendText).toHaveBeenCalledWith(ME, blocked ? LIMITED : "ok");
     expect(t.fetchImpl).toHaveBeenCalledTimes(blocked ? 0 : 1);
     expect(t.history).toEqual(blocked ? [] : expect.any(Array));
@@ -169,6 +170,37 @@ describe("límite de uso por celular", () => {
     await t.assistant.handleMessage(message("Confirmo mi cita KRT482"));
     expect(t.fallback.handleMessage).toHaveBeenCalled();
     expect(t.conversations.countUserTurns).not.toHaveBeenCalled();
+  });
+});
+
+describe("respuestas fijas", () => {
+  test.each([
+    ["hola", "¡Hola! Soy el asistente automático de reservas de Luis Barbershop. Escríbeme qué servicio y horario buscas (ej: 'Fade mañana a las 5 pm') y te ayudo al instante."],
+    ["👍", "No logré entenderte. Escríbeme en texto qué corte deseas y para qué día y hora quieres tu cita."],
+    ["quiero hablar con Luis", humanHandoffText("51900000000")],
+  ])("%s: sin Groq, se guarda en el historial", async (text, reply) => {
+    const t = makeAssistant([]);
+    expect(await t.assistant.handleMessage(message(text))).toEqual({ kind: "answered" });
+    expect(t.fetchImpl).not.toHaveBeenCalled();
+    expect(t.sendText).toHaveBeenCalledWith(ME, reply);
+    expect(t.history).toEqual([
+      { role: "user", content: text },
+      { role: "assistant", content: reply },
+    ]);
+  });
+
+  test("con conversación reciente, un 👍 va a Groq", async () => {
+    const t = makeAssistant([groq({ content: "Perfecto" })]);
+    t.history.push({ role: "assistant", content: "¿Te reservo a las 5?" });
+    await t.assistant.handleMessage(message("👍"));
+    expect(t.fetchImpl).toHaveBeenCalledTimes(1);
+    expect(t.sendText).toHaveBeenCalledWith(ME, "Perfecto");
+  });
+
+  test("el prompt deriva a Luis con el mismo texto", async () => {
+    const t = makeAssistant([groq({ content: "ok" })]);
+    await t.assistant.handleMessage(message("quiero info"));
+    expect(t.bodies()[0].messages[0].content).toContain(humanHandoffText("51900000000"));
   });
 });
 
@@ -194,7 +226,7 @@ describe("contexto", () => {
 
   test("el prompt lleva el catálogo resumido con ids", async () => {
     const t = makeAssistant([groq({ content: "hola" })]);
-    await t.assistant.handleMessage(message("hola"));
+    await t.assistant.handleMessage(message("quiero info"));
     expect(t.bodies()[0].messages[0].content).toContain("CATÁLOGO. Servicios: Fade 45min S/35 id=s1. Barberos: Luis id=b1.");
   });
 
@@ -263,6 +295,6 @@ describe("si Groq falla", () => {
   test("sin nada hecho, si la respuesta no sale se lanza para que Meta reintente", async () => {
     const t = makeAssistant([groq({ content: "Hola" })]);
     t.sendText.mockRejectedValueOnce(new Error("WhatsApp caído"));
-    await expect(t.assistant.handleMessage(message("hola"))).rejects.toThrow("WhatsApp caído");
+    await expect(t.assistant.handleMessage(message("quiero info"))).rejects.toThrow("WhatsApp caído");
   });
 });
