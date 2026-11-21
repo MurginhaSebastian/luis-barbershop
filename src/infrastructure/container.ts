@@ -11,6 +11,7 @@ import { GetAvailableSlotsUseCase } from "@/application/use-cases/booking/get-av
 import { CreateAppointmentUseCase } from "@/application/use-cases/booking/create-appointment";
 import { BookingConfirmationUseCase } from "@/application/use-cases/booking/booking-confirmation";
 import { ConfirmationCycleUseCase } from "@/application/use-cases/booking/confirmation-cycle";
+import { GetChatsUseCase } from "@/application/use-cases/chats/get-chats";
 import { GetCatalogUseCase } from "@/application/use-cases/catalog/get-catalog";
 import { aiAssistantEnabled, selectAssistant } from "./assistant/select-assistant";
 import { getDb } from "./db/client";
@@ -58,6 +59,7 @@ export function getUseCases() {
     now: () => new Date(),
     randomBytes: (length: number) => crypto.getRandomValues(new Uint8Array(length)),
   };
+  const conversations = new DrizzleConversationRepository(db);
   const managePush = new ManagePushUseCase(deps);
   const getAvailableSlots = new GetAvailableSlotsUseCase(deps);
   const createAppointment = new CreateAppointmentUseCase(deps);
@@ -81,10 +83,11 @@ export function getUseCases() {
         ...deps,
         fallback: bookingConfirmation,
         tools: botTools,
-        conversations: new DrizzleConversationRepository(db),
+        conversations,
       }),
     }),
     getAgenda: new GetAgendaUseCase(deps),
+    getChats: new GetChatsUseCase({ ...deps, conversations }),
     manageCatalog: new ManageCatalogUseCase(deps),
     manageSchedule: new ManageScheduleUseCase(deps),
     manageSite: new ManageSiteUseCase(deps),
