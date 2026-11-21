@@ -3,7 +3,7 @@ import { PANEL_PASSWORD, resetBookings, withE2eDatabase } from "./database";
 
 const todayTitle = () =>
   new Date().toLocaleDateString("es-PE", { timeZone: "America/Lima", day: "numeric", month: "long", year: "numeric" });
-import { bookUntilData, chooseBarber, chooseDay, chooseFirstHour, chooseServices, fillData, newPhone } from "./helpers";
+import { bookUntilData, chooseBarber, chooseDay, chooseFirstHour, chooseServices, fillData, newPhone, pendingCards, pendingList } from "./helpers";
 
 test.beforeEach(() => resetBookings());
 
@@ -34,9 +34,9 @@ test.describe("datos hostiles", () => {
     const attack = `<img src=x onerror="window.__xss=1">`;
     await bookAs(page, attack);
     await login(page);
-    await expect(page.getByRole("article").first()).toContainText(attack);
+    await expect(pendingCards(page).first()).toContainText(attack);
     expect(await page.evaluate(() => (window as unknown as { __xss?: number }).__xss)).toBeUndefined();
-    await expect(page.locator("article img")).toHaveCount(0);
+    await expect(pendingList(page).locator("img")).toHaveCount(0);
   });
 
   test("un nombre con comillas e intento de SQL se guarda como texto", async ({ page }) => {
@@ -51,10 +51,10 @@ test.describe("datos hostiles", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await bookAs(page, "A".repeat(60));
     await login(page);
-    await expect(page.getByRole("article").first()).toBeVisible();
+    await expect(pendingCards(page).first()).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
-    const card = await page.getByRole("article").first().boundingBox();
+    const card = await pendingCards(page).first().boundingBox();
     expect((card?.x ?? 0) + (card?.width ?? 0)).toBeLessThanOrEqual(375);
   });
 
