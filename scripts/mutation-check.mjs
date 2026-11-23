@@ -65,6 +65,8 @@ const mutants = [
   ["Panel: las citas que se cruzan van todas en el mismo carril", "src/presentation/lib/timeline.ts", "if (lane < 0) lane = laneEnds.length;", "if (lane < 0) lane = 0;"],
   ["IA: las herramientas usan otro celular que el del remitente", "src/infrastructure/assistant/groq-assistant.ts", "{ verifiedPhone: phone, now }", '{ verifiedPhone: "51999999999", now }'],
   ["IA: el historial no se limita a las 2 últimas horas", "src/infrastructure/assistant/groq-assistant.ts", "new Date(now.getTime() - HISTORY_WINDOW_MS), HISTORY_TURNS", "new Date(0), HISTORY_TURNS"],
+  ["Asistente: el trato de confianza ya no es un saludo", "src/application/use-cases/assistant/quick-replies.ts", '"vecino vecina causa hermano hermana hermanito bro pata compadre compa jefe jefecito maestro amigo amiga tio crack"', '"hola"'],
+  ["Asistente: los desvíos evidentes llegan al modelo", "src/application/use-cases/assistant/quick-replies.ts", 'if (OFFTOPIC.test(t)) return "offtopic";', ""],
   ["IA: sin tope de rondas de herramientas", "src/infrastructure/assistant/groq-assistant.ts", "const withTools = round < MAX_TOOL_ROUNDS;", "const withTools = round < 99;"],
   ["Bot: actúa sobre la cita de otro número", "src/application/use-cases/assistant/bot-tool-executor.ts", "return appointment && customer && appointment.customerId === customer.id", "return appointment"],
   ["Bot: con varias citas adivina cuál", "src/application/use-cases/assistant/bot-tool-executor.ts", "if (candidates.length > 1) {", "if (candidates.length > 9) {"],
