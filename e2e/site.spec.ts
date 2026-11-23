@@ -28,7 +28,9 @@ async function expectNoHorizontalScroll(page: Page, where: string) {
 test.describe("portada", () => {
   test("muestra todas sus secciones con datos reales de la base", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Luis");
+    const h1 = page.getByRole("heading", { level: 1 });
+    await expect(h1).toContainText("D'luiss");
+    await expect(h1).toContainText("Barber Shop");
     for (const name of ["Servicios", "Por qué venir", "Cómo reservar", "Para llevar a casa", "Horario"]) {
       await expect(page.getByRole("heading", { name, level: 2 })).toBeVisible();
     }
