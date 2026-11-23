@@ -63,6 +63,7 @@ describe("parseContactForm", () => {
 test("parseSectionsForm: lo no marcado queda oculto", () => {
   expect(parseSectionsForm(form({ about: "on", visit: "on" }))).toEqual({
     about: true,
+    paraEllas: false,
     whyUs: false,
     howToBook: false,
     products: false,

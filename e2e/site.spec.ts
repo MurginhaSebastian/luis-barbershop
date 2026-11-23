@@ -31,13 +31,26 @@ test.describe("portada", () => {
     const h1 = page.getByRole("heading", { level: 1 });
     await expect(h1).toContainText("D'luiss");
     await expect(h1).toContainText("Barber Shop");
-    for (const name of ["Servicios", "Por qué venir", "Cómo reservar", "Para llevar a casa", "Horario"]) {
+    for (const name of ["Servicios", "Para ellas", "Por qué venir", "Cómo reservar", "Para llevar a casa", "Horario"]) {
       await expect(page.getByRole("heading", { name, level: 2 })).toBeVisible();
     }
     await expect(page.getByRole("link", { name: /Reservar este servicio/ })).toHaveCount(4);
     await expect(page.getByText("Lunes a sábado")).toBeVisible();
     // Sin opiniones reales, la sección de testimonios no aparece.
     await expect(page.getByRole("heading", { name: "Lo que dicen" })).toHaveCount(0);
+  });
+
+  test("Para ellas muestra los servicios de spa, reserva uno y está en el menú", async ({ page }, info) => {
+    await page.goto("/");
+    const section = page.getByRole("region", { name: "Para ellas" });
+    await expect(section).toContainText("Dluiss Spa & Beauty");
+    await expect(section.getByRole("link", { name: /Corte clásico/ })).toHaveCount(0);
+    const menu = info.project.name === "movil" ? page.getByRole("navigation", { name: "Secciones" }) : page.getByRole("navigation", { name: "Principal" });
+    if (info.project.name === "movil") await page.locator("summary", { hasText: "Menú" }).click();
+    await expect(menu.getByRole("link", { name: "Para ellas" })).toBeVisible();
+    await section.getByRole("link", { name: /Manicure de prueba/ }).click();
+    await expect(page).toHaveURL(/\/reservar\?servicios=/);
+    await expect(page.getByLabel(/Manicure de prueba/)).toBeChecked();
   });
 
   test("el botón principal lleva a la reserva", async ({ page }) => {

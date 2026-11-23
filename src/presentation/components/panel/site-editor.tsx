@@ -17,6 +17,7 @@ const CONTACT_FIELDS: { name: keyof ShopContact; label: string; placeholder: str
 
 const SECTION_LABELS: Record<SiteSection, string> = {
   about: "Nosotros",
+  paraEllas: "Para ellas (Spa y estilista)",
   whyUs: "Por qué venir",
   howToBook: "Cómo reservar",
   products: "Productos para llevar",

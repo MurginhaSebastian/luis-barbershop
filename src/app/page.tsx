@@ -4,6 +4,7 @@ import { getAssistantWhatsApp, getUseCases } from "@/infrastructure/container";
 import { BookLink } from "@/presentation/components/landing/book-link";
 import { Hero } from "@/presentation/components/landing/hero";
 import { ScrollToHash } from "@/presentation/components/landing/scroll-to-hash";
+import { ParaEllas } from "@/presentation/components/landing/para-ellas";
 import { About, ClosingCta, HowToBook, Products, Testimonials, VisitUs, WhyUs } from "@/presentation/components/landing/sections";
 import { ServiceGallery } from "@/presentation/components/landing/service-gallery";
 import { ShopFacts } from "@/presentation/components/landing/shop-facts";
@@ -74,6 +75,8 @@ async function CatalogSections() {
   const assistant = getAssistantWhatsApp();
   const { getCatalog } = getUseCases();
   const [{ services, products, weeklyHours }, opening] = await Promise.all([getCatalog.execute(), getCatalog.openingStatus()]);
+  const barberia = services.filter((s) => (s.area ?? "barberia") === "barberia");
+  const spa = services.filter((s) => s.area === "spa");
   return (
     <>
       <script
@@ -96,9 +99,10 @@ async function CatalogSections() {
           Toca un servicio para reservarlo. Puedes sumar otros en el siguiente paso.
         </p>
         <div className="mt-10">
-          <ServiceGallery services={services} assistant={assistant} />
+          <ServiceGallery services={barberia} assistant={assistant} />
         </div>
       </section>
+      {sections.paraEllas && spa.length > 0 && <ParaEllas services={spa} assistant={assistant} />}
       {sections.about && <About image={images.about} />}
       {sections.whyUs && <WhyUs />}
       {sections.howToBook && <HowToBook assistant={assistant} />}

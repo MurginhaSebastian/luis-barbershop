@@ -22,7 +22,7 @@ const display = Bodoni_Moda({ subsets: ["latin"], variable: "--font-display" });
 
 const TITLE = "D'luiss Barber Shop | Barbería en Las Quintanas, Trujillo — Reserva por WhatsApp";
 const DESCRIPTION =
-  "Fades, diseño de barba y ondulaciones en Las Quintanas, Trujillo. Reserva tu hora directo por WhatsApp.";
+  "Fades, diseño de barba, ondulaciones y spa para mujeres en Las Quintanas, Trujillo. Reserva tu hora directo por WhatsApp.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -77,6 +77,7 @@ async function SectionLinks() {
   const { sections } = await getSiteSettings();
   const links = [
     { href: "/#servicios", label: "Servicios", visible: true },
+    { href: "/#para-ellas", label: "Para ellas", visible: sections.paraEllas },
     { href: "/#nosotros", label: "Nosotros", visible: sections.about },
     { href: "/#productos", label: "Productos", visible: sections.products },
     { href: "/#horario", label: "Horario", visible: sections.visit },

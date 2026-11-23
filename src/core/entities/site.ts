@@ -18,7 +18,7 @@ export interface ShopContact {
 export const CONTACT_URL_FIELDS = ["mapsUrl", "instagramUrl", "facebookUrl", "tiktokUrl", "complaintsUrl"] as const;
 
 /** Secciones de la portada que el barbero puede ocultar. Servicios y reserva siempre se ven. */
-export const SITE_SECTIONS = ["about", "whyUs", "howToBook", "products", "visit"] as const;
+export const SITE_SECTIONS = ["about", "paraEllas", "whyUs", "howToBook", "products", "visit"] as const;
 export type SiteSection = (typeof SITE_SECTIONS)[number];
 
 /** Huecos de foto de la portada. */
@@ -33,7 +33,7 @@ export interface SiteSettings {
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   contact: {},
-  sections: { about: true, whyUs: true, howToBook: true, products: true, visit: true },
+  sections: { about: true, paraEllas: true, whyUs: true, howToBook: true, products: true, visit: true },
   images: {},
 };
 
