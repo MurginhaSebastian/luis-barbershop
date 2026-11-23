@@ -61,7 +61,7 @@ npm run db:up        # levanta Postgres
 npm run db:migrate   # aplica migraciones
 npm run db:generate  # genera una migración tras cambiar src/infrastructure/db/schema.ts
 npm run db:seed      # datos de ejemplo ficticios (idempotente; src/infrastructure/db/seed.sql)
-npm run panel:clave  # genera la clave del panel y las líneas PANEL_* para .env
+npm run panel:clave  # pide tu clave del panel (Enter = aleatoria) y da las líneas PANEL_* para .env
 npm run panel:push   # genera las claves VAPID de los avisos push para .env
 ```
 
