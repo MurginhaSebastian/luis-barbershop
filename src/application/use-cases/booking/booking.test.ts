@@ -162,6 +162,42 @@ describe("GetAvailableSlotsUseCase", () => {
   });
 });
 
+describe("alternatives", () => {
+  const fullDay = (barberId: string | null, date = DATE) =>
+    repos.data.blocks.push({ barberId, slot: TimeSlot.create(new Date(`${date}T14:00:00Z`), new Date(`${date}T19:00:00Z`)) });
+  const alt = (barberId: string | null = "b1", date = DATE) =>
+    getSlots.alternatives({ barberId, serviceIds: ["corte"], date });
+
+  test("barbero lleno: ofrece al otro no-dueño, no al dueño", async () => {
+    repos.data.barbers.push({ id: "b3", name: "Barbero C", active: true, isOwner: true });
+    fullDay("b1");
+    expect((await alt()).otherBarbers.map((b) => b.barberId)).toEqual(["b2"]);
+  });
+
+  test("todos los no-dueños llenos: ofrece al dueño", async () => {
+    repos.data.barbers.push({ id: "b3", name: "Barbero C", active: true, isOwner: true });
+    fullDay("b1");
+    fullDay("b2");
+    expect((await alt()).otherBarbers.map((b) => b.barberId)).toEqual(["b3"]);
+  });
+
+  test("sin preferencia no hay otros barberos", async () => {
+    expect((await alt(null)).otherBarbers).toEqual([]);
+  });
+
+  test("nextFree salta los días cerrados y los llenos del barbero pedido", async () => {
+    expect((await alt()).nextFree?.date).toBe("2026-11-09"); // 11-03 a 11-08 cerrados
+    fullDay("b1", "2026-11-09");
+    expect((await alt()).nextFree).toBeNull(); // b2 libre no cuenta para b1
+    expect((await alt(null)).nextFree?.date).toBe("2026-11-09");
+  });
+
+  test("sin nada libre en la ventana, nextFree es null", async () => {
+    fullDay(null, "2026-11-09");
+    expect((await alt(null)).nextFree).toBeNull();
+  });
+});
+
 describe("sin preferencia de barbero", () => {
   test("ofrece la unión de las horas libres de todos, sin repetir", async () => {
     await book({ barberId: "b1", start: utc("15:00") });
