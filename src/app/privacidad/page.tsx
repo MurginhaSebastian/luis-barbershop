@@ -64,8 +64,8 @@ export default function PrivacidadPage() {
 
       <h2 className={h2}>Cuánto tiempo los conservamos</h2>
       <p className="mt-3">
-        Las citas se conservan como historial del negocio. Los mensajes del asistente automático se borran pasadas 24
-        horas.
+        Las citas se conservan como historial del negocio. Los mensajes del asistente automático se borran una vez
+        cumplidas 24 horas, la siguiente vez que el asistente atiende un mensaje.
       </p>
 
       <h2 className={h2}>Cookies</h2>
