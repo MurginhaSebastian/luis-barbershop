@@ -19,6 +19,8 @@ import { humanHandoffText, OFFTOPIC_REPLY, quickReplyKind } from "@/application/
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 /** llama-3.3-70b-versatile se retiró el 16-ago-2026 (salvo contratos empresariales); este es su reemplazo. */
 export const DEFAULT_GROQ_MODEL = "openai/gpt-oss-120b";
+/** Respaldo ante 429/5xx del principal: otro cupo de tokens por minuto en Groq. */
+export const FALLBACK_GROQ_MODEL = "openai/gpt-oss-20b";
 const MAX_TOOL_ROUNDS = 3;
 const HISTORY_TURNS = 6;
 const HISTORY_WINDOW_MS = 2 * 60 * 60_000;
@@ -42,6 +44,8 @@ const MUTATING = new Set(["reservar_cita", "confirmar_asistencia", "cancelar_cit
 export interface GroqAssistantDeps {
   apiKey: string;
   model: string;
+  /** Modelo para reintentar una vez ante 429 o 5xx; sin él (o igual al principal) no hay reintento. */
+  fallbackModel?: string;
   tools: Pick<BotToolExecutor, "executeTool">;
   conversations: IConversationRepository;
   messaging: IMessagingService;
@@ -208,10 +212,12 @@ export class GroqAssistant implements AiAssistantPort {
       { role: "user", content: text },
     ];
     const signal = AbortSignal.timeout(TIMEOUT_MS);
+    // Si el principal da 429/5xx, el resto de las rondas de este mensaje va con el de respaldo.
+    const run = { model: this.deps.model };
     for (let round = 0; ; round++) {
       // Tras 3 rondas de herramientas, la última petición va sin herramientas: tiene que responder con texto.
       const withTools = round < MAX_TOOL_ROUNDS;
-      const answer = await this.complete(messages, withTools, signal);
+      const answer = await this.complete(messages, withTools, signal, run);
       const calls = answer.tool_calls ?? [];
       if (calls.length === 0 || !withTools) {
         if (calls.length > 0 || !answer.content?.trim()) throw new AssistantUnavailableError("sin respuesta en texto");
@@ -263,19 +269,18 @@ export class GroqAssistant implements AiAssistantPort {
     return { ok: true, data: result.data };
   }
 
-  private async complete(messages: ChatMessage[], withTools: boolean, signal: AbortSignal) {
-    let response: Response;
+  private async post(model: string, messages: ChatMessage[], withTools: boolean, signal: AbortSignal): Promise<Response> {
     try {
-      response = await (this.deps.fetchImpl ?? fetch)(GROQ_URL, {
+      return await (this.deps.fetchImpl ?? fetch)(GROQ_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${this.deps.apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: this.deps.model,
+          model,
           messages,
           temperature: 0.1,
           max_completion_tokens: MAX_OUTPUT_TOKENS,
           // Menos tokens de razonamiento: el límite gratis es por tokens/minuto.
-          ...(this.deps.model.startsWith("openai/gpt-oss") && { reasoning_effort: "low" }),
+          ...(model.startsWith("openai/gpt-oss") && { reasoning_effort: "low" }),
           ...(withTools && { tools: this.tools, tool_choice: "auto" }),
         }),
         signal,
@@ -283,7 +288,18 @@ export class GroqAssistant implements AiAssistantPort {
     } catch (error) {
       throw new AssistantUnavailableError(`Groq no respondió: ${String(error)}`);
     }
-    // 429 (límite), 5xx o una clave mala: no se reintenta aquí, se cae al básico.
+  }
+
+  private async complete(messages: ChatMessage[], withTools: boolean, signal: AbortSignal, run: { model: string }) {
+    let response = await this.post(run.model, messages, withTools, signal);
+    const backup = this.deps.fallbackModel;
+    // 429 (límite) o 5xx: una sola vez con el modelo de respaldo, dentro del mismo plazo.
+    if ((response.status === 429 || response.status >= 500) && backup && backup !== run.model) {
+      console.warn(`asistente de IA: Groq ${response.status} en ${run.model}; se usa ${backup}`);
+      run.model = backup;
+      response = await this.post(backup, messages, withTools, signal);
+    }
+    // Una clave mala u otro 4xx, o el respaldo también caído: se cae al básico.
     if (!response.ok) throw new AssistantUnavailableError(`Groq ${response.status}: ${(await response.text()).slice(0, 200)}`);
     const parsed = completion.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new AssistantUnavailableError("Groq devolvió una respuesta inesperada");

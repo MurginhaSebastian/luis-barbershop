@@ -5,7 +5,7 @@ import type { ToolCall, ToolContext, ToolResult } from "@/application/use-cases/
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { humanHandoffText } from "@/application/use-cases/assistant/quick-replies";
 import { MessageBatcher } from "@/application/use-cases/assistant/message-batcher";
-import { GroqAssistant } from "./groq-assistant";
+import { FALLBACK_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
 
 const NOW = new Date("2026-11-16T15:30:00-05:00");
 const ME = "51900000001";
@@ -28,7 +28,12 @@ beforeEach(() => Object.assign(counts, { hour: 0, day: 0 }));
 
 const FADE = { id: "s1", name: "Fade", durationMinutes: 45, priceCents: 3500, active: true };
 
-function makeAssistant(responses: (Response | Error)[], barbers: object[] = [{ id: "b1", name: "Luis", active: true }], services: object[] = [FADE]) {
+function makeAssistant(
+  responses: (Response | Error)[],
+  barbers: object[] = [{ id: "b1", name: "Luis", active: true }],
+  services: object[] = [FADE],
+  fallbackModel?: string,
+) {
   const queue = [...responses];
   const fetchImpl = vi.fn<typeof fetch>(async () => {
     const next = queue.shift() ?? groq({ content: "fin" });
@@ -48,6 +53,7 @@ function makeAssistant(responses: (Response | Error)[], barbers: object[] = [{ i
   const assistant = new GroqAssistant({
     apiKey: "gsk_prueba",
     model: "openai/gpt-oss-120b",
+    fallbackModel,
     tools: { executeTool },
     conversations,
     messaging: { sendText, sendTemplate: async () => {} },
@@ -343,6 +349,50 @@ describe("si Groq falla", () => {
     expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
     expect(t.fallback.handleMessage).not.toHaveBeenCalled();
     expect(t.history).toEqual([]);
+  });
+
+  test("429 o 5xx en el principal: reintenta una vez con el de respaldo y responde la IA", async () => {
+    for (const status of [429, 503]) {
+      const t = makeAssistant([new Response("límite", { status }), groq({ content: "Hola, ¿qué corte quieres?" })], undefined, undefined, FALLBACK_GROQ_MODEL);
+      await t.assistant.handleMessage(message("¿tienen hora el sábado?"));
+      expect(t.bodies().map((b) => b.model)).toEqual(["openai/gpt-oss-120b", FALLBACK_GROQ_MODEL]);
+      expect(t.bodies()[1]).toMatchObject({ reasoning_effort: "low" });
+      expect(t.sendText).toHaveBeenCalledWith(ME, "Hola, ¿qué corte quieres?");
+      expect(t.fallback.handleMessage).not.toHaveBeenCalled();
+      expect(JSON.stringify(warn.mock.calls)).not.toContain(ME);
+    }
+  });
+
+  test("429 en los dos modelos: aviso amable, sin más reintentos", async () => {
+    const t = makeAssistant([new Response("a", { status: 429 }), new Response("b", { status: 429 })], undefined, undefined, FALLBACK_GROQ_MODEL);
+    await t.assistant.handleMessage(message("¿tienen hora el sábado?"));
+    expect(t.fetchImpl).toHaveBeenCalledTimes(2);
+    expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+  });
+
+  test("401 (clave mala) no reintenta", async () => {
+    const t = makeAssistant([new Response("clave", { status: 401 })], undefined, undefined, FALLBACK_GROQ_MODEL);
+    await t.assistant.handleMessage(message("¿tienen hora el sábado?"));
+    expect(t.fetchImpl).toHaveBeenCalledTimes(1);
+    expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+  });
+
+  test("con el respaldo igual al principal no reintenta", async () => {
+    const t = makeAssistant([new Response("límite", { status: 429 })], undefined, undefined, "openai/gpt-oss-120b");
+    await t.assistant.handleMessage(message("¿tienen hora el sábado?"));
+    expect(t.fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  test("tras saltar, las rondas siguientes del mensaje usan el respaldo", async () => {
+    const t = makeAssistant(
+      [new Response("límite", { status: 429 }), groq({ tool_calls: [call("c1", "listar_catalogo_y_mis_citas")] }), groq({ content: "Listo" })],
+      undefined,
+      undefined,
+      FALLBACK_GROQ_MODEL,
+    );
+    await t.assistant.handleMessage(message("quiero info"));
+    expect(t.bodies().map((b) => b.model)).toEqual(["openai/gpt-oss-120b", FALLBACK_GROQ_MODEL, FALLBACK_GROQ_MODEL]);
+    expect(t.sendText).toHaveBeenCalledWith(ME, "Listo");
   });
 
   test("si ya reservó, le confirma la reserva en vez de las instrucciones de siempre", async () => {

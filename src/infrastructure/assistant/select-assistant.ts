@@ -6,7 +6,7 @@ import type { IServiceRepository } from "@/application/ports/repositories/servic
 import type { IScheduleRepository } from "@/application/ports/repositories/schedule-repository";
 import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import type { BotToolExecutor } from "@/application/use-cases/assistant/bot-tool-executor";
-import { DEFAULT_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
+import { DEFAULT_GROQ_MODEL, FALLBACK_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
 
 export interface AssistantDeps {
   /** El asistente básico (código y palabras clave). */
@@ -36,7 +36,9 @@ export function selectAssistant(env: Record<string, string | undefined>, deps: A
   const provider = env.AI_PROVIDER;
   if (!provider) return deps.fallback;
   if (aiAssistantEnabled(env) && deps.messaging) {
-    return new GroqAssistant({ ...deps, messaging: deps.messaging, apiKey: env.GROQ_API_KEY!, model: env.AI_MODEL || DEFAULT_GROQ_MODEL });
+    return new GroqAssistant({ ...deps, messaging: deps.messaging, apiKey: env.GROQ_API_KEY!, model: env.AI_MODEL || DEFAULT_GROQ_MODEL,
+      fallbackModel: env.AI_FALLBACK_MODEL || FALLBACK_GROQ_MODEL,
+    });
   }
   if (!warned) {
     warned = true;
