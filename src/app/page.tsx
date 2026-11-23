@@ -10,7 +10,9 @@ import { ShopFacts } from "@/presentation/components/landing/shop-facts";
 import { container, ctaClass, sectionTitle } from "@/presentation/components/landing/styles";
 import { testimonials } from "@/presentation/content/testimonials";
 import { describeOpening } from "@/presentation/lib/hours";
+import { jsonLdHtml, shopJsonLd } from "@/presentation/lib/json-ld";
 import { whatsappLink } from "@/presentation/lib/whatsapp";
+import { SITE_URL } from "./site-url";
 import { getSiteSettings } from "./site-settings";
 
 export default function Home() {
@@ -74,6 +76,10 @@ async function CatalogSections() {
   const [{ services, products, weeklyHours }, opening] = await Promise.all([getCatalog.execute(), getCatalog.openingStatus()]);
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(shopJsonLd({ url: SITE_URL, contact, services, weeklyHours })) }}
+      />
       <ShopFacts
         opening={describeOpening(opening, new Date())}
         isOpen={opening?.open === true}
