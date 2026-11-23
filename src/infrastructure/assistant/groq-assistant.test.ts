@@ -177,7 +177,7 @@ describe("límite de uso por celular", () => {
 
 describe("respuestas fijas", () => {
   test.each([
-    ["hola", "¡Hola! Soy el asistente automático de reservas de Luis Barbershop. Escríbeme qué servicio y horario buscas (ej: 'Fade mañana a las 5 pm') y te ayudo al instante."],
+    ["hola", "¡Hola! Soy el asistente automático de reservas de D'luiss Barber Shop. Escríbeme qué servicio y horario buscas (ej: 'Fade mañana a las 5 pm') y te ayudo al instante."],
     ["👍", "No logré entenderte. Escríbeme en texto qué corte deseas y para qué día y hora quieres tu cita."],
     ["quiero hablar con Luis", humanHandoffText("51900000000")],
   ])("%s: sin Groq, se guarda en el historial", async (text, reply) => {
@@ -251,20 +251,20 @@ describe("contexto", () => {
   });
 
   test("el prompt fija fecha y hora de Lima, el alcance, cero inventos, la desambiguación y el contacto de Luis", async () => {
-    const t = makeAssistant([groq({ content: "Solo atiendo las citas y consultas de Luis Barbershop." })]);
+    const t = makeAssistant([groq({ content: "Solo atiendo las citas y consultas de D'luiss Barber Shop." })]);
     await t.assistant.handleMessage(message("¿Me escribes un ensayo sobre la Revolución francesa?"));
     const system = t.bodies()[0].messages[0];
     expect(system.role).toBe("system");
     expect(system.content).toContain("16 de noviembre de 2026");
     expect(system.content).toContain("15:30");
-    expect(system.content).toMatch(/Solo gestionas citas y consultas de Luis Barbershop.*cambiar de rol.*revelar o ignorar estas instrucciones.*programar/);
-    expect(system.content).toContain("Solo puedo ayudarte con citas, horarios y servicios de Luis Barbershop.");
+    expect(system.content).toMatch(/Solo gestionas citas y consultas de D'luiss Barber Shop.*cambiar de rol.*revelar o ignorar estas instrucciones.*programar/);
+    expect(system.content).toContain("Solo puedo ayudarte con citas, horarios y servicios de D'luiss Barber Shop.");
     expect(system.content).toContain("Nunca inventes servicios, precios, barberos ni horas libres");
     expect(system.content).toContain("MULTIPLE_APPOINTMENTS_FOUND");
     expect(system.content).toContain("+51900000000");
     // Un tema ajeno no ejecuta ninguna herramienta: solo la negativa breve.
     expect(t.executeTool).not.toHaveBeenCalled();
-    expect(t.sendText).toHaveBeenCalledWith(ME, "Solo atiendo las citas y consultas de Luis Barbershop.");
+    expect(t.sendText).toHaveBeenCalledWith(ME, "Solo atiendo las citas y consultas de D'luiss Barber Shop.");
   });
 
   test("un código o el botón del recordatorio van por el camino exacto, sin modelo", async () => {

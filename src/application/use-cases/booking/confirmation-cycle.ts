@@ -8,7 +8,7 @@ import { MINUTE_MS } from "@/core/entities/time-slot";
 import { AT_RISK_MINUTES_BEFORE, REMINDER_MINUTES_BEFORE } from "@/core/scheduling/booking-policy";
 
 /**
- * Plantilla aprobada en Meta (utilidad): "Hola {{1}}, tu cita de hoy a las {{2}} en Luis Barbershop está por
+ * Plantilla aprobada en Meta (utilidad): "Hola {{1}}, tu cita de hoy a las {{2}} en D'luiss Barber Shop está por
  * empezar. Si no la confirmas antes de las {{3}}, la hora quedará libre para otro cliente. ¿Vienes?", con dos
  * botones de respuesta rápida: "Sí, voy" y "No podré ir". Cada botón devuelve el texto que se le pone al enviar.
  */

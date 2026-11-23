@@ -5,7 +5,7 @@ const appointment = { customerName: "Pedro", barberName: "Luis", start: "2026-11
 
 test("el mensaje de confirmación da fecha y hora de Lima, no UTC", () => {
   expect(confirmationMessage(appointment)).toBe(
-    "Hola Pedro, tu cita en Luis Barbershop está confirmada: lunes, 2 de noviembre a las 10:00 con Luis. ¡Te esperamos!",
+    "Hola Pedro, tu cita en D'luiss Barber Shop está confirmada: lunes, 2 de noviembre a las 10:00 con Luis. ¡Te esperamos!",
   );
 });
 

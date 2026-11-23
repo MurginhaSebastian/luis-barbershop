@@ -1,3 +1,4 @@
+import { SHOP_NAME } from "@/core/entities/site";
 import type { Metadata } from "next";
 import "./globals.css";
 import { Bodoni_Moda, Manrope } from "next/font/google";
@@ -30,7 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur">
           <div className={`${container} flex items-center justify-between gap-3 py-2 md:gap-6 md:py-4`}>
             <Link href="/" className="inline-flex min-h-11 items-center font-heading text-base tracking-wide whitespace-nowrap text-primary min-[400px]:text-lg md:text-xl">
-              Luis Barbershop
+              {SHOP_NAME}
             </Link>
             <nav aria-label="Principal" className="flex items-center gap-1">
               <Suspense fallback={null}>

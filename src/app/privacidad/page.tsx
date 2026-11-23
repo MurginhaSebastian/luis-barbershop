@@ -1,3 +1,4 @@
+import { SHOP_NAME } from "@/core/entities/site";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteSettings } from "../site-settings";
@@ -23,7 +24,7 @@ export default function PrivacidadPage() {
       <p className="mt-3 text-sm text-muted-foreground">Última actualización: 22 de noviembre de 2026.</p>
 
       <h2 className={h2}>Responsable</h2>
-      <p className="mt-3">Luis Barbershop, Trujillo, Perú, es quien decide cómo se usan tus datos personales.</p>
+      <p className="mt-3">{SHOP_NAME}, Trujillo, Perú, es quien decide cómo se usan tus datos personales.</p>
       <Suspense fallback={<p className="mt-3 text-muted-foreground">Cargando contacto…</p>}>
         <Contact />
       </Suspense>

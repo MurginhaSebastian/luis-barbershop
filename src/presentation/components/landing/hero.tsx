@@ -27,8 +27,8 @@ export function Hero({ whatsappHref, assistantHref, image }: { whatsappHref?: st
 
       <div className={`${container} pt-28 pb-12 md:pb-16`}>
         <h1 className="font-heading">
-          <span className="-ml-[0.05em] block text-[clamp(5rem,20vw,13rem)] leading-[0.8] text-primary">Luis</span>
-          <span className="mt-3 block text-[clamp(1.25rem,4vw,2.25rem)] tracking-[0.3em]">Barbershop</span>
+          <span className="-ml-[0.05em] block text-[clamp(5rem,20vw,13rem)] leading-[0.8] text-primary">D&apos;luiss</span>
+          <span className="mt-3 block text-[clamp(1.25rem,4vw,2.25rem)] tracking-[0.3em]">Barber Shop</span>
         </h1>
         <p className="mt-6 max-w-md text-lg leading-relaxed">
           Cortes a tijera y máquina, fades y afeitado con navaja. Reserva tu hora en un minuto.

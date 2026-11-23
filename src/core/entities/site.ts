@@ -1,5 +1,8 @@
 import { InvalidSettingsError } from "../errors/domain-errors";
 
+/** Nombre de la marca: única fuente para toda la web y los mensajes. */
+export const SHOP_NAME = "D'luiss Barber Shop";
+
 /** Datos de contacto del negocio; lo que falte no se muestra en la web. */
 export interface ShopContact {
   /** 51 + 9 dígitos, listo para wa.me. */

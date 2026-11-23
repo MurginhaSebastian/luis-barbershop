@@ -1,3 +1,4 @@
+import { SHOP_NAME } from "@/core/entities/site";
 import Link from "next/link";
 import { BookLink } from "./book-link";
 import { container } from "./styles";
@@ -18,7 +19,7 @@ export function SiteFooter(props: {
     <footer className="border-t border-border bg-card pb-24 md:pb-0">
       <div className={`${container} grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4`}>
         <div>
-          <p className="font-heading text-2xl text-primary">Luis Barbershop</p>
+          <p className="font-heading text-2xl text-primary">{SHOP_NAME}</p>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
             Cortes, fades y barba. Reserva en línea y te confirmamos por WhatsApp.
           </p>

@@ -1,3 +1,4 @@
+import { SHOP_NAME } from "@/core/entities/site";
 import Image from "next/image";
 import type { Product } from "@/core/entities/catalog";
 import type { BusinessHours } from "@/core/scheduling/availability";
@@ -18,7 +19,7 @@ export function About({ image }: { image?: string }) {
           Oficio de barbería, sin apuro
         </h2>
         <p className="mt-6 max-w-prose text-lg leading-relaxed text-muted-foreground">
-          En Luis Barbershop cortamos como se aprende en la barbería: escuchando lo que quieres, con tijera,
+          En {SHOP_NAME} cortamos como se aprende en la barbería: escuchando lo que quieres, con tijera,
           máquina y navaja, y tomándonos el tiempo que pide cada corte.
         </p>
         <p className="mt-4 max-w-prose leading-relaxed text-muted-foreground">

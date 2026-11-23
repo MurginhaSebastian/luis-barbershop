@@ -1,4 +1,4 @@
-# Luis Barbershop: informe del proyecto
+# D'luiss Barber Shop: informe del proyecto
 
 Documento para entender qué se ha construido, qué se pidió, cómo está hecho y qué falta, pensado para
 consultarlo con un experto. Estado al **19 de noviembre de 2026**.

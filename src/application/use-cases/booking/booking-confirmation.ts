@@ -1,3 +1,4 @@
+import { SHOP_NAME } from "@/core/entities/site";
 import type { AiAssistantPort, IncomingMessage, MessageOutcome } from "@/application/ports/assistant";
 import type { IMessagingService } from "@/application/ports/messaging";
 import type { IAppointmentRepository } from "@/application/ports/repositories/appointment-repository";
@@ -178,7 +179,7 @@ export class BookingConfirmationUseCase implements AiAssistantPort {
       case "confirmed": {
         const { appointment } = outcome;
         const [barber] = await this.deps.barbers.findByIds([appointment.barberId]);
-        return `¡Listo, ${appointment.customerName}! Tu cita del ${shopDateTime(appointment.slot.start)} con ${barber?.name ?? "tu barbero"} quedó confirmada. Te esperamos en Luis Barbershop.`;
+        return `¡Listo, ${appointment.customerName}! Tu cita del ${shopDateTime(appointment.slot.start)} con ${barber?.name ?? "tu barbero"} quedó confirmada. Te esperamos en ${SHOP_NAME}.`;
       }
       case "cancelled":
         return `Listo, cancelamos tu cita del ${shopDateTime(outcome.appointment.slot.start)}. Gracias por avisar: la hora queda libre para otro cliente. ${book}`;

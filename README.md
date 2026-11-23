@@ -1,4 +1,4 @@
-# Luis Barbershop
+# D'luiss Barber Shop
 
 Web de una barbería en Trujillo: los clientes reservan su hora en línea y el barbero lleva la agenda, el catálogo y
 la web desde un panel propio. Precios en soles, horario de Lima.
@@ -132,7 +132,7 @@ npm run dev          # http://localhost:3000 (panel en /panel)
    puerto con `ngrok http 3000` y usa su dirección.
 4. Crea y espera la aprobación de dos plantillas (categoría utilidad, idioma *Spanish*, `es`). Meta rechaza las
    que empiezan o terminan en una variable.
-   - **`recordatorio_cita`**: cuerpo "Hola {{1}}, tu cita de hoy a las {{2}} en Luis Barbershop está por
+   - **`recordatorio_cita`**: cuerpo "Hola {{1}}, tu cita de hoy a las {{2}} en D'luiss Barber Shop está por
      empezar. Si no la confirmas antes de las {{3}}, la hora quedará libre para otro cliente. ¿Vienes?" y dos
      botones de **respuesta rápida**, en este orden: "Sí, voy" y "No podré ir".
    - **`cita_vencida`** (a quien perdió su hora en riesgo): cuerpo "Hola {{1}}, tu reserva del {{2}} se liberó

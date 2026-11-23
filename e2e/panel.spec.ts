@@ -129,7 +129,7 @@ test.describe("agenda", () => {
     const card = await openFirstPending(page);
     const link = card.getByRole("link", { name: "Enviar WhatsApp" });
     await expect(link).toHaveAttribute("href", /^https:\/\/wa\.me\/\d+\?text=/);
-    expect(decodeURIComponent((await link.getAttribute("href")) ?? "")).toMatch(/^.+text=Hola Cliente Prueba, te escribo de Luis Barbershop por tu cita/);
+    expect(decodeURIComponent((await link.getAttribute("href")) ?? "")).toMatch(/^.+text=Hola Cliente Prueba, te escribo de D'luiss Barber Shop por tu cita/);
     let opened = false;
     context.on("page", () => (opened = true));
     await card.getByRole("button", { name: "Confirmar cita" }).click();

@@ -1,7 +1,7 @@
 {
   "id": "/panel",
-  "name": "Luis Barbershop · Panel",
-  "short_name": "Panel Luis",
+  "name": "D'luiss Barber Shop · Panel",
+  "short_name": "Panel D'luiss",
   "description": "Agenda y avisos de reservas de la barbería.",
   "start_url": "/panel",
   "scope": "/panel",
