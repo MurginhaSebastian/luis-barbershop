@@ -269,6 +269,18 @@ test.describe("bloqueos", () => {
     expect(await (await hoursOn(page, date, "Barbero invitado")).count()).toBeGreaterThan(0);
   });
 
+  test("con el barbero lleno se ofrece otro barbero y el siguiente día", async ({ page }) => {
+    const date = nextMonday();
+    await login(page);
+    await blockDay(page, date, "Luis");
+    await expect(await hoursOn(page, date, "Luis")).toHaveCount(0);
+    await expect(page.getByText("No quedan horas libres ese día con Luis")).toBeVisible();
+    await expect(page.getByText("Ese día pueden atenderte:")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Ver el siguiente día/ })).toBeVisible();
+    await page.getByRole("link", { name: /Barbero invitado · \d+ horas? libres?/ }).click();
+    await expect(page.getByRole("main").getByRole("region").getByRole("link").first()).toBeVisible();
+  });
+
   test("solo unas horas: el resto del día sigue libre", async ({ page }) => {
     const date = nextMonday();
     await login(page);

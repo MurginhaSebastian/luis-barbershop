@@ -86,7 +86,22 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
   }
 
   const withDay = (date: string) => bookingHref(3, { ...selection, dia: date, hora: undefined });
-  const nextDay = dates.find((d) => d > dia && !closed(d));
+  const found =
+    slots.length === 0
+      ? await getAvailableSlots.alternatives({
+          barberId: anyBarber ? null : barberId,
+          serviceIds: selection.servicios,
+          date: dia,
+        })
+      : undefined;
+  const alternatives = found && {
+    barbers: found.otherBarbers.map((b) => ({
+      name: b.name,
+      href: bookingHref(3, { ...selection, barbero: b.barberId, hora: undefined }),
+      count: b.slots.length,
+    })),
+    nextDay: found.nextFree ? { date: found.nextFree.date, href: withDay(found.nextFree.date) } : undefined,
+  };
   return (
     <TimeStep
       progress={progress(3)}
@@ -94,7 +109,7 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
       days={dates.map((date) => ({ date, href: withDay(date), closed: closed(date) }))}
       slots={slots}
       closed={closed(dia)}
-      nextDayHref={nextDay && withDay(nextDay)}
+      alternatives={alternatives}
       notice={hourGone ? "Esa hora ya no está libre. Elige otra." : undefined}
       services={chosen}
       barberName={barber?.name}

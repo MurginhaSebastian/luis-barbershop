@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import type { Service } from "@/core/entities/catalog";
 import { bookingHref, type BookingSelection } from "@/presentation/lib/booking-flow";
 import { groupByDayPart } from "@/presentation/lib/days";
-import { formatTime } from "@/presentation/lib/format";
+import { formatDayParts, formatTime } from "@/presentation/lib/format";
 import { BookingSummary } from "./booking-summary";
 import { DayStrip, type DayOption } from "./day-strip";
 import { PendingHint } from "./pending-hint";
@@ -12,6 +12,14 @@ import { StepLayout } from "./step-layout";
 const slotClass =
   "flex min-h-12 cursor-pointer items-center justify-center gap-1 rounded-xl border border-border tabular-nums transition-colors duration-200 hover:border-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
+const altClass =
+  "flex min-h-11 items-center rounded-xl border border-border px-4 transition-colors duration-200 hover:border-primary hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+function shortDate(date: string) {
+  const { weekday, day, month } = formatDayParts(date);
+  return `${weekday} ${day} ${month}`;
+}
+
 /** Paso 3: día y hora. Un toque en la hora avanza a los datos. */
 export function TimeStep(props: {
   progress: ReactNode;
@@ -19,7 +27,10 @@ export function TimeStep(props: {
   days: DayOption[];
   slots: string[];
   closed: boolean;
-  nextDayHref?: string;
+  alternatives?: {
+    barbers: { name: string; href: string; count: number }[];
+    nextDay?: { date: string; href: string };
+  };
   notice?: string;
   services: Service[];
   barberName?: string;
@@ -64,14 +75,28 @@ export function TimeStep(props: {
                 ? "Ese día la barbería está cerrada."
                 : `No quedan horas libres ese día${props.barberName ? ` con ${props.barberName}` : ""}.`}
             </p>
-            {props.nextDayHref && (
+            {props.alternatives && props.alternatives.barbers.length > 0 && (
+              <div className="mt-4">
+                <p>Ese día pueden atenderte:</p>
+                <ul className="mt-2 space-y-2">
+                  {props.alternatives.barbers.map((b) => (
+                    <li key={b.href}>
+                      <Link href={b.href} scroll={false} prefetch={false} className={altClass}>
+                        {b.name} · {b.count} {b.count === 1 ? "hora libre" : "horas libres"}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {props.alternatives?.nextDay && (
               <Link
-                href={props.nextDayHref}
+                href={props.alternatives.nextDay.href}
                 scroll={false}
                 prefetch={false}
                 className="mt-2 inline-flex min-h-11 items-center text-primary underline underline-offset-4"
               >
-                Ver el siguiente día
+                Ver el siguiente día ({shortDate(props.alternatives.nextDay.date)})
               </Link>
             )}
           </div>
