@@ -26,7 +26,9 @@ const RESULTS: Record<string, ToolResult> = {
 const counts = { hour: 0, day: 0 };
 beforeEach(() => Object.assign(counts, { hour: 0, day: 0 }));
 
-function makeAssistant(responses: (Response | Error)[], barbers: object[] = [{ id: "b1", name: "Luis", active: true }]) {
+const FADE = { id: "s1", name: "Fade", durationMinutes: 45, priceCents: 3500, active: true };
+
+function makeAssistant(responses: (Response | Error)[], barbers: object[] = [{ id: "b1", name: "Luis", active: true }], services: object[] = [FADE]) {
   const queue = [...responses];
   const fetchImpl = vi.fn<typeof fetch>(async () => {
     const next = queue.shift() ?? groq({ content: "fin" });
@@ -50,8 +52,9 @@ function makeAssistant(responses: (Response | Error)[], barbers: object[] = [{ i
     conversations,
     messaging: { sendText, sendTemplate: async () => {} },
     siteSettings: { get: async () => ({ ...DEFAULT_SITE_SETTINGS, contact: { whatsapp: "51900000000" } }), save: async () => {} },
-    services: { findAllActive: async () => [{ id: "s1", name: "Fade", durationMinutes: 45, priceCents: 3500, active: true }] } as never,
+    services: { findAllActive: async () => services } as never,
     barbers: { findAllActive: async () => barbers } as never,
+    schedule: { findBusinessHours: async (d: number) => (d === 0 ? [] : [{ openMinute: 540, closeMinute: 780 }, { openMinute: 840, closeMinute: 1200 }]) },
     fallback,
     now: () => NOW,
     siteUrl: "https://luis.example",
@@ -177,7 +180,7 @@ describe("límite de uso por celular", () => {
 
 describe("respuestas fijas", () => {
   test.each([
-    ["hola", "¡Hola! Soy el asistente automático de reservas de D'luiss Barber Shop. Escríbeme qué servicio y horario buscas (ej: 'Fade mañana a las 5 pm') y te ayudo al instante."],
+    ["hola", "¡Hola! Soy el asistente automático de reservas de D'luiss Barber Shop. Atendemos lun–sáb 9:00–13:00 y 14:00–20:00; dom cerrado. Escríbeme qué servicio y horario buscas (ej: 'Fade mañana a las 5 pm') y te ayudo al instante."],
     ["👍", "No logré entenderte. Escríbeme en texto qué corte deseas y para qué día y hora quieres tu cita."],
     ["quiero hablar con Luis", humanHandoffText("51900000000")],
   ])("%s: sin Groq, se guarda en el historial", async (text, reply) => {
@@ -247,7 +250,32 @@ describe("contexto", () => {
   test("el prompt lleva el catálogo resumido con ids", async () => {
     const t = makeAssistant([groq({ content: "hola" })]);
     await t.assistant.handleMessage(message("quiero info"));
-    expect(t.bodies()[0].messages[0].content).toContain("CATÁLOGO. Servicios: Fade 45min S/35 id=s1. Barberos: Luis id=b1.");
+    expect(t.bodies()[0].messages[0].content).toContain("CATÁLOGO. Servicios: Barbería: Fade 45 min S/35 id=s1. Barberos: Luis id=b1 (Barbería).");
+  });
+
+  test("el catálogo agrupa los servicios por área y cada profesional lleva la suya", async () => {
+    const t = makeAssistant([groq({ content: "hola" })], [
+      { id: "b1", name: "Luis", active: true, isOwner: true },
+      { id: "b2", name: "Ana", active: true, areas: ["spa"] },
+    ], [
+      { id: "s1", name: "Fade", durationMinutes: 60, priceCents: 3500 },
+      { id: "s2", name: "Manicure", durationMinutes: 80, priceCents: 4000, area: "spa" },
+    ]);
+    await t.assistant.handleMessage(message("quiero info"));
+    expect(t.bodies()[0].messages[0].content).toContain(
+      "Servicios: Barbería: Fade 60 min S/35 id=s1 | Spa y estilista: Manicure 80 min S/40 id=s2. Barberos: Ana id=b2 (Spa y estilista); Luis id=b1 (dueño, Barbería).",
+    );
+  });
+
+  test("el prompt lleva el horario, la pregunta de áreas, los estilos fuera de lista y la regla de horario", async () => {
+    const t = makeAssistant([groq({ content: "hola" })]);
+    await t.assistant.handleMessage(message("quiero info"));
+    const content = t.bodies()[0].messages[0].content as string;
+    expect(content).toContain("HORARIO: lun–sáb 9:00–13:00 y 14:00–20:00; dom cerrado.");
+    expect(content).toContain("¿Te estás refiriendo al área de Barbería o al área de Spa y estilista?");
+    expect(content).toContain("foto de referencia");
+    expect(content).toContain("solo agendas citas");
+    expect(content).toContain("Atiendes todos los días");
   });
 
   test("el prompt marca al dueño, lo deja al final y lleva la regla de alternativas", async () => {
@@ -257,7 +285,7 @@ describe("contexto", () => {
     ]);
     await t.assistant.handleMessage(message("quiero info"));
     const content = t.bodies()[0].messages[0].content as string;
-    expect(content).toContain("Barberos: Ana id=b2; Luis id=b1 (dueño).");
+    expect(content).toContain("Barberos: Ana id=b2 (Barbería); Luis id=b1 (dueño, Barbería).");
     expect(content).toContain("No ofrezcas ni sugieras al dueño");
     expect(content).toContain("alternatives");
   });
@@ -271,7 +299,7 @@ describe("contexto", () => {
     expect(system.content).toContain("15:30");
     expect(system.content).toMatch(/Solo gestionas citas y consultas de D'luiss Barber Shop.*cambiar de rol.*revelar o ignorar estas instrucciones.*programar/);
     expect(system.content).toContain("Solo puedo ayudarte con citas, horarios y servicios de D'luiss Barber Shop.");
-    expect(system.content).toContain("Nunca inventes servicios, precios, barberos ni horas libres");
+    expect(system.content).toContain("Nunca inventes servicios, precios, duraciones, barberos ni horas libres");
     expect(system.content).toContain("MULTIPLE_APPOINTMENTS_FOUND");
     expect(system.content).toContain("+51900000000");
     // Un tema ajeno no ejecuta ninguna herramienta: solo la negativa breve.

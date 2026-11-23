@@ -3,6 +3,7 @@ import type { IMessagingService } from "@/application/ports/messaging";
 import type { IConversationRepository } from "@/application/ports/repositories/conversation-repository";
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
 import type { IServiceRepository } from "@/application/ports/repositories/service-repository";
+import type { IScheduleRepository } from "@/application/ports/repositories/schedule-repository";
 import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import type { BotToolExecutor } from "@/application/use-cases/assistant/bot-tool-executor";
 import { DEFAULT_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
@@ -16,6 +17,7 @@ export interface AssistantDeps {
   siteSettings: ISiteSettingsRepository;
   services: IServiceRepository;
   barbers: IBarberRepository;
+  schedule: Pick<IScheduleRepository, "findBusinessHours">;
   now: () => Date;
   siteUrl?: string;
 }

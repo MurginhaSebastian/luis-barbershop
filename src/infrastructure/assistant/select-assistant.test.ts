@@ -12,6 +12,7 @@ const deps: AssistantDeps = {
   siteSettings: { get: async () => ({}) as never, save: async () => {} },
   services: { findAllActive: async () => [] } as never,
   barbers: { findAllActive: async () => [] } as never,
+  schedule: { findBusinessHours: async () => [] },
   now: () => new Date(),
 };
 
