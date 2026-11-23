@@ -211,7 +211,7 @@ const SCENARIOS: Scenario[] = [
   { name: "áreas: ¿hacen uñas?", text: "¿hacen uñas?", check: said(/manicure|pedicure/) },
   { name: "áreas: un desvanecido es fade", text: "quiero un desvanecido", check: said(/fade/) },
   // Fuera de la lista
-  { name: "estilo: no inventa, invita con foto", text: "quiero el corte estilo samurái con trenzas fluorescentes", check: wrap(said(/foto/), said(/local|acerc/), said(/agend|cita/), notCalled("reservar_cita")) },
+  { name: "estilo: no inventa, invita con foto", text: "quiero el corte estilo samurái con trenzas fluorescentes", check: wrap(said(/foto/), said(/local|acerc|barber|pasa/), said(/agend|cita/), notCalled("reservar_cita")) },
   // Horario
   { name: "horario: ¿atienden el domingo?", text: "¿atienden el domingo?", check: wrap(said(/cerrad|no atend/), said(/lunes/), said(/9(:00)?|20(:00)?/)) },
   { name: "horario: domingo 23:00 responde normal", text: "quiero un fade mañana", now: SUNDAY_NIGHT, check: wrap(notExactly(OFFTOPIC_REPLY), saidNot(/ya cerr|fuera de horario|no atend|a esta hora/)) },

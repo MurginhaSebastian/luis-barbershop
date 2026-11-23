@@ -33,7 +33,7 @@ npm run check        # lint + tipos + tests + build: solo al final del proyecto,
 npm test                                    # Vitest, todos los tests
 npx vitest run src/core/core.test.ts -t "availableSlots"   # un archivo / un test
 npm run test:coverage  # cobertura de la lógica, con mínimo obligatorio
-npm run test:ia      # batería del asistente contra Groq real: gasta cupo (~50k tokens por corrida completa; el plan gratuito da 200k/día), usa -t para casos sueltos
+npm run test:ia      # batería del asistente contra Groq real: gasta cupo (~150k tokens por corrida completa; el plan gratuito da 200k/día), corre casos sueltos con -t
 npm run test:mutation  # rompe reglas críticas a propósito y exige que un test lo detecte
 npm run test:e2e     # Playwright + axe contra el build real (necesita Docker encendido)
 npx playwright test e2e/booking.spec.ts -g "sin preferencia"   # una prueba de navegador

@@ -1,5 +1,6 @@
 import { AREA_LABEL, ownerLast, type ServiceArea } from "@/core/entities/catalog";
 import { describeWeeklyHours } from "@/core/scheduling/describe-weekly-hours";
+import { describeUpcomingDays } from "@/core/scheduling/upcoming-days";
 import { SHOP_NAME } from "@/core/entities/site";
 import { z } from "zod";
 import type { AiAssistantPort, IncomingMessage, MessageOutcome } from "@/application/ports/assistant";
@@ -101,6 +102,7 @@ export function systemPrompt(now: Date, contact: string | undefined, catalog = "
   return [
     "Eres el asistente virtual de reservas de " + SHOP_NAME + ", una barbería en Trujillo (Perú). Atiendes por WhatsApp.",
     `Ahora en Perú es ${limaNow.format(now)} (fecha ${shopDateOf(now)}, zona America/Lima, UTC−5).`,
+    `PRÓXIMOS DÍAS: ${describeUpcomingDays(now)}. Para "el sábado", "mañana", etc., usa la fecha de PRÓXIMOS DÍAS; nunca la calcules.`,
     ...(catalog ? [catalog] : []),
     ...(hours ? [`HORARIO: ${hours}.`] : []),
     "Reglas:",

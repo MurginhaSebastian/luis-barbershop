@@ -5,9 +5,15 @@ import type { ToolCall, ToolContext, ToolResult } from "@/application/use-cases/
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { humanHandoffText } from "@/application/use-cases/assistant/quick-replies";
 import { MessageBatcher } from "@/application/use-cases/assistant/message-batcher";
-import { FALLBACK_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
+import { FALLBACK_GROQ_MODEL, GroqAssistant, systemPrompt } from "./groq-assistant";
 
 const NOW = new Date("2026-11-16T15:30:00-05:00");
+
+test("el prompt lleva los próximos días con su fecha", () => {
+  const prompt = systemPrompt(NOW, undefined);
+  expect(prompt).toContain("PRÓXIMOS DÍAS: hoy lun 16/11 (2026-11-16); mañana mar 17/11 (2026-11-17); mié 18/11 (2026-11-18);");
+  expect(prompt).toContain("sáb 21/11 (2026-11-21)");
+});
 const ME = "51900000001";
 const message = (text: string) => ({ id: "wamid.1", from: ME, text });
 const call = (id: string, name: string, args: unknown = {}) => ({ id, type: "function", function: { name, arguments: JSON.stringify(args) } });
