@@ -44,3 +44,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Originales del usuario (16-22 MB, con audio): la web usa la versión comprimida de public/videos/
+/src/*.mp4

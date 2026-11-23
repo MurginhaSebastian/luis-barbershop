@@ -125,7 +125,7 @@ test.describe("portada", () => {
 });
 
 test.describe("video de la portada", () => {
-  test("arranca solo y sin sonido, es decorativo y se puede pausar", async ({ page }, info) => {
+  test("arranca solo y sin sonido, es decorativo y se puede pausar", async ({ page }) => {
     await page.goto("/");
     const pause = page.getByRole("button", { name: "Pausar el video" });
     await expect(pause).toBeVisible();
@@ -138,8 +138,8 @@ test.describe("video de la portada", () => {
       tab: v.tabIndex,
     }));
     expect(state).toMatchObject({ muted: true, paused: false, hidden: "true", tab: -1 });
-    // El móvil en vertical recibe el clip vertical, que además pesa menos.
-    expect(state.src).toMatch(info.project.name === "movil" ? /corte-movil\.mp4$/ : /corte-escritorio\.mp4$/);
+    // Un solo video horizontal para todos los dispositivos.
+    expect(state.src).toMatch(/corte-escritorio\.mp4$/);
     // Aparece sobre el póster solo cuando ya se mueve.
     await expect(video).toHaveCSS("opacity", "1");
 
@@ -207,7 +207,7 @@ test("el panel se puede instalar y su service worker no queda en caché", async 
 });
 
 test("el video se guarda en caché y se sirve por partes, como pide Safari", async ({ request }) => {
-  for (const file of ["/videos/corte-escritorio.mp4", "/videos/corte-movil.mp4"]) {
+  for (const file of ["/videos/corte-escritorio.mp4"]) {
     const whole = await request.get(file);
     expect(whole.headers()["content-type"]).toBe("video/mp4");
     expect(whole.headers()["cache-control"]).toContain("max-age=604800");

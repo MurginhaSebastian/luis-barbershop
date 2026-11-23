@@ -49,7 +49,6 @@ export function HeroVideo() {
           shown ? "opacity-100" : "opacity-0",
         )}
       >
-        <source src="/videos/corte-movil.mp4" type="video/mp4" media="(max-width: 767px) and (orientation: portrait)" />
         <source src="/videos/corte-escritorio.mp4" type="video/mp4" />
       </video>
       <button

@@ -149,7 +149,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - La marca es `SHOP_NAME` (`core/entities/site.ts`): nunca se escribe a mano. El contacto, la dirección y las redes reales viven solo en `site_settings` (`/panel/web`), jamás en el repo.
 - `/privacidad` (`app/privacidad/page.tsx`): política de privacidad (Ley 29733); dirección y WhatsApp salen de `getSiteSettings` en un `<Suspense>`. La enlazan el pie y el paso de datos de la reserva (sin casilla).
 - La portada es un video (`HeroVideo`, `public/videos/`, créditos en su `CREDITS.md`): sin sonido, en bucle,
-  vertical en el móvil (`<source media>`) y con la portada a la proporción del video (9:16 o 16:9, sin recortar) y sobre una foto que hace de póster (la subida como "Portada" en el
+  un solo video 16:9 entero para todos los dispositivos (sin recorte; en el móvil el texto va bajo el video) y sobre una foto que hace de póster (la subida como "Portada" en el
   panel o un fotograma del video). No arranca solo con movimiento reducido ni ahorro de datos, y siempre lleva
   botón de pausa (WCAG 2.2.2). Los clips salen de `npm run media:video` (ffmpeg): H.264 Main, completos (`--completo`; sin él, 10 s),
   `+faststart`, con autocomprobación; sirve igual para el video real del cliente.
