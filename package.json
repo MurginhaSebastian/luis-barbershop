@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint --max-warnings 0",
     "test": "vitest run",
+    "test:ia": "vitest run --config vitest.eval.config.mts --disable-console-intercept",
     "test:coverage": "vitest run --coverage",
     "test:mutation": "node scripts/mutation-check.mjs",
     "test:e2e": "playwright test",
