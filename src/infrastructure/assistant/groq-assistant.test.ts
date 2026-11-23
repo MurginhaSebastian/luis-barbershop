@@ -215,10 +215,10 @@ describe("respuestas fijas", () => {
     expect(t.sendText).toHaveBeenCalledWith(ME, "Perfecto");
   });
 
-  test("el prompt deriva a Luis con el mismo texto", async () => {
+  test("el prompt deriva a Luis con su WhatsApp", async () => {
     const t = makeAssistant([groq({ content: "ok" })]);
     await t.assistant.handleMessage(message("quiero info"));
-    expect(t.bodies()[0].messages[0].content).toContain(humanHandoffText("51900000000"));
+    expect(t.bodies()[0].messages[0].content).toContain("el WhatsApp de Luis: +51900000000");
   });
 });
 
