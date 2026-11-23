@@ -30,6 +30,7 @@ function makeRepos() {
     { id: "barba", name: "Barba", durationMinutes: 30, priceCents: 2000, active: true },
     { id: "cejas", name: "Cejas", durationMinutes: 15, priceCents: 1000, active: true },
     { id: "viejo", name: "Retirado", durationMinutes: 30, priceCents: 1000, active: false },
+    { id: "mani", name: "Manicure", durationMinutes: 30, priceCents: 4000, active: true, area: "spa" },
   ];
   const products: Product[] = [{ id: "cera", name: "Cera", priceCents: 2500, active: true }];
   const hours: BusinessHours[] = [{ openMinute: 600, closeMinute: 780 }];
@@ -303,6 +304,34 @@ describe("estado al nacer y huecos en riesgo", () => {
     putAtRisk(await book({ start: utc("15:00") }));
     await book({ start: utc("16:00") });
     expect((await book({ start: utc("17:00") })).status).toBe(AppointmentStatus.PENDING);
+  });
+});
+
+describe("áreas", () => {
+  const MIX = "Reserva por separado los servicios de Barbería y de Spa y estilista.";
+  beforeEach(() => {
+    repos.data.barbers.push({ id: "e1", name: "Estilista", active: true, areas: ["spa"] });
+  });
+
+  test("mezclar áreas falla con el aviso", async () => {
+    await expect(reserve({ serviceIds: ["corte", "mani"], barberId: null })).rejects.toThrow(MIX);
+    await expect(getSlots.execute({ barberId: null, serviceIds: ["corte", "mani"], date: DATE })).rejects.toThrow(MIX);
+  });
+
+  test("sin preferencia de spa solo asigna a una estilista", async () => {
+    const a = await book({ serviceIds: ["mani"], barberId: null });
+    expect(a.barberId).toBe("e1");
+  });
+
+  test("un barbero de barbería no puede tomar un servicio de spa, ni la estilista uno de barbería", async () => {
+    await expect(reserve({ serviceIds: ["mani"], barberId: "b1" })).rejects.toThrow(NotFoundError);
+    await expect(reserve({ serviceIds: ["corte"], barberId: "e1" })).rejects.toThrow(NotFoundError);
+  });
+
+  test("alternatives no ofrece profesionales de otra área", async () => {
+    repos.data.blocks.push({ barberId: "b1", slot: TimeSlot.create(new Date(`${DATE}T14:00:00Z`), new Date(`${DATE}T19:00:00Z`)) });
+    const { otherBarbers } = await getSlots.alternatives({ barberId: "b1", serviceIds: ["corte"], date: DATE });
+    expect(otherBarbers.map((b) => b.barberId)).toEqual(["b2"]);
   });
 });
 

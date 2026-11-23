@@ -7,6 +7,7 @@ import {
   SlotUnavailableError,
   TooManyActiveAppointmentsError,
 } from "@/core/errors/domain-errors";
+import { bookingArea } from "@/core/catalog/rules";
 import { bookingWindow, shopDateOf } from "@/core/scheduling/availability";
 import { MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER } from "@/core/scheduling/booking-policy";
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
@@ -51,6 +52,7 @@ export class CreateAppointmentUseCase {
       input.barberId,
       shopDateOf(input.start),
       totalDuration(services),
+      bookingArea(services),
     );
     const candidates = byBarber
       .filter((b) => b.slots.some((slot) => slot.start.getTime() === input.start.getTime()))

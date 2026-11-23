@@ -1,5 +1,6 @@
 import { totalDuration } from "@/core/entities/appointment";
 import type { TimeSlot } from "@/core/entities/time-slot";
+import { bookingArea } from "@/core/catalog/rules";
 import { addDays, bookingWindow, shopDateOf } from "@/core/scheduling/availability";
 import { type AvailabilityDeps, type BarberSlots, findFreeSlotsByBarber, loadBookableServices } from "./availability";
 
@@ -27,7 +28,7 @@ export class GetAvailableSlotsUseCase {
 
   async execute(input: GetAvailableSlotsInput): Promise<TimeSlot[]> {
     const services = await loadBookableServices(this.deps.services, input.serviceIds);
-    const byBarber = await findFreeSlotsByBarber(this.deps, input.barberId, input.date, totalDuration(services));
+    const byBarber = await findFreeSlotsByBarber(this.deps, input.barberId, input.date, totalDuration(services), bookingArea(services));
     return unionSlots(byBarber);
   }
 
@@ -35,10 +36,11 @@ export class GetAvailableSlotsUseCase {
   async alternatives(input: GetAvailableSlotsInput): Promise<SlotAlternatives> {
     const services = await loadBookableServices(this.deps.services, input.serviceIds);
     const duration = totalDuration(services);
+    const area = bookingArea(services);
 
     let otherBarbers: SlotAlternatives["otherBarbers"] = [];
     if (input.barberId) {
-      const others = (await findFreeSlotsByBarber(this.deps, null, input.date, duration)).filter(
+      const others = (await findFreeSlotsByBarber(this.deps, null, input.date, duration, area)).filter(
         (b) => b.barberId !== input.barberId && b.slots.length > 0,
       );
       // El dueño es el último recurso: solo se ofrece si ningún otro barbero tiene horas.
@@ -52,7 +54,7 @@ export class GetAvailableSlotsUseCase {
 
     const last = shopDateOf(bookingWindow(this.deps.now()).notAfter);
     for (let date = addDays(input.date, 1); date <= last; date = addDays(date, 1)) {
-      const slots = unionSlots(await findFreeSlotsByBarber(this.deps, input.barberId, date, duration));
+      const slots = unionSlots(await findFreeSlotsByBarber(this.deps, input.barberId, date, duration, area));
       if (slots.length > 0) return { otherBarbers, nextFree: { date, slots } };
     }
     return { otherBarbers, nextFree: null };

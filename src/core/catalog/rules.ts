@@ -1,5 +1,5 @@
-import type { Barber } from "../entities/catalog";
-import { InvalidCatalogError } from "../errors/domain-errors";
+import type { Barber, Service, ServiceArea } from "../entities/catalog";
+import { InvalidAppointmentError, InvalidCatalogError } from "../errors/domain-errors";
 import type { BusinessHours } from "../scheduling/availability";
 
 const DAY_MINUTES = 1440;
@@ -63,4 +63,11 @@ export function assertValidHours(hours: readonly BusinessHours[]) {
       throw new InvalidCatalogError("Los tramos del día no pueden pisarse.");
     }
   });
+}
+
+/** El área común de los servicios de una cita; no se mezclan Barbería y Spa y estilista. */
+export function bookingArea(services: readonly Service[]): ServiceArea {
+  const areas = new Set(services.map((s) => s.area ?? "barberia"));
+  if (areas.size > 1) throw new InvalidAppointmentError("Reserva por separado los servicios de Barbería y de Spa y estilista.");
+  return [...areas][0] ?? "barberia";
 }

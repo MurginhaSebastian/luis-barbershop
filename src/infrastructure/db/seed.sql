@@ -1,14 +1,16 @@
 -- Datos de ejemplo para desarrollo (ficticios; precios en céntimos de sol). Se puede repetir sin duplicar.
-INSERT INTO barbers (id, name, is_owner) VALUES
-  ('10000000-0000-4000-8000-000000000001', 'Luis', true),
-  ('10000000-0000-4000-8000-000000000002', 'Barbero invitado', false)
+INSERT INTO barbers (id, name, is_owner, areas) VALUES
+  ('10000000-0000-4000-8000-000000000001', 'Luis', true, '{barberia}'),
+  ('10000000-0000-4000-8000-000000000002', 'Barbero invitado', false, '{barberia}'),
+  ('10000000-0000-4000-8000-000000000003', 'Estilista invitada', false, '{spa}')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO services (id, name, duration_minutes, price_cents) VALUES
-  ('20000000-0000-4000-8000-000000000001', 'Corte clásico', 30, 3000),
-  ('20000000-0000-4000-8000-000000000002', 'Fade', 45, 3500),
-  ('20000000-0000-4000-8000-000000000003', 'Perfilado de barba', 30, 2000),
-  ('20000000-0000-4000-8000-000000000004', 'Cejas', 15, 1000)
+INSERT INTO services (id, name, duration_minutes, price_cents, area) VALUES
+  ('20000000-0000-4000-8000-000000000001', 'Corte clásico', 30, 3000, 'barberia'),
+  ('20000000-0000-4000-8000-000000000002', 'Fade', 45, 3500, 'barberia'),
+  ('20000000-0000-4000-8000-000000000003', 'Perfilado de barba', 30, 2000, 'barberia'),
+  ('20000000-0000-4000-8000-000000000004', 'Cejas', 15, 1000, 'barberia'),
+  ('20000000-0000-4000-8000-000000000005', 'Manicure de prueba', 60, 4000, 'spa')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO products (id, name, price_cents) VALUES

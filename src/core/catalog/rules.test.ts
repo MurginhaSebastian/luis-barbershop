@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { InvalidCatalogError } from "../errors/domain-errors";
-import { assertBarberChange, assertValidBarber, assertValidHours, assertValidProduct, assertValidService } from "./rules";
+import { assertBarberChange, bookingArea, assertValidBarber, assertValidHours, assertValidProduct, assertValidService } from "./rules";
 
 const service = { name: "Corte", durationMinutes: 30, priceCents: 3000 };
 
@@ -73,5 +73,18 @@ describe("horario de un día", () => {
     ["tramos repetidos", [tramo(600, 840), tramo(600, 840)]],
   ])("rechaza un horario que %s", (_, hours) => {
     expect(() => assertValidHours(hours)).toThrow(InvalidCatalogError);
+  });
+});
+
+describe("bookingArea", () => {
+  const svc = (area?: "barberia" | "spa") => ({ id: "x", name: "S", durationMinutes: 30, priceCents: 0, active: true, area });
+
+  test("devuelve el área común; sin área es barbería", () => {
+    expect(bookingArea([svc(), svc("barberia")])).toBe("barberia");
+    expect(bookingArea([svc("spa"), svc("spa")])).toBe("spa");
+  });
+
+  test("mezclar áreas falla", () => {
+    expect(() => bookingArea([svc(), svc("spa")])).toThrow("Reserva por separado los servicios de Barbería y de Spa y estilista.");
   });
 });

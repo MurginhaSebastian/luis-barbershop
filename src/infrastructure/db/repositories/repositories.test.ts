@@ -241,6 +241,15 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       await expect(deps.barbers.save({ id: crypto.randomUUID(), name: "Otro", active: true, isOwner: true })).rejects.toThrow();
     });
 
+    test("area y areas hacen ida y vuelta", async () => {
+      const id = crypto.randomUUID();
+      await deps.services.save({ id, name: "Manicure", durationMinutes: 60, priceCents: 4000, active: true, area: "spa" });
+      expect((await deps.services.findByIds([id]))[0].area).toBe("spa");
+      await deps.barbers.save({ id: BARBER, name: "Barbero A", active: true, areas: ["barberia", "spa"] });
+      expect((await deps.barbers.findById(BARBER))?.areas).toEqual(["barberia", "spa"]);
+      await expect(deps.barbers.save({ id: BARBER, name: "Barbero A", active: true, areas: [] })).rejects.toThrow();
+    });
+
     test("cambiar el horario de un día cambia las horas ofrecidas", async () => {
       await new ManageScheduleUseCase(deps).saveDayHours(1, [{ openMinute: 660, closeMinute: 690 }]);
       const slots = await new GetAvailableSlotsUseCase(deps).execute({ barberId: BARBER, serviceIds: [CORTE], date: DATE });

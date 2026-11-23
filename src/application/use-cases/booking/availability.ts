@@ -1,4 +1,4 @@
-import type { Barber, Service } from "@/core/entities/catalog";
+import { type Barber, coversArea, type Service, type ServiceArea } from "@/core/entities/catalog";
 import type { TimeSlot } from "@/core/entities/time-slot";
 import { InvalidAppointmentError, NotFoundError } from "@/core/errors/domain-errors";
 import { availableSlots, shopDayRange, shopWeekday } from "@/core/scheduling/availability";
@@ -53,20 +53,21 @@ export interface BarberSlots {
   slots: TimeSlot[];
 }
 
-/** Huecos libres del barbero elegido o, sin preferencia (null), de cada barbero activo. */
+/** Huecos libres del barbero elegido o, sin preferencia (null), de cada profesional activo del área. */
 export async function findFreeSlotsByBarber(
   deps: AvailabilityDeps,
   barberId: string | null,
   date: string,
   durationMinutes: number,
+  area: ServiceArea,
 ): Promise<BarberSlots[]> {
   let barbers: Barber[];
   if (barberId) {
     const barber = await deps.barbers.findById(barberId);
-    if (!barber?.active) throw new NotFoundError("Barbero");
+    if (!barber?.active || !coversArea(barber, area)) throw new NotFoundError("Barbero");
     barbers = [barber];
   } else {
-    barbers = await deps.barbers.findAllActive();
+    barbers = (await deps.barbers.findAllActive()).filter((b) => coversArea(b, area));
   }
   return Promise.all(
     barbers.map(async (b) => ({

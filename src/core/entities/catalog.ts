@@ -1,5 +1,9 @@
 import type { TimeSlot } from "./time-slot";
 
+export type ServiceArea = "barberia" | "spa";
+export const SERVICE_AREAS: readonly ServiceArea[] = ["barberia", "spa"];
+export const AREA_LABEL: Record<ServiceArea, string> = { barberia: "Barbería", spa: "Spa y estilista" };
+
 /** Precios en céntimos de sol (PEN) para no operar con decimales. */
 export interface Service {
   id: string;
@@ -9,6 +13,8 @@ export interface Service {
   active: boolean;
   /** Foto propia subida desde el panel; sin ella la web usa una de ejemplo. */
   imageUrl?: string | null;
+  /** Opcional como `isOwner`; ausente = barbería. */
+  area?: ServiceArea;
 }
 
 export interface Product {
@@ -24,6 +30,12 @@ export interface Barber {
   active: boolean;
   /** Opcional para no tocar los barberos falsos de las pruebas; ausente = false. */
   isOwner?: boolean;
+  /** Áreas que atiende; ausente = solo barbería. */
+  areas?: ServiceArea[];
+}
+
+export function coversArea(barber: Barber, area: ServiceArea): boolean {
+  return (barber.areas ?? ["barberia"]).includes(area);
 }
 
 /** Orden estable con el dueño al final: es el último recurso al repartir citas. */

@@ -23,7 +23,8 @@ export class DrizzleServiceRepository implements IServiceRepository {
   }
 
   async save(service: Service): Promise<void> {
-    await this.db.insert(services).values(service).onConflictDoUpdate({ target: services.id, set: service });
+    const row = { ...service, area: service.area ?? "barberia" };
+    await this.db.insert(services).values(row).onConflictDoUpdate({ target: services.id, set: row });
   }
 }
 
@@ -70,7 +71,7 @@ export class DrizzleBarberRepository implements IBarberRepository {
   }
 
   async save(barber: Barber): Promise<void> {
-    const row = { ...barber, isOwner: barber.isOwner ?? false };
+    const row = { ...barber, isOwner: barber.isOwner ?? false, areas: barber.areas ?? ["barberia"] };
     await this.db.insert(barbers).values(row).onConflictDoUpdate({ target: barbers.id, set: row });
   }
 }

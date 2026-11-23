@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import { bigserial, boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
+import type { ServiceArea } from "@/core/entities/catalog";
+
 const instant = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
 export const appointmentStatus = pgEnum("appointment_status", [
@@ -21,8 +23,12 @@ export const barbers = pgTable(
     active: boolean().notNull().default(true),
     /** El dueño no se renombra ni se oculta; solo puede haber uno. */
     isOwner: boolean("is_owner").notNull().default(false),
+    areas: text().array().$type<ServiceArea[]>().notNull().default(sql`'{barberia}'`),
   },
-  (t) => [uniqueIndex("barbers_one_owner_idx").on(t.isOwner).where(sql`${t.isOwner}`)],
+  (t) => [
+    uniqueIndex("barbers_one_owner_idx").on(t.isOwner).where(sql`${t.isOwner}`),
+    check("barbers_areas_valid", sql`cardinality(${t.areas}) > 0 and ${t.areas} <@ array['barberia','spa']`),
+  ],
 );
 
 export const services = pgTable(
@@ -34,8 +40,10 @@ export const services = pgTable(
     priceCents: integer("price_cents").notNull(),
     active: boolean().notNull().default(true),
     imageUrl: text("image_url"),
+    area: text().$type<ServiceArea>().notNull().default("barberia"),
   },
   (t) => [
+    check("services_area_valid", sql`${t.area} in ('barberia','spa')`),
     check("services_duration_positive", sql`${t.durationMinutes} > 0`),
     check("services_price_non_negative", sql`${t.priceCents} >= 0`),
   ],
