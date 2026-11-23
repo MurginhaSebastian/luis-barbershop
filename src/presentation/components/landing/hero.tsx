@@ -5,13 +5,13 @@ import { HeroVideo } from "./hero-video";
 import { container, ctaClass, ghostCtaClass } from "./styles";
 
 /**
- * Portada a pantalla completa: un barbero trabajando en video y, abajo a la izquierda, el nombre y las dos
+ * Portada con la proporción del video (9:16 en el móvil vertical, 16:9 en el resto), sin recortarlo: un barbero trabajando en video y, abajo a la izquierda, el nombre y las dos
  * acciones. La foto (la subida en el panel o un fotograma del video) se ve mientras carga o si no se reproduce.
  */
 export function Hero({ whatsappHref, assistantHref, image }: { whatsappHref?: string; assistantHref?: string; image?: string }) {
   return (
-    // Llena la pantalla bajo la cabecera fija; en el móvil deja sitio también a la barra de "Reservar cita".
-    <section className="relative isolate flex min-h-[calc(100svh-8.25rem)] items-end overflow-hidden md:min-h-[calc(100svh-4.75rem)]">
+    // La misma condición que la <source media> de HeroVideo: así el object-cover del video no recorta nada.
+    <section className="relative isolate flex aspect-video items-end overflow-hidden max-md:portrait:aspect-[9/16]">
       <Image
         src={image ?? "/videos/corte-escritorio.jpg"}
         alt=""
@@ -25,15 +25,15 @@ export function Hero({ whatsappHref, assistantHref, image }: { whatsappHref?: st
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/40 to-transparent" />
       <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-background/75 via-background/20 to-transparent" />
 
-      <div className={`${container} pt-28 pb-12 md:pb-16`}>
+      <div className={`${container} pb-6 md:pb-[3vw]`}>
         <h1 className="font-heading">
-          <span className="-ml-[0.05em] block text-[clamp(5rem,20vw,13rem)] leading-[0.8] text-primary">D&apos;luiss</span>
-          <span className="mt-3 block text-[clamp(1.25rem,4vw,2.25rem)] tracking-[0.3em]">Barber Shop</span>
+          <span className="-ml-[0.05em] block text-[clamp(4rem,20vw,6rem)] md:text-[9vw] xl:text-[min(9vw,10rem)] leading-[0.8] text-primary">D&apos;luiss</span>
+          <span className="mt-3 block text-[clamp(1rem,4vw,1.5rem)] md:text-[min(2.4vw,2.25rem)] tracking-[0.3em]">Barber Shop</span>
         </h1>
-        <p className="mt-6 max-w-md text-lg leading-relaxed">
+        <p className="mt-3 max-w-md text-sm md:mt-[1.5vw] md:text-[min(1.6vw,1.125rem)] leading-relaxed">
           Cortes a tijera y máquina, fades y afeitado con navaja. Reserva tu hora en un minuto.
         </p>
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap gap-3 md:mt-[2vw]">
           {assistantHref ? (
             <a href={assistantHref} target="_blank" rel="noopener noreferrer" className={`${ctaClass} gap-2`}>
               <MessageCircle aria-hidden className="size-5" />
