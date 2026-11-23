@@ -26,6 +26,11 @@ export interface Barber {
   isOwner?: boolean;
 }
 
+/** Orden estable con el dueño al final: es el último recurso al repartir citas. */
+export function ownerLast<T extends { isOwner?: boolean }>(list: readonly T[]): T[] {
+  return [...list.filter((b) => !b.isOwner), ...list.filter((b) => b.isOwner)];
+}
+
 export interface ScheduleBlock {
   id: string;
   /** null = toda la barbería (feriado, cierre). */

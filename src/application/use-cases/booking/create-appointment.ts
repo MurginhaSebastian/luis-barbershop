@@ -76,15 +76,17 @@ export class CreateAppointmentUseCase {
     // Las citas en riesgo no ocupan agenda: el hueco aparece libre, pero tomarlo desplaza a su cliente.
     const slot = TimeSlot.ofMinutes(input.start, totalDuration(services));
     const options = await Promise.all(
-      candidates.map(async ({ barberId }) => ({
+      candidates.map(async ({ barberId, isOwner }) => ({
         barberId,
+        isOwner,
         displacing: (await this.deps.appointments.findByBarberInRange(barberId, slot)).filter(
           (a) => a.status === AppointmentStatus.AT_RISK,
         ),
       })),
     );
+    // Sin preferencia, el dueño es el último recurso (el orden es estable: dentro de cada grupo, más huecos primero).
     // Sin preferencia, antes un barbero libre del todo que quitarle la hora a quien aún puede llegar.
-    options.sort((a, b) => a.displacing.length - b.displacing.length);
+    options.sort((a, b) => Number(a.isOwner) - Number(b.isOwner) || a.displacing.length - b.displacing.length);
 
     for (const { barberId, displacing } of options) {
       const appointment = Appointment.book({

@@ -1,4 +1,4 @@
-import type { Service } from "@/core/entities/catalog";
+import type { Barber, Service } from "@/core/entities/catalog";
 import type { TimeSlot } from "@/core/entities/time-slot";
 import { InvalidAppointmentError, NotFoundError } from "@/core/errors/domain-errors";
 import { availableSlots, shopDayRange, shopWeekday } from "@/core/scheduling/availability";
@@ -48,6 +48,8 @@ export async function findFreeSlots(
 
 export interface BarberSlots {
   barberId: string;
+  name: string;
+  isOwner: boolean;
   slots: TimeSlot[];
 }
 
@@ -58,8 +60,20 @@ export async function findFreeSlotsByBarber(
   date: string,
   durationMinutes: number,
 ): Promise<BarberSlots[]> {
-  const ids = barberId ? [barberId] : (await deps.barbers.findAllActive()).map((b) => b.id);
+  let barbers: Barber[];
+  if (barberId) {
+    const barber = await deps.barbers.findById(barberId);
+    if (!barber?.active) throw new NotFoundError("Barbero");
+    barbers = [barber];
+  } else {
+    barbers = await deps.barbers.findAllActive();
+  }
   return Promise.all(
-    ids.map(async (id) => ({ barberId: id, slots: await findFreeSlots(deps, id, date, durationMinutes) })),
+    barbers.map(async (b) => ({
+      barberId: b.id,
+      name: b.name,
+      isOwner: b.isOwner ?? false,
+      slots: await findFreeSlots(deps, b.id, date, durationMinutes),
+    })),
   );
 }

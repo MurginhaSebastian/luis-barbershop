@@ -38,7 +38,7 @@ function makeRepos() {
   const customers: Customer[] = [];
 
   return {
-    data: { blocks, appointments, customers },
+    data: { blocks, appointments, customers, barbers },
     barbers: {
       findById: async (id: string) => barbers.find((b) => b.id === id) ?? null,
       findByIds: async (ids: readonly string[]) => barbers.filter((b) => ids.includes(b.id)),
@@ -176,6 +176,24 @@ describe("sin preferencia de barbero", () => {
     await book({ barberId: "b1", start: utc("16:00") });
     const a = await book({ barberId: null, start: utc("15:00"), customer: { name: "Otro", phone: "900000002" } });
     expect(a.barberId).toBe("b2");
+  });
+
+  describe("con dueño", () => {
+    beforeEach(() => {
+      repos.data.barbers[0].isOwner = true; // b1
+    });
+
+    test("aunque el dueño tenga más huecos, gana otro que también pueda", async () => {
+      await book({ barberId: "b2", start: utc("16:00") });
+      const a = await book({ barberId: null, start: utc("15:00"), customer: { name: "Otro", phone: "900000002" } });
+      expect(a.barberId).toBe("b2");
+    });
+
+    test("si solo el dueño puede a esa hora, gana el dueño", async () => {
+      await book({ barberId: "b2", start: utc("15:00") });
+      const a = await book({ barberId: null, start: utc("15:00"), customer: { name: "Otro", phone: "900000002" } });
+      expect(a.barberId).toBe("b1");
+    });
   });
 
   test("si otra reserva gana el hueco al guardar, prueba con el siguiente barbero", async () => {

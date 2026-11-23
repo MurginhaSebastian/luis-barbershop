@@ -1,7 +1,7 @@
 import { ChevronRight, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import type { Barber, Service } from "@/core/entities/catalog";
+import { type Barber, ownerLast, type Service } from "@/core/entities/catalog";
 import { ANY_BARBER, bookingHref, type BookingSelection } from "@/presentation/lib/booking-flow";
 import { BookingSummary } from "./booking-summary";
 import { PendingHint } from "./pending-hint";
@@ -26,18 +26,6 @@ export function BarberStep(props: {
       summary={<BookingSummary services={props.services} />}
     >
       <ul className="grid gap-2">
-        {props.barbers.map((b) => (
-          <li key={b.id}>
-            <Link href={next(b.id)} className={linkChoiceClass}>
-              <span aria-hidden className="grid size-10 place-items-center rounded-full bg-secondary font-heading text-xl text-primary">
-                {b.name[0]}
-              </span>
-              <span className="flex-1 font-medium">{b.name}</span>
-              <PendingHint />
-              <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
-            </Link>
-          </li>
-        ))}
         <li>
           <Link href={next(ANY_BARBER)} className={linkChoiceClass}>
             <span aria-hidden className="grid size-10 place-items-center rounded-full bg-secondary text-primary">
@@ -51,6 +39,18 @@ export function BarberStep(props: {
             <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
           </Link>
         </li>
+        {ownerLast(props.barbers).map((b) => (
+          <li key={b.id}>
+            <Link href={next(b.id)} className={linkChoiceClass}>
+              <span aria-hidden className="grid size-10 place-items-center rounded-full bg-secondary font-heading text-xl text-primary">
+                {b.name[0]}
+              </span>
+              <span className="flex-1 font-medium">{b.name}</span>
+              <PendingHint />
+              <ChevronRight aria-hidden className="size-5 text-muted-foreground" />
+            </Link>
+          </li>
+        ))}
       </ul>
     </StepLayout>
   );
