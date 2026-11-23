@@ -22,12 +22,16 @@ export default function BarberosPage() {
 async function Barbers() {
   await requirePanelSession();
   const barbers = await getUseCases().manageCatalog.listBarbers();
+  const owner = barbers.find((b) => b.isOwner);
   return (
-    <EditableList
-      addHeading="Añadir barbero"
-      action={saveBarberAction}
-      fields={[{ name: "name", label: "Nombre" }]}
-      items={barbers.map((b) => ({ id: b.id, title: b.name, active: b.active, values: { name: b.name } }))}
-    />
+    <>
+      {owner && <p className="mt-6 rounded-lg border border-border px-4 py-3 font-medium">{owner.name} · Dueño</p>}
+      <EditableList
+        addHeading="Añadir barbero"
+        action={saveBarberAction}
+        fields={[{ name: "name", label: "Nombre" }]}
+        items={barbers.filter((b) => !b.isOwner).map((b) => ({ id: b.id, title: b.name, active: b.active, values: { name: b.name } }))}
+      />
+    </>
   );
 }

@@ -22,6 +22,8 @@ export interface Barber {
   id: string;
   name: string;
   active: boolean;
+  /** Opcional para no tocar los barberos falsos de las pruebas; ausente = false. */
+  isOwner?: boolean;
 }
 
 export interface ScheduleBlock {

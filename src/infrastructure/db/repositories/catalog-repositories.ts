@@ -70,6 +70,7 @@ export class DrizzleBarberRepository implements IBarberRepository {
   }
 
   async save(barber: Barber): Promise<void> {
-    await this.db.insert(barbers).values(barber).onConflictDoUpdate({ target: barbers.id, set: barber });
+    const row = { ...barber, isOwner: barber.isOwner ?? false };
+    await this.db.insert(barbers).values(row).onConflictDoUpdate({ target: barbers.id, set: row });
   }
 }

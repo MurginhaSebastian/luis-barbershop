@@ -119,6 +119,21 @@ describe("catálogo", () => {
     expect(repos.data.barbers[0].active).toBe(false);
   });
 
+  test("el primer barbero creado es el dueño y el segundo no", async () => {
+    repos.data.barbers.length = 0;
+    await catalog.saveBarber({ name: "Primero", active: true });
+    await catalog.saveBarber({ name: "Segundo", active: true });
+    expect(repos.data.barbers.map((b) => b.isOwner)).toEqual([true, false]);
+  });
+
+  test("al dueño no se le cambia el nombre ni se oculta, y editarlo conserva que lo es", async () => {
+    repos.data.barbers[0].isOwner = true;
+    await expect(catalog.saveBarber({ id: "b1", name: "Otro", active: true })).rejects.toThrow(InvalidCatalogError);
+    await expect(catalog.saveBarber({ id: "b1", name: "Luis", active: false })).rejects.toThrow(InvalidCatalogError);
+    await catalog.saveBarber({ id: "b1", name: "Luis", active: true, isOwner: false });
+    expect(repos.data.barbers[0].isOwner).toBe(true);
+  });
+
   test("un barbero activo no genera aviso", async () => {
     repos.data.appointments.push(appointment("a1", "b1", "2026-11-03T15:00:00Z"));
     expect(await catalog.saveBarber({ id: "b1", name: "Luis", active: true })).toEqual({ upcoming: 0 });

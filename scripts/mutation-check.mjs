@@ -35,6 +35,7 @@ const mutants = [
   ["Precio: se aceptan negativos", "src/core/catalog/rules.ts", "priceCents < 0 || ", ""],
   ["Bloqueo: cuenta citas de otros barberos", "src/application/use-cases/admin/manage-schedule.ts", "a.blocksSchedule() && (!input.barberId || a.barberId === input.barberId)", "a.blocksSchedule()"],
   ["Bloqueo: se aceptan periodos pasados", "src/application/use-cases/admin/manage-schedule.ts", 'if (input.slot.end <= this.deps.now()) throw new InvalidCatalogError("Ese periodo ya pasó.");', ""],
+  ["Barbero: el dueño se puede renombrar u ocultar", "src/core/catalog/rules.ts", "if (current.isOwner && (next.name.trim() !== current.name || !next.active)) {", "if (false) {"],
   ["Barbero: el aviso cuenta citas canceladas", "src/application/use-cases/admin/manage-catalog.ts", "appointments.filter((a) => a.blocksSchedule()).length", "appointments.length"],
   ["Contacto: se aceptan enlaces que no son https", "src/core/entities/site.ts", 'return new URL(value).protocol === "https:";', "return Boolean(new URL(value).protocol);"],
   ["Foto: se acepta un archivo disfrazado", "src/core/entities/image.ts", 'if (!detectImageType(bytes)) throw new InvalidImageError("Solo se aceptan fotos JPG, PNG o WebP.");', ""],

@@ -1,3 +1,4 @@
+import type { Barber } from "../entities/catalog";
 import { InvalidCatalogError } from "../errors/domain-errors";
 import type { BusinessHours } from "../scheduling/availability";
 
@@ -42,6 +43,13 @@ export function assertValidProduct(product: { name: string; priceCents: number }
 
 export function assertValidBarber(barber: { name: string }) {
   assertValidName(barber.name);
+}
+
+/** El dueño conserva su nombre y sigue visible. */
+export function assertBarberChange(current: Barber, next: { name: string; active: boolean }) {
+  if (current.isOwner && (next.name.trim() !== current.name || !next.active)) {
+    throw new InvalidCatalogError("El dueño no se puede renombrar ni ocultar.");
+  }
 }
 
 /** Los tramos de un día: cada uno abre antes de cerrar y no pisa a otro. Tocarse sí vale. */

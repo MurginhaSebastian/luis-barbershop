@@ -2,7 +2,7 @@ import type { IAppointmentRepository } from "@/application/ports/repositories/ap
 import type { IBarberRepository } from "@/application/ports/repositories/barber-repository";
 import type { IProductRepository } from "@/application/ports/repositories/product-repository";
 import type { IServiceRepository } from "@/application/ports/repositories/service-repository";
-import { assertValidBarber, assertValidProduct, assertValidService } from "@/core/catalog/rules";
+import { assertBarberChange, assertValidBarber, assertValidProduct, assertValidService } from "@/core/catalog/rules";
 import type { Barber, Product, Service } from "@/core/entities/catalog";
 import { TimeSlot } from "@/core/entities/time-slot";
 import { bookingWindow } from "@/core/scheduling/availability";
@@ -39,6 +39,14 @@ export class ManageCatalogUseCase {
   async saveBarber(input: Input<Barber>): Promise<{ upcoming: number }> {
     assertValidBarber(input);
     const barber = withId(input);
+    if (input.id) {
+      const current = await this.deps.barbers.findById(input.id);
+      if (current) assertBarberChange(current, barber);
+      barber.isOwner = current?.isOwner ?? false;
+    } else {
+      // El primer barbero que se crea es el dueño.
+      barber.isOwner = (await this.deps.barbers.findAll()).length === 0;
+    }
     await this.deps.barbers.save(barber);
     if (barber.active) return { upcoming: 0 };
 

@@ -1,7 +1,7 @@
 -- Datos de ejemplo para desarrollo (ficticios; precios en céntimos de sol). Se puede repetir sin duplicar.
-INSERT INTO barbers (id, name) VALUES
-  ('10000000-0000-4000-8000-000000000001', 'Luis'),
-  ('10000000-0000-4000-8000-000000000002', 'Barbero invitado')
+INSERT INTO barbers (id, name, is_owner) VALUES
+  ('10000000-0000-4000-8000-000000000001', 'Luis', true),
+  ('10000000-0000-4000-8000-000000000002', 'Barbero invitado', false)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO services (id, name, duration_minutes, price_cents) VALUES

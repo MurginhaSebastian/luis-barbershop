@@ -235,6 +235,12 @@ describe.skipIf(!baseUrl)("repositorios Drizzle (Postgres)", () => {
       expect((await catalog.listBarbers()).map((b) => b.name)).toEqual(["Barbero A", "Barbero C"]);
     });
 
+    test("isOwner hace ida y vuelta, y solo puede haber un dueño", async () => {
+      await deps.barbers.save({ id: BARBER, name: "Barbero A", active: true, isOwner: true });
+      expect((await deps.barbers.findById(BARBER))?.isOwner).toBe(true);
+      await expect(deps.barbers.save({ id: crypto.randomUUID(), name: "Otro", active: true, isOwner: true })).rejects.toThrow();
+    });
+
     test("cambiar el horario de un día cambia las horas ofrecidas", async () => {
       await new ManageScheduleUseCase(deps).saveDayHours(1, [{ openMinute: 660, closeMinute: 690 }]);
       const slots = await new GetAvailableSlotsUseCase(deps).execute({ barberId: BARBER, serviceIds: [CORTE], date: DATE });

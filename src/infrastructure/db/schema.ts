@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { bigserial, boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { bigserial, boolean, check, index, integer, jsonb, pgEnum, pgTable, primaryKey, smallint, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 const instant = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 
@@ -13,11 +13,17 @@ export const appointmentStatus = pgEnum("appointment_status", [
   "AT_RISK",
 ]);
 
-export const barbers = pgTable("barbers", {
-  id: uuid().primaryKey().defaultRandom(),
-  name: text().notNull(),
-  active: boolean().notNull().default(true),
-});
+export const barbers = pgTable(
+  "barbers",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: text().notNull(),
+    active: boolean().notNull().default(true),
+    /** El dueño no se renombra ni se oculta; solo puede haber uno. */
+    isOwner: boolean("is_owner").notNull().default(false),
+  },
+  (t) => [uniqueIndex("barbers_one_owner_idx").on(t.isOwner).where(sql`${t.isOwner}`)],
+);
 
 export const services = pgTable(
   "services",

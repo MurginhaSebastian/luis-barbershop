@@ -124,6 +124,17 @@ test("un producto oculto deja de ofrecerse al reservar", async ({ page }) => {
 });
 
 test.describe("barberos", () => {
+  test("el dueño aparece sin formulario y otro barbero se puede renombrar", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/barberos");
+    await expect(page.getByText("Luis · Dueño")).toBeVisible();
+    await expect(card(page, "Luis")).toHaveCount(0);
+    const form = card(page, "Barbero invitado");
+    await form.getByLabel("Nombre").fill("Barbero renombrado");
+    await form.getByRole("button", { name: "Guardar" }).click();
+    await expect(card(page, "Barbero renombrado")).toBeVisible();
+  });
+
   test("un barbero nuevo se puede elegir al reservar", async ({ page }) => {
     await login(page);
     await page.goto("/panel/barberos");
@@ -137,20 +148,20 @@ test.describe("barberos", () => {
   });
 
   test("ocultar a un barbero con citas avisa, y deja de ofrecerse", async ({ page }) => {
-    await bookUntilData(page);
+    await bookUntilData(page, "Barbero invitado");
     await fillData(page);
     await page.getByRole("button", { name: "Reservar cita" }).click();
     await expect(page.getByRole("heading", { name: "Reserva registrada" })).toBeVisible();
 
     await login(page);
     await page.goto("/panel/barberos");
-    const form = card(page, "Luis");
+    const form = card(page, "Barbero invitado");
     await form.getByLabel("Visible en la web").uncheck();
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByText(/1 cita por venir/)).toBeVisible();
 
     await chooseServices(page, [/Corte clásico/]);
-    await expect(page.getByRole("main").getByRole("link", { name: "Luis", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("link", { name: "Barbero invitado", exact: true })).toHaveCount(0);
   });
 });
 

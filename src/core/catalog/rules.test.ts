@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { InvalidCatalogError } from "../errors/domain-errors";
-import { assertValidBarber, assertValidHours, assertValidProduct, assertValidService } from "./rules";
+import { assertBarberChange, assertValidBarber, assertValidHours, assertValidProduct, assertValidService } from "./rules";
 
 const service = { name: "Corte", durationMinutes: 30, priceCents: 3000 };
 
@@ -35,6 +35,20 @@ test("los productos validan nombre y precio", () => {
 test("los barberos necesitan nombre", () => {
   expect(() => assertValidBarber({ name: "Luis" })).not.toThrow();
   expect(() => assertValidBarber({ name: " " })).toThrow(InvalidCatalogError);
+});
+
+describe("el dueño", () => {
+  const owner = { id: "o", name: "Luis", active: true, isOwner: true };
+
+  test("no se renombra ni se oculta", () => {
+    expect(() => assertBarberChange(owner, { name: "Otro", active: true })).toThrow(InvalidCatalogError);
+    expect(() => assertBarberChange(owner, { name: "Luis", active: false })).toThrow(InvalidCatalogError);
+    expect(() => assertBarberChange(owner, { name: " Luis ", active: true })).not.toThrow();
+  });
+
+  test("un barbero que no es dueño sí", () => {
+    expect(() => assertBarberChange({ ...owner, isOwner: false }, { name: "Otro", active: false })).not.toThrow();
+  });
 });
 
 describe("horario de un día", () => {
