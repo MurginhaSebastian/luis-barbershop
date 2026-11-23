@@ -153,6 +153,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   panel o un fotograma del video). No arranca solo con movimiento reducido ni ahorro de datos, y siempre lleva
   botón de pausa (WCAG 2.2.2). Los clips salen de `npm run media:video` (ffmpeg): H.264 Main, completos (`--completo`; sin él, 10 s),
   `+faststart`, con autocomprobación; sirve igual para el video real del cliente.
+- `/videos/*` se cachea 7 días (`next.config.ts`): para cambiar el video hay que publicarlo con un nombre de archivo nuevo (hoy `portadas.mp4`).
 - JSON-LD `BarberShop` en la portada: `shopJsonLd` (`presentation/lib/json-ld.ts`) lo arma en `CatalogSections` con los mismos datos que ya lee (contacto, servicios activos, horario) y `jsonLdHtml` escapa `<`.
 - Bajo la portada, `ShopFacts`: abierto ahora o cuándo abre (`openingStatus` en `core/scheduling/`, con los
   cierres de toda la barbería; `describeOpening` lo pone en palabras), dirección y precio más bajo.

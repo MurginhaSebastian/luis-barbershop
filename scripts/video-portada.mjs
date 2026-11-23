@@ -1,5 +1,5 @@
 // Prepara un video para la portada: `npm run media:video -- <entrada> --horizontal|--vertical [--inicio 3] [--completo]`.
-// Horizontal: public/videos/corte-escritorio.mp4 y su póster .jpg. Vertical (móvil): public/videos/corte-movil.mp4.
+// Horizontal: public/videos/portadas.mp4 y su póster .jpg. Vertical (móvil): public/videos/corte-movil.mp4.
 // Necesita ffmpeg y ffprobe en el PATH (en Windows: `winget install Gyan.FFmpeg`).
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -8,7 +8,7 @@ import sharp from "sharp";
 const SECONDS = 10;
 const full = process.argv.includes("--completo"); // sin límite: la duración de la entrada
 const FORMATS = {
-  horizontal: { out: "public/videos/corte-escritorio", width: 1280, height: 720, poster: true },
+  horizontal: { out: "public/videos/portadas", width: 1280, height: 720, poster: true },
   vertical: { out: "public/videos/corte-movil", width: 720, height: 1280, poster: false },
 };
 

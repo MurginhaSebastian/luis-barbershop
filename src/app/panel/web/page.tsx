@@ -32,7 +32,7 @@ async function SiteSettingsEditor() {
       label: "Portada",
       hint: "La portada es un video; esta foto se ve mientras carga y para quien no lo reproduce.",
       current: images.hero,
-      fallback: "/videos/corte-escritorio.jpg",
+      fallback: "/videos/portadas.jpg",
     },
     { target: "about", label: "Nosotros", current: images.about, fallback: "/images/sillon.jpg" },
     { target: "products", label: "Productos", current: images.products, fallback: "/images/herramientas.jpg" },

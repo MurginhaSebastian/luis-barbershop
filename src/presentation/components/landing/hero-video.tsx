@@ -49,7 +49,7 @@ export function HeroVideo() {
           shown ? "opacity-100" : "opacity-0",
         )}
       >
-        <source src="/videos/corte-escritorio.mp4" type="video/mp4" />
+        <source src="/videos/portadas.mp4" type="video/mp4" />
       </video>
       <button
         type="button"

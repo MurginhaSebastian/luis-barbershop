@@ -6,4 +6,4 @@ mismo comando con el video nuevo y `--completo`. Es un solo video 16:9 para todo
 
 | Archivo | Formato |
 |---|---|
-| corte-escritorio.mp4, corte-escritorio.jpg | 1280×720 (16:9) y su póster |
+| portadas.mp4, portadas.jpg | 1280×720 (16:9) y su póster |

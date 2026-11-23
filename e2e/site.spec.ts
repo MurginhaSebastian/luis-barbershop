@@ -141,7 +141,7 @@ test.describe("video de la portada", () => {
     }));
     expect(state).toMatchObject({ muted: true, paused: false, hidden: "true", tab: -1 });
     // Un solo video horizontal para todos los dispositivos.
-    expect(state.src).toMatch(/corte-escritorio\.mp4$/);
+    expect(state.src).toMatch(/portadas\.mp4$/);
     // Aparece sobre el póster solo cuando ya se mueve.
     await expect(video).toHaveCSS("opacity", "1");
 
@@ -209,7 +209,7 @@ test("el panel se puede instalar y su service worker no queda en caché", async 
 });
 
 test("el video se guarda en caché y se sirve por partes, como pide Safari", async ({ request }) => {
-  for (const file of ["/videos/corte-escritorio.mp4"]) {
+  for (const file of ["/videos/portadas.mp4"]) {
     const whole = await request.get(file);
     expect(whole.headers()["content-type"]).toBe("video/mp4");
     expect(whole.headers()["cache-control"]).toContain("max-age=604800");

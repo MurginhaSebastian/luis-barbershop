@@ -43,7 +43,7 @@ export function Hero({ whatsappHref, assistantHref, image }: { whatsappHref?: st
       {/* Después del texto: el teclado y el lector de pantalla llegan antes al nombre que al botón de pausa. */}
       <div className="relative aspect-video w-full md:absolute md:inset-0 md:aspect-auto">
       <Image
-        src={image ?? "/videos/corte-escritorio.jpg"}
+        src={image ?? "/videos/portadas.jpg"}
         alt=""
         fill
         sizes="100vw"
