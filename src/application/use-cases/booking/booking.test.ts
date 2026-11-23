@@ -252,6 +252,16 @@ describe("estado al nacer y huecos en riesgo", () => {
     expect(displaced).toEqual([]);
   });
 
+  test("sin preferencia, el dueño libre gana a un no-dueño que solo puede desplazando", async () => {
+    repos.data.barbers[0].isOwner = true; // b1
+    at("10:00");
+    putAtRisk(await book({ barberId: "b2", start: utc("15:00") }));
+    at("14:50");
+    const { appointment, displaced } = await reserve({ barberId: null, start: utc("15:00"), customer: otro });
+    expect(appointment.barberId).toBe("b1");
+    expect(displaced).toEqual([]);
+  });
+
   test("una cita en riesgo no cuenta para el máximo de citas del celular", async () => {
     at("10:00");
     putAtRisk(await book({ start: utc("15:00") }));

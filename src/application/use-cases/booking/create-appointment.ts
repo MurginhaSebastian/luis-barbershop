@@ -84,9 +84,8 @@ export class CreateAppointmentUseCase {
         ),
       })),
     );
-    // Sin preferencia, el dueño es el último recurso (el orden es estable: dentro de cada grupo, más huecos primero).
-    // Sin preferencia, antes un barbero libre del todo que quitarle la hora a quien aún puede llegar.
-    options.sort((a, b) => Number(a.isOwner) - Number(b.isOwner) || a.displacing.length - b.displacing.length);
+    // Sin preferencia: antes no desplazar a nadie, luego no-dueño antes que dueño (el orden es estable: más huecos primero).
+    options.sort((a, b) => a.displacing.length - b.displacing.length || Number(a.isOwner) - Number(b.isOwner));
 
     for (const { barberId, displacing } of options) {
       const appointment = Appointment.book({
