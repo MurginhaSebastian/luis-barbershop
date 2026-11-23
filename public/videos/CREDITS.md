@@ -1,10 +1,10 @@
-# Videos provisionales
+# Video de la portada
 
-Videos de [Mixkit](https://mixkit.co) bajo la Mixkit Stock Video Free License (uso comercial permitido, sin
-atribución obligatoria). Recortados a 10 s, sin sonido y recodificados con `npm run media:video`. Se
-sustituyen por un video real de la barbería en cuanto esté, con el mismo comando.
+Video propio de la barbería, recortado a 10 s, sin sonido y recodificado con `npm run media:video`
+(`--horizontal` para escritorio y póster, `--vertical` para el móvil, recorte centrado). Para cambiarlo, se repite el
+mismo comando con el video nuevo.
 
-| Archivo | Original |
+| Archivo | Formato |
 |---|---|
-| corte-escritorio.mp4, corte-escritorio.jpg | https://mixkit.co/free-stock-video/barber-cutting-hair-with-scissors-and-comb-43232/ |
-| corte-movil.mp4 | https://mixkit.co/free-stock-video/close-up-of-a-barber-working-43242/ |
+| corte-escritorio.mp4, corte-escritorio.jpg | 1280×720 (16:9) y su póster |
+| corte-movil.mp4 | 720×1280 (9:16) |
