@@ -98,8 +98,11 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - Además de la rejilla de `SLOT_STEP_MINUTES`, el final de cada cita o bloqueo es un inicio válido
   ("time-slot packing"): tras una cita de 45 min, la siguiente puede empezar a esa hora si cabe.
 - "Sin preferencia" es `barberId: null` en los casos de uso: `findFreeSlotsByBarber` da los huecos de
-  cada barbero activo; la reserva asigna al que tiene más huecos ese día y, si otra reserva gana el
-  hueco al guardar, prueba con el siguiente.
+  cada barbero activo; la reserva los ordena por menos desplazados, luego no-dueño, luego más huecos ese día
+  y, si otra reserva gana el hueco al guardar, prueba con el siguiente.
+- Dueño (`barbers.is_owner`; solo hay uno, el primer barbero creado): "sin preferencia" lo deja como último recurso.
+  Sin horas, `GetAvailableSlotsUseCase.alternatives()` ofrece otros barberos (el dueño solo si ningún otro puede) y
+  el próximo día con horas, en el paso 3 de `/reservar`.
 - Máximo `MAX_ACTIVE_APPOINTMENTS_PER_CUSTOMER` citas futuras por celular. La cita guarda
   `customerName` tal como se escribió, porque un celular puede usarlo más de una persona.
 - `TimeSlot` es semiabierto `[start, end)`: citas consecutivas no se solapan.
@@ -213,6 +216,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   nada si usa el básico. Texto plano y enlace a `wa.me` para escribirle al cliente.
 - Nada con citas se borra: servicios, productos y barberos solo se ocultan (`active: false`). Editar un
   precio no toca citas existentes, porque guardan su foto de precio.
+- El dueño no se renombra ni se oculta (`assertBarberChange`, `core/catalog/rules.ts`); en `/panel/barberos` sale
+  aparte, sin formulario. El horario sigue siendo común (almuerzo = dos tramos); las ausencias de un barbero van con bloqueos.
 - Ocultar un barbero o bloquear un periodo nunca cancela citas: la acción devuelve un `warning` con cuántas
   quedan afectadas y el barbero decide en la agenda.
 - `next build` vacía `.next/`: no dejes ahí nada que quieras conservar.
@@ -312,6 +317,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - `BotToolExecutor.executeTool(llamada, { verifiedPhone, now })` (`application/use-cases/assistant/`) ejecuta las
   5 herramientas de `bot-tools.ts`: `listar_catalogo_y_mis_citas`, `consultar_huecos_dinamicos`, `reservar_cita`,
   `confirmar_asistencia` y `cancelar_cita`. `botToolDefinitions()` las da en JSON Schema para el LLM.
+- El prompt marca al dueño (`(dueño)`, al final del catálogo) y no lo sugiere. `consultar_huecos_dinamicos` sin horas trae
+  `alternatives` (hasta 3 horas por opción, reservables sin otra ronda).
 - **Ningún esquema lleva el celular**: lo pone el servidor (`verifiedPhone`, el remitente firmado por Meta). Lo
   que el modelo mande de más se descarta. Una cita de otro número responde igual que una que no existe.
 - `reservar_cita` hace lo mismo que la reserva web: `issue()` si nace pendiente (sin código, el ciclo no la ve),
