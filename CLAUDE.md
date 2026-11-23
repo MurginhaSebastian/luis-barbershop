@@ -33,6 +33,7 @@ npm run check        # lint + tipos + tests + build: solo al final del proyecto,
 npm test                                    # Vitest, todos los tests
 npx vitest run src/core/core.test.ts -t "availableSlots"   # un archivo / un test
 npm run test:coverage  # cobertura de la lógica, con mínimo obligatorio
+npm run test:ia      # batería del asistente contra Groq real: gasta cupo (~50k tokens por corrida completa; el plan gratuito da 200k/día), usa -t para casos sueltos
 npm run test:mutation  # rompe reglas críticas a propósito y exige que un test lo detecte
 npm run test:e2e     # Playwright + axe contra el build real (necesita Docker encendido)
 npx playwright test e2e/booking.spec.ts -g "sin preferencia"   # una prueba de navegador
@@ -90,6 +91,9 @@ Las dependencias solo apuntan hacia dentro: `app → presentation → applicatio
 si `npm run lint` se queja de un import entre capas, se corrige el diseño, no la regla.
 
 ### Reservas
+- Áreas: `services.area` (`barberia` | `spa`) y `barbers.areas` (al menos una). `bookingArea` (`core/catalog/rules.ts`)
+  da el área común de los servicios y rechaza mezclarlas: una cita no cruza áreas. "Sin preferencia", el barbero
+  elegido y las alternativas (`alternatives`) solo cuentan profesionales del área.
 - Toda la lógica de agenda es pura y vive en `src/core/scheduling/`: `availableSlots` genera los
   inicios (cada `SLOT_STEP_MINUTES` desde la apertura de cada tramo) y descarta los que no caben,
   pisan algo ocupado o caen fuera de la ventana; las constantes del negocio están en
@@ -148,6 +152,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `presentation/lib/format.ts` (zona America/Lima).
 
 ### Landing (portada)
+- "Para ellas" (`landing/para-ellas.tsx`, `#para-ellas`, acento `--rose` de `globals.css`): Dluiss Spa & Beauty. Sale con
+  servicios spa activos y la clave `paraEllas` de `site_settings`; el mosaico de servicios muestra solo Barbería.
 - Logos propios en `public/images/`: `logo.webp` en la cabecera (`app/layout.tsx`) y `logo-sello.webp` en el pie y sobre el formulario de `/panel/entrar`, ambos con `next/image`.
 - La marca es `SHOP_NAME` (`core/entities/site.ts`): nunca se escribe a mano. El contacto, la dirección y las redes reales viven solo en `site_settings` (`/panel/web`), jamás en el repo.
 - `/privacidad` (`app/privacidad/page.tsx`): política de privacidad (Ley 29733); dirección y WhatsApp salen de `getSiteSettings` en un `<Suspense>`. La enlazan el pie y el paso de datos de la reserva (sin casilla).
@@ -210,7 +216,10 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   encima de 4.5:1 (axe lo vigila); la etiqueta siempre dice el estado en palabras.
 - Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`): acciones en
   `app/panel/admin-actions.ts`, formato en `admin-schema.ts` y reglas en `core/catalog/rules.ts`. Los casos de
-  uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple.
+  uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple. Cada
+  servicio y profesional lleva su área; un servicio visible exige precio > 0. `EditableList` y `SectionsForm` envían con
+  `onSubmit` + `startTransition`, no con `action=`: el `form.reset()` de React 19 devolvía las casillas controladas a su
+  valor inicial y no se podía ocultar nada.
 - `/panel/chats`: pestaña de solo lectura con las conversaciones de las últimas 24 h del asistente de IA
   (`GetChatsUseCase`, `ChatsView`; la selección es `?c=<celular>`). Solo lo que atiende el asistente de IA: no hay
   nada si usa el básico. Texto plano y enlace a `wa.me` para escribirle al cliente.
@@ -286,6 +295,14 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `AI_MODEL` (por defecto `openai/gpt-oss-120b`; `llama-3.3-70b-versatile` se retiró). Hasta 3 rondas de
   `tool_calls` y una última petición sin herramientas, todo en 12 s. Los códigos ("Confirmo mi cita KRT482", los
   botones del recordatorio) van al asistente básico, sin modelo.
+- El prompt: catálogo por área (servicios con ids y profesionales con su área, el dueño marcado), línea `HORARIO`
+  (`describeWeeklyHours`, `core/scheduling/`) y regla 12: atiende todos los días, también los cerrados, y ofrece el
+  siguiente día abierto. Si el servicio existe en las dos áreas o no está claro, pregunta exacto "¿Te estás
+  refiriendo al área de Barbería o al área de Spa y estilista?"; si solo existe en una, no pregunta. Sinónimos
+  (desvanecido es fade, uñas es manicure o pedicure). Un estilo fuera de la lista: no inventa, invita a venir con una
+  foto, ofrece uno de la lista y recuerda que solo agenda. Las palabras de confianza ("vecino", "jefe", "causa") son
+  trato cordial, sin preferencia de barbero. Regla 6: preguntar por Luis o el dueño ("¿va a estar?", "¿me va a
+  cortar?") no es pedir una persona: con cita dice con quién es, sin cita consulta sus horas.
 - Contexto: `assistant_messages` (migración 0010), los últimos 6 turnos de las 2 últimas horas por celular, ordenados
   por secuencia, no por hora. Al escribir se borra lo de más de 24 h de cualquier celular: ese historial más largo
   sirve para contar el uso (`countUserTurns`).
@@ -298,7 +315,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   mensajes por hora y 25 por día, tras el desvío de códigos (estos y los botones del recordatorio ni cuentan ni se
   limitan): respuesta fija con el WhatsApp de Luis, sin Groq ni historial.
 - Respuestas fijas sin Groq (`quickReplyKind`, `use-cases/assistant/quick-replies.ts`), en este orden: multimedia →
-  código → respuestas fijas → límite → Groq. Saludo solo ("hola", "buenas tardes") y mensaje sin sentido (sin letras
+  código → respuestas fijas → límite → Groq. Entre las fijas, `offtopic` se evalúa primero (ignora tus instrucciones,
+  modo desarrollador, actúa como…) y responde `OFFTOPIC_REPLY`, la misma frase de la regla 1. Saludo solo ("hola", "buenas tardes", o con trato de confianza: "vecino, ¿cómo estás?") y mensaje sin sentido (sin letras
   ni cifras, o una letra suelta) solo cuando no hay conversación en las últimas 2 h: a mitad de una reserva un "👍" o
   un "ok" es un sí y va al modelo. Pedir hablar con una persona o un reclamo ("hablar con Luis", "queja"; "dueño" solo
   con un verbo de contacto) responde `humanHandoffText` con el WhatsApp de Luis, el mismo texto que el prompt
