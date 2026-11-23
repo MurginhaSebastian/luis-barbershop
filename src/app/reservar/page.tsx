@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { bookingArea } from "@/core/catalog/rules";
+import { coversArea, type ServiceArea } from "@/core/entities/catalog";
 import { bookingWindow, shopDateOf, shopWeekday } from "@/core/scheduling/availability";
 import { getUseCases } from "@/infrastructure/container";
 import { BarberStep } from "@/presentation/components/booking/barber-step";
@@ -33,7 +35,23 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
 
   // Lo que llega en la URL solo cuenta si sigue existiendo en el catálogo.
   const chosen = services.filter((s) => fromUrl.servicios.includes(s.id));
-  const barber = barbers.find((b) => b.id === fromUrl.barbero);
+  // Servicios de las dos áreas en la URL: se vuelve al paso 1 con el aviso de la regla.
+  let area: ServiceArea = "barberia";
+  try {
+    area = bookingArea(chosen);
+  } catch (error) {
+    const selection = { servicios: chosen.map((s) => s.id) };
+    return (
+      <ServiceStep
+        progress={<StepProgress current={1} selection={selection} />}
+        services={services}
+        selection={selection}
+        notice={error instanceof Error ? error.message : undefined}
+      />
+    );
+  }
+  const areaBarbers = barbers.filter((b) => coversArea(b, area));
+  const barber = areaBarbers.find((b) => b.id === fromUrl.barbero);
   const anyBarber = fromUrl.barbero === ANY_BARBER;
 
   const { notBefore, notAfter } = bookingWindow(new Date());
@@ -52,7 +70,7 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
 
   if (step === 1) return <ServiceStep progress={progress(1)} services={services} selection={selection} />;
   if (step === 2) {
-    return <BarberStep progress={progress(2)} barbers={barbers} services={chosen} selection={selection} />;
+    return <BarberStep progress={progress(2)} barbers={areaBarbers} area={area} services={chosen} selection={selection} />;
   }
 
   const barberId = selection.barbero;

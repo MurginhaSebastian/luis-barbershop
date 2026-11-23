@@ -1,7 +1,7 @@
 import { ChevronRight, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { type Barber, ownerLast, type Service } from "@/core/entities/catalog";
+import { type Barber, ownerLast, type Service, type ServiceArea } from "@/core/entities/catalog";
 import { ANY_BARBER, bookingHref, type BookingSelection } from "@/presentation/lib/booking-flow";
 import { BookingSummary } from "./booking-summary";
 import { PendingHint } from "./pending-hint";
@@ -13,6 +13,7 @@ export function BarberStep(props: {
   progress: ReactNode;
   barbers: Barber[];
   services: Service[];
+  area: ServiceArea;
   selection: BookingSelection;
 }) {
   const next = (barbero: string) => bookingHref(3, { ...props.selection, barbero, hora: undefined });
@@ -21,7 +22,7 @@ export function BarberStep(props: {
     <StepLayout
       key="barber-step"
       progress={props.progress}
-      title="¿Con quién?"
+      title={props.area === "spa" ? "¿Con qué estilista?" : "¿Con quién?"}
       backHref={bookingHref(1, props.selection)}
       summary={<BookingSummary services={props.services} />}
     >

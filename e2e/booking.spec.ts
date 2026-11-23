@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { resetBookings, withE2eDatabase } from "./database";
 import { bookUntilData, chooseBarber, chooseDay, chooseFirstHour, chooseServices, fillData, newPhone } from "./helpers";
@@ -198,4 +199,40 @@ test("los días cerrados no se pueden elegir", async ({ page }) => {
   await expect(page.getByText("Ese día la barbería está cerrada.")).toBeVisible();
   await page.getByRole("link", { name: "Ver el siguiente día" }).click();
   await expect(page.getByRole("region", { name: "Mañana" })).toBeVisible();
+});
+
+test("reserva de spa completa: sin preferencia asigna a la estilista", async ({ page }) => {
+  await page.goto("/reservar");
+  await expect(page.getByRole("heading", { name: "Spa y estilista" })).toBeVisible();
+  await page.getByLabel(/Manicure de prueba/).check();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("heading", { name: "¿Con qué estilista?" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Luis" })).toHaveCount(0);
+  await chooseBarber(page, /Sin preferencia/);
+  await chooseDay(page);
+  await chooseFirstHour(page);
+  await fillData(page);
+  await page.getByRole("button", { name: "Reservar cita" }).click();
+  await expect(page.getByRole("heading", { name: "Reserva registrada" })).toBeVisible();
+  expect((await lastAppointment()).barber).toBe("Estilista invitada");
+});
+
+test("mezclar barbería y spa muestra el aviso y no avanza", async ({ page }) => {
+  await page.goto("/reservar");
+  await page.getByLabel(/Corte clásico/).check();
+  await page.getByLabel(/Manicure de prueba/).check();
+  await page.getByRole("button", { name: "Continuar" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText("Reserva por separado los servicios de Barbería y de Spa y estilista.");
+  await expect(page.getByRole("heading", { name: /Qué servicio/ })).toBeVisible();
+  await new AxeBuilder({ page }).analyze().then((r) => expect(r.violations).toEqual([]));
+});
+
+test("en barbería no aparece la estilista y un barbero de otra área cae en el paso 2", async ({ page }) => {
+  await chooseServices(page, [/Corte clásico/]);
+  await expect(page.getByRole("main").getByRole("link", { name: "Estilista invitada" })).toHaveCount(0);
+  const href = await page.getByRole("main").getByRole("link", { name: "Luis" }).getAttribute("href");
+  const url = new URL(href!, "http://x");
+  url.searchParams.set("barbero", "10000000-0000-4000-8000-000000000003");
+  await page.goto(`${url.pathname}${url.search}`);
+  await expect(page.getByRole("heading", { name: "¿Con quién?" })).toBeVisible();
 });
