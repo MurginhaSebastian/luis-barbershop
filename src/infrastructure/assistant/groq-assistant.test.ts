@@ -26,7 +26,7 @@ const RESULTS: Record<string, ToolResult> = {
 const counts = { hour: 0, day: 0 };
 beforeEach(() => Object.assign(counts, { hour: 0, day: 0 }));
 
-function makeAssistant(responses: (Response | Error)[]) {
+function makeAssistant(responses: (Response | Error)[], barbers: object[] = [{ id: "b1", name: "Luis", active: true }]) {
   const queue = [...responses];
   const fetchImpl = vi.fn<typeof fetch>(async () => {
     const next = queue.shift() ?? groq({ content: "fin" });
@@ -51,7 +51,7 @@ function makeAssistant(responses: (Response | Error)[]) {
     messaging: { sendText, sendTemplate: async () => {} },
     siteSettings: { get: async () => ({ ...DEFAULT_SITE_SETTINGS, contact: { whatsapp: "51900000000" } }), save: async () => {} },
     services: { findAllActive: async () => [{ id: "s1", name: "Fade", durationMinutes: 45, priceCents: 3500, active: true }] } as never,
-    barbers: { findAllActive: async () => [{ id: "b1", name: "Luis", active: true }] } as never,
+    barbers: { findAllActive: async () => barbers } as never,
     fallback,
     now: () => NOW,
     siteUrl: "https://luis.example",
@@ -248,6 +248,18 @@ describe("contexto", () => {
     const t = makeAssistant([groq({ content: "hola" })]);
     await t.assistant.handleMessage(message("quiero info"));
     expect(t.bodies()[0].messages[0].content).toContain("CATÁLOGO. Servicios: Fade 45min S/35 id=s1. Barberos: Luis id=b1.");
+  });
+
+  test("el prompt marca al dueño, lo deja al final y lleva la regla de alternativas", async () => {
+    const t = makeAssistant([groq({ content: "hola" })], [
+      { id: "b1", name: "Luis", active: true, isOwner: true },
+      { id: "b2", name: "Ana", active: true },
+    ]);
+    await t.assistant.handleMessage(message("quiero info"));
+    const content = t.bodies()[0].messages[0].content as string;
+    expect(content).toContain("Barberos: Ana id=b2; Luis id=b1 (dueño).");
+    expect(content).toContain("No ofrezcas ni sugieras al dueño");
+    expect(content).toContain("alternatives");
   });
 
   test("el prompt fija fecha y hora de Lima, el alcance, cero inventos, la desambiguación y el contacto de Luis", async () => {

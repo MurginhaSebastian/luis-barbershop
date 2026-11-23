@@ -224,6 +224,21 @@ describe("consultar_huecos_dinamicos", () => {
     expect((result as { data: { slots: { time: string }[] } }).data.slots[0].time).toBe("10:00");
   });
 
+  test("barbero lleno: alternatives con otro barbero y como mucho 3 horas reservables; con horas no hay alternatives", async () => {
+    const day = ["10:00", "10:30", "11:00", "11:30", "12:00", "12:30"];
+    day.forEach((h, i) => w.book(id(40 + i), OTHER, lima(h)));
+    const full = (await call("consultar_huecos_dinamicos", { serviceIds: [CORTE], date: "2026-11-12", barberId: LUIS })) as {
+      data: { slots: unknown[]; alternatives: { otherBarbers: { barberId: string; slots: { startTime: string }[] }[]; nextFree: unknown } };
+    };
+    expect(full.data.slots).toEqual([]);
+    const [ana] = full.data.alternatives.otherBarbers;
+    expect(ana.barberId).toBe(ANA);
+    expect(ana.slots).toHaveLength(3);
+    expect(ana.slots[0].startTime).toBe("2026-11-12T10:00:00-05:00");
+    const free = (await call("consultar_huecos_dinamicos", { serviceIds: [CORTE], date: "2026-11-12", barberId: ANA })) as { data: object };
+    expect(free.data).not.toHaveProperty("alternatives");
+  });
+
   test("un servicio retirado es un error de negocio que el modelo puede explicar", async () => {
     expect(await call("consultar_huecos_dinamicos", { serviceIds: [RETIRADO], date: "2026-11-12" })).toMatchObject({
       ok: false,

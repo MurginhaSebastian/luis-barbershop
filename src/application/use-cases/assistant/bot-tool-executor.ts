@@ -5,6 +5,7 @@ import type { ICustomerRepository } from "@/application/ports/repositories/custo
 import type { IServiceRepository } from "@/application/ports/repositories/service-repository";
 import { shopDateTime, shopIso, shopTime } from "@/application/shop-time";
 import { type Appointment, AppointmentStatus, totalDuration } from "@/core/entities/appointment";
+import { ownerLast } from "@/core/entities/catalog";
 import { normalizePhone } from "@/core/entities/customer";
 import { shopDateOf } from "@/core/scheduling/availability";
 import { CUSTOMER_CANCEL_MIN_MINUTES } from "@/core/scheduling/booking-policy";
@@ -58,7 +59,7 @@ export interface BotToolDeps {
   barbers: IBarberRepository;
   customers: ICustomerRepository;
   appointments: IAppointmentRepository;
-  availability: Pick<GetAvailableSlotsUseCase, "execute">;
+  availability: Pick<GetAvailableSlotsUseCase, "execute" | "alternatives">;
   booking: Pick<CreateAppointmentUseCase, "execute">;
   confirmation: Pick<BookingConfirmationUseCase, "issue" | "confirm" | "cancel" | "notifyReleased">;
   push: Pick<ManagePushUseCase, "notifyNewBooking" | "notifyConfirmed" | "notifyCancelled">;
@@ -234,7 +235,7 @@ export class BotToolExecutor {
           priceCents,
           price: `S/ ${(priceCents / 100).toFixed(2)}`,
         })),
-        barbers: barbers.map(({ id, name }) => ({ id, name })),
+        barbers: ownerLast(barbers).map(({ id, name, isOwner }) => ({ id, name, ...(isOwner && { isOwner }) })),
         myActiveAppointments: await this.views(mine),
       },
     };
@@ -242,11 +243,18 @@ export class BotToolExecutor {
 
   private async freeSlots(args: { serviceIds: string[]; date: string; barberId?: string | null }): Promise<ToolResult> {
     const services = await loadBookableServices(this.deps.services, args.serviceIds);
-    const slots = await this.deps.availability.execute({ barberId: args.barberId ?? null, serviceIds: args.serviceIds, date: args.date });
-    return {
-      ok: true,
-      data: { date: args.date, totalDurationMinutes: totalDuration(services), slots: slots.map(slotView) },
+    const query = { barberId: args.barberId ?? null, serviceIds: args.serviceIds, date: args.date };
+    const slots = await this.deps.availability.execute(query);
+    const base = { date: args.date, totalDurationMinutes: totalDuration(services), slots: slots.map(slotView) };
+    if (slots.length > 0) return { ok: true, data: base };
+    // Sin horas: otras opciones reservables en esta misma respuesta (máx. 3 horas cada una).
+    const alt = await this.deps.availability.alternatives(query);
+    const some = (list: TimeSlot[]) => list.slice(0, 3).map(slotView);
+    const alternatives = {
+      otherBarbers: alt.otherBarbers.map((b) => ({ barberId: b.barberId, name: b.name, slots: some(b.slots) })),
+      nextFree: alt.nextFree && { date: alt.nextFree.date, slots: some(alt.nextFree.slots) },
     };
+    return { ok: true, data: { ...base, alternatives } };
   }
 
   /** Citas futuras del celular verificado que aún cuentan: pendientes, confirmadas o en riesgo. */

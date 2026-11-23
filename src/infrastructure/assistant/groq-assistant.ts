@@ -1,3 +1,4 @@
+import { ownerLast } from "@/core/entities/catalog";
 import { SHOP_NAME } from "@/core/entities/site";
 import { z } from "zod";
 import type { AiAssistantPort, IncomingMessage, MessageOutcome } from "@/application/ports/assistant";
@@ -104,7 +105,8 @@ export function systemPrompt(now: Date, contact: string | undefined, catalog = "
       : `6. Si el cliente tiene un reclamo o pide hablar con una persona, dile ${luis}.`,
     "7. Las herramientas ya saben quién escribe: nunca pidas ni uses otro número de celular.",
     "8. Tras reservar, repite lo que diga el campo next de reservar_cita. Si la cita quedó pendiente, no digas que está confirmada: di que quedó separada y que 35 minutos antes le escribiremos por WhatsApp para que la confirme.",
-    "9. Responde en español, breve y cordial, en texto plano de WhatsApp (sin tablas ni markdown). Precios en soles (S/) y horas de Perú en formato 24 h.",
+    "9. No ofrezcas ni sugieras al dueño; si el cliente lo pide por nombre, consulta sus horas con su barberId. Si no pide barbero, consulta sin barberId. Si consultar_huecos_dinamicos no trae horas y trae alternatives, ofrécelas en esa respuesta (otro barbero ese día o el próximo día libre) y deja elegir; nunca respondas solo que está lleno. Si acepta otro barbero, reserva con su barberId.",
+    "10. Responde en español, breve y cordial, en texto plano de WhatsApp (sin tablas ni markdown). Precios en soles (S/) y horas de Perú en formato 24 h.",
   ].join("\n");
 }
 
@@ -220,7 +222,7 @@ export class GroqAssistant implements AiAssistantPort {
   private async catalogLine(): Promise<string> {
     const [services, barbers] = await Promise.all([this.deps.services.findAllActive(), this.deps.barbers.findAllActive()]);
     const s = services.map((x) => `${x.name} ${x.durationMinutes}min S/${x.priceCents / 100} id=${x.id}`).join("; ");
-    const b = barbers.map((x) => `${x.name} id=${x.id}`).join("; ");
+    const b = ownerLast(barbers).map((x) => `${x.name} id=${x.id}${x.isOwner ? " (dueño)" : ""}`).join("; ");
     return `CATÁLOGO. Servicios: ${s || "ninguno"}. Barberos: ${b || "ninguno"}.`;
   }
 
