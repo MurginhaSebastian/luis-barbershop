@@ -114,6 +114,17 @@ Lo que se fue pidiendo durante el proyecto, en resumen:
   responder que no irá al recordatorio. Una cita confirmada con menos de 35 minutos no se cancela sola: se le
   pide avisar a la barbería.
 
+### Marca, SEO y privacidad
+- **Marca.** El nombre es D'luiss Barber Shop y vive en una sola constante, `SHOP_NAME`.
+- **Logos.** `logo.webp` en la cabecera y `logo-sello.webp` en el pie y sobre el formulario de `/panel/entrar`,
+  ambos con `next/image` (se redimensionan al servir).
+- **Privacidad.** Página `/privacidad` con la política según la Ley 29733.
+- **Buscadores y redes.** `robots.ts`, `sitemap.ts` y metadatos para redes sociales (`es_PE`), con `SITE_URL`
+  como base. La portada lleva datos estructurados JSON-LD de tipo `BarberShop`.
+- **Acceso discreto.** El pie tiene un enlace "Acceso barbero" hacia el panel.
+- **Panel.** `npm run panel:clave` permite elegir la clave. El indicador de desarrollo de Next está apagado
+  (`devIndicators`).
+
 ### Para el barbero (panel privado en `/panel`)
 - **Agenda en dos columnas.** A la izquierda el calendario (vistas Día, Semana y Mes); al lado, "Pendientes /
   En riesgo" de cualquier día, con el plazo de cada una. En el móvil la columna va debajo, con el interruptor
@@ -423,8 +434,18 @@ Cifras comprobadas en las páginas oficiales en noviembre de 2026. Conviene revi
    - Video y fotos de la barbería (hoy son de bancos libres: Mixkit y Unsplash).
    - Testimonios con permiso.
    - Libro de reclamaciones virtual.
-   - Aviso de privacidad (Ley 29733).
 6. **Piloto** de una o dos semanas.
+
+### Estado del despliegue y pendientes
+- **Despliegue.** Previsto en Railway con Postgres, un volumen para las fotos, la región `us-east` y el
+  servicio siempre activo (la tarea de cada 5 minutos y el agrupador de mensajes viven en memoria). **Está en
+  pausa** en el inicio de sesión de la CLI de Railway.
+- **Lo que debe aportar el dueño:**
+  - el portafolio de Meta Business con un chip aparte, para activar WhatsApp y la IA;
+  - el video propio de la portada;
+  - los servicios, precios y horario reales, que se cargan en `/panel`.
+- **Datos reales.** La dirección y las redes viven solo en `site_settings` (se editan en `/panel/web`), nunca en
+  el repositorio, que es público.
 
 ---
 
