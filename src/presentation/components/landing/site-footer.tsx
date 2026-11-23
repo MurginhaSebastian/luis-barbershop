@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BookLink } from "./book-link";
 import { container } from "./styles";
 
@@ -79,6 +80,11 @@ export function SiteFooter(props: {
             </ul>
           </nav>
         )}
+      </div>
+      <div className={`${container} pb-8`}>
+        <Link href="/privacidad" className={`${linkClass} text-sm underline underline-offset-4`}>
+          Política de privacidad
+        </Link>
       </div>
     </footer>
   );

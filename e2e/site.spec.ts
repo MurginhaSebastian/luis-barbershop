@@ -254,6 +254,21 @@ test.describe("adaptable", () => {
   });
 });
 
+test.describe("privacidad", () => {
+  test("la política carga, es accesible y se enlaza desde el pie y el paso de datos", async ({ page }) => {
+    await page.goto("/privacidad");
+    await expect(page.getByRole("heading", { level: 1, name: "Política de privacidad" })).toBeVisible();
+    await expectNoSeriousA11yIssues(page, "privacidad");
+
+    await page.goto("/");
+    await page.getByRole("contentinfo").getByRole("link", { name: "Política de privacidad" }).click();
+    await expect(page).toHaveURL(/\/privacidad$/);
+
+    await bookUntilData(page);
+    await expect(page.getByRole("main").getByRole("link", { name: "política de privacidad" })).toHaveAttribute("href", "/privacidad");
+  });
+});
+
 test.describe("accesibilidad", () => {
   test("axe sin fallos graves en la portada y en cada paso", async ({ page }) => {
     await page.goto("/");

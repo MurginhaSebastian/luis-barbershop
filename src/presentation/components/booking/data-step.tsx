@@ -192,6 +192,13 @@ export function DataStep(props: {
           <p className="mt-3 max-w-md text-sm text-muted-foreground">
             Usamos tu nombre y celular solo para gestionar tu cita y escribirte sobre ella.
           </p>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            Al reservar aceptas nuestra{" "}
+            <Link href="/privacidad" className="underline underline-offset-4">
+              política de privacidad
+            </Link>
+            .
+          </p>
         </div>
       </form>
     </StepLayout>
