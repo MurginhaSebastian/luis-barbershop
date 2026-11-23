@@ -145,6 +145,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `presentation/lib/format.ts` (zona America/Lima).
 
 ### Landing (portada)
+- Logos propios en `public/images/`: `logo.webp` en la cabecera (`app/layout.tsx`) y `logo-sello.webp` en el pie y sobre el formulario de `/panel/entrar`, ambos con `next/image`.
 - La marca es `SHOP_NAME` (`core/entities/site.ts`): nunca se escribe a mano. El contacto, la dirección y las redes reales viven solo en `site_settings` (`/panel/web`), jamás en el repo.
 - `/privacidad` (`app/privacidad/page.tsx`): política de privacidad (Ley 29733); dirección y WhatsApp salen de `getSiteSettings` en un `<Suspense>`. La enlazan el pie y el paso de datos de la reserva (sin casilla).
 - La portada es un video (`HeroVideo`, `public/videos/`, créditos en su `CREDITS.md`): sin sonido, en bucle,

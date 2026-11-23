@@ -12,3 +12,5 @@ atribución obligatoria). Se sustituyen por fotos reales de la barbería en cuan
 | herramientas.jpg | Andrea Donato | https://unsplash.com/photos/MNu0n-3BIKs |
 | tijeras.jpg | Salah Regouane | https://unsplash.com/photos/MRCdF3qUbp0 |
 | sillon.jpg | Nathon Oski | https://unsplash.com/photos/EW_rqoSdDes |
+
+logo.webp y logo-sello.webp son los logos propios de la barbería (no son de Unsplash).
