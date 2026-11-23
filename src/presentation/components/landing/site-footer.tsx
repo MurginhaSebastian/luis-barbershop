@@ -82,9 +82,12 @@ export function SiteFooter(props: {
           </nav>
         )}
       </div>
-      <div className={`${container} pb-8`}>
+      <div className={`${container} flex flex-wrap gap-x-6 gap-y-2 pb-8`}>
         <Link href="/privacidad" className={`${linkClass} text-sm underline underline-offset-4`}>
           Política de privacidad
+        </Link>
+        <Link href="/panel/entrar" className={`${linkClass} text-sm`}>
+          Acceso barbero
         </Link>
       </div>
     </footer>
