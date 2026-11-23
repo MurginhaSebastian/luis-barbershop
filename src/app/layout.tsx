@@ -14,13 +14,20 @@ import { WhatsappButton } from "@/presentation/components/landing/whatsapp-butto
 import { cn } from "@/presentation/lib/utils";
 import { whatsappLink } from "@/presentation/lib/whatsapp";
 import { getSiteSettings } from "./site-settings";
+import { SITE_URL } from "./site-url";
 
 const sans = Manrope({ subsets: ["latin"], variable: "--font-sans" });
 const display = Bodoni_Moda({ subsets: ["latin"], variable: "--font-display" });
 
+const TITLE = "D'luiss Barber Shop | Barbería en Las Quintanas, Trujillo — Reserva por WhatsApp";
+const DESCRIPTION =
+  "Fades, diseño de barba y ondulaciones en Las Quintanas, Trujillo. Reserva tu hora directo por WhatsApp.";
+
 export const metadata: Metadata = {
-  title: { default: "Luis Barbershop", template: "%s · Luis Barbershop" },
-  description: "Cortes, fades y barba. Reserva tu hora en línea.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: TITLE, template: `%s · ${SHOP_NAME}` },
+  description: DESCRIPTION,
+  openGraph: { title: TITLE, description: DESCRIPTION, siteName: SHOP_NAME, locale: "es_PE", type: "website", url: "/" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

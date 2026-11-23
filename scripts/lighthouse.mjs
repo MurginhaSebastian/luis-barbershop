@@ -13,8 +13,8 @@ try {
 
 const base = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "");
 const PAGES = ["/", "/reservar", "/panel/entrar"];
-// El panel lleva noindex a propósito: su SEO bajo no es un fallo.
-const PRIVATE = new Set(["/panel/entrar"]);
+// El panel lleva noindex y /reservar está bloqueada en robots.txt: su SEO bajo es intencional.
+const PRIVATE = new Set(["/panel/entrar", "/reservar"]);
 // Con PANEL_SESSION_SECRET válido, mide también la agenda y Chats con una sesión firmada (el token no se imprime).
 const secret = process.env.PANEL_SESSION_SECRET;
 const AUTH_PAGES = ["/panel", "/panel/chats"];

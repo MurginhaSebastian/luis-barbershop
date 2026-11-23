@@ -154,6 +154,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `+faststart`, con autocomprobación; sirve igual para el video real del cliente.
 - Bajo la portada, `ShopFacts`: abierto ahora o cuándo abre (`openingStatus` en `core/scheduling/`, con los
   cierres de toda la barbería; `describeOpening` lo pone en palabras), dirección y precio más bajo.
+- SEO: `robots.ts` (bloquea `/panel`, `/api/` y `/reservar`) y `sitemap.ts` (`/` y `/privacidad`) salen de `SITE_URL` (`app/site-url.ts`, leído al compilar), que también es el `metadataBase` del layout.
 - La cabecera es fija (`scroll-padding-top` en `globals.css` evita que tape anclas y foco). En el móvil, las
   secciones van en `MobileMenu`, un `<details>` que funciona sin JavaScript.
 - Secciones en `src/presentation/components/landing/` (hero, mosaico de servicios, nosotros,
