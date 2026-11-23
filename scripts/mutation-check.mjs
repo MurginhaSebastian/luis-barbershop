@@ -21,6 +21,7 @@ const mutants = [
   ["Sin preferencia: el dueño deja de ser el último recurso", "src/application/use-cases/booking/create-appointment.ts", "a.displacing.length - b.displacing.length || Number(a.isOwner) - Number(b.isOwner)", "a.displacing.length - b.displacing.length"],
   ["Sin preferencia: el dueño libre pierde ante un desplazamiento", "src/application/use-cases/booking/create-appointment.ts", "a.displacing.length - b.displacing.length || Number(a.isOwner) - Number(b.isOwner)", "Number(a.isOwner) - Number(b.isOwner) || a.displacing.length - b.displacing.length"],
   ["Áreas: sin preferencia ofrece profesionales de otra área", "src/application/use-cases/booking/availability.ts", "(await deps.barbers.findAllActive()).filter((b) => coversArea(b, area))", "await deps.barbers.findAllActive()"],
+  ["Catálogo: un servicio sin precio se muestra", "src/core/catalog/rules.ts", "if (service.active && service.priceCents === 0)", "if (false)"],
   ["Alternativas: ofrece al dueño aunque otro barbero pueda", "src/application/use-cases/booking/get-available-slots.ts", "(nonOwners.length > 0 ? nonOwners : others)", "others"],
   ["Clave: cualquier clave sirve", "src/infrastructure/auth/password.ts", "return timingSafeEqual(await derive(password, salt), expected);", "await derive(password, salt);\n  return true;"],
   ["Sesión: una sesión caducada sigue valiendo", "src/infrastructure/auth/session.ts", "return Number(expires) > now.getTime();", "return true;"],

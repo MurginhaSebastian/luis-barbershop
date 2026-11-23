@@ -100,6 +100,22 @@ describe("catálogo", () => {
     expect(repos.data.services[0].priceCents).toBe(3500);
   });
 
+  test("las áreas se guardan, y el dueño conserva las suyas al editarlo", async () => {
+    await catalog.saveService({ ...service, area: "spa" });
+    expect(repos.data.services[0].area).toBe("spa");
+    repos.data.barbers[0].isOwner = true;
+    repos.data.barbers[0].areas = ["barberia", "spa"];
+    await catalog.saveBarber({ id: "b1", name: "Luis", active: true, areas: ["spa"] });
+    expect(repos.data.barbers[0].areas).toEqual(["barberia", "spa"]);
+    await expect(catalog.saveBarber({ id: "b2", name: "Otro", active: true, areas: [] })).rejects.toThrow("Elige al menos un área.");
+  });
+
+  test("un servicio sin precio no se puede mostrar, pero sí guardar oculto", async () => {
+    await expect(catalog.saveService({ ...service, priceCents: 0 })).rejects.toThrow("Pon un precio antes de mostrar el servicio.");
+    await catalog.saveService({ ...service, priceCents: 0, active: false });
+    expect(repos.data.services).toHaveLength(1);
+  });
+
   test("lo inválido no se guarda", async () => {
     await expect(catalog.saveService({ ...service, priceCents: -1 })).rejects.toThrow(InvalidCatalogError);
     await expect(catalog.saveProduct({ name: "", priceCents: 100, active: true })).rejects.toThrow(InvalidCatalogError);

@@ -43,6 +43,7 @@ export class ManageCatalogUseCase {
       const current = await this.deps.barbers.findById(input.id);
       if (current) assertBarberChange(current, barber);
       barber.isOwner = current?.isOwner ?? false;
+      if (current?.isOwner) barber.areas = current.areas; // el dueño no tiene formulario: conserva las suyas
     } else {
       // El primer barbero que se crea es el dueño.
       barber.isOwner = (await this.deps.barbers.findAll()).length === 0;

@@ -30,12 +30,12 @@ describe("precio en soles", () => {
 
 describe("servicio", () => {
   test("un alta llega sin id y activa si se marca", () => {
-    const r = parseServiceForm(form({ id: "", name: " Corte ", durationMinutes: "30", price: "30", active: "on" }));
-    expect(r.data).toEqual({ id: undefined, name: "Corte", durationMinutes: 30, priceCents: 3000, active: true });
+    const r = parseServiceForm(form({ id: "", name: " Corte ", durationMinutes: "30", price: "30", active: "on", area: "spa" }));
+    expect(r.data).toEqual({ id: undefined, name: "Corte", durationMinutes: 30, priceCents: 3000, active: true, area: "spa" });
   });
 
   test("sin marcar queda oculto y una edición conserva el id", () => {
-    const r = parseServiceForm(form({ id: ID, name: "Corte", durationMinutes: "30", price: "30" }));
+    const r = parseServiceForm(form({ id: ID, name: "Corte", durationMinutes: "30", price: "30", area: "barberia" }));
     expect(r.data).toMatchObject({ id: ID, active: false });
   });
 
@@ -45,9 +45,28 @@ describe("servicio", () => {
   });
 });
 
-test("barbero", () => {
-  expect(parseBarberForm(form({ name: "Luis", active: "on" })).data).toMatchObject({ name: "Luis", active: true });
-  expect(parseBarberForm(form({ name: "L" })).success).toBe(false);
+test("el área del servicio es una de las dos", () => {
+  expect(parseServiceForm(form({ name: "Corte", durationMinutes: "30", price: "30", area: "otra" })).success).toBe(false);
+  expect(parseServiceForm(form({ name: "Corte", durationMinutes: "30", price: "30" })).success).toBe(false);
+});
+
+describe("barbero", () => {
+  const withAreas = (areas: string[], fields: Record<string, string> = { name: "Luis", active: "on" }) => {
+    const f = form(fields);
+    for (const a of areas) f.append("areas", a);
+    return parseBarberForm(f);
+  };
+
+  test("lleva una o dos áreas", () => {
+    expect(withAreas(["spa"]).data).toMatchObject({ name: "Luis", active: true, areas: ["spa"] });
+    expect(withAreas(["barberia", "spa"]).data?.areas).toEqual(["barberia", "spa"]);
+  });
+
+  test("sin área, con un área inventada o con nombre corto no pasa", () => {
+    expect(withAreas([]).error?.issues[0].message).toBe("Elige al menos un área.");
+    expect(withAreas(["otra"]).success).toBe(false);
+    expect(withAreas(["spa"], { name: "L" }).success).toBe(false);
+  });
 });
 
 describe("horario", () => {

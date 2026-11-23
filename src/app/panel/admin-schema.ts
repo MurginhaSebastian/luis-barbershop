@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SERVICE_AREAS } from "@/core/entities/catalog";
 import { shopInstant } from "@/core/scheduling/availability";
 
 // Frontera de confianza del panel: el formato aquí; las reglas de negocio en core/catalog/rules.ts.
@@ -24,9 +25,21 @@ const price = z
 
 const duration = z.coerce.number({ error: "Escribe la duración en minutos." }).int("Escribe la duración en minutos.");
 
-const serviceSchema = z.object({ id: optionalId, name, durationMinutes: duration, priceCents: price, active: z.boolean() });
+const serviceSchema = z.object({
+  id: optionalId,
+  name,
+  durationMinutes: duration,
+  priceCents: price,
+  active: z.boolean(),
+  area: z.enum(SERVICE_AREAS, "Elige el área del servicio."),
+});
 const productSchema = z.object({ id: optionalId, name, priceCents: price, active: z.boolean() });
-const barberSchema = z.object({ id: optionalId, name, active: z.boolean() });
+const barberSchema = z.object({
+  id: optionalId,
+  name,
+  active: z.boolean(),
+  areas: z.array(z.enum(SERVICE_AREAS)).min(1, "Elige al menos un área."),
+});
 
 export const parseServiceForm = (form: FormData) =>
   serviceSchema.safeParse({
@@ -35,6 +48,7 @@ export const parseServiceForm = (form: FormData) =>
     durationMinutes: text(form, "durationMinutes"),
     priceCents: text(form, "price"),
     active: form.get("active") === "on",
+    area: text(form, "area"),
   });
 
 export const parseProductForm = (form: FormData) =>
@@ -46,7 +60,12 @@ export const parseProductForm = (form: FormData) =>
   });
 
 export const parseBarberForm = (form: FormData) =>
-  barberSchema.safeParse({ id: form.get("id"), name: text(form, "name"), active: form.get("active") === "on" });
+  barberSchema.safeParse({
+    id: form.get("id"),
+    name: text(form, "name"),
+    active: form.get("active") === "on",
+    areas: form.getAll("areas"),
+  });
 
 const minuteOfDay = z
   .string()

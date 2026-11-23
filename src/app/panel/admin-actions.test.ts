@@ -37,9 +37,11 @@ function form(fields: Record<string, string>) {
   return f;
 }
 
-const service = form({ name: "Corte", durationMinutes: "30", price: "30", active: "on" });
+const service = form({ name: "Corte", durationMinutes: "30", price: "30", active: "on", area: "spa" });
 const product = form({ name: "Cera", price: "25", active: "on" });
 const barber = form({ name: "Luis", active: "on" });
+barber.append("areas", "barberia");
+barber.append("areas", "spa");
 const hours = form({ weekday: "1", open1: "10:00", close1: "14:00" });
 const block = form({ from: "2026-11-02", to: "2026-11-02" });
 
@@ -74,7 +76,7 @@ describe("sin sesión ninguna acción cambia nada", () => {
 describe("con sesión", () => {
   test("guardar pasa los datos ya validados y refresca", async () => {
     expect(await saveServiceAction({}, service)).toEqual({ ok: "Guardado." });
-    expect(mocks.saveService).toHaveBeenCalledWith(expect.objectContaining({ name: "Corte", priceCents: 3000, active: true }));
+    expect(mocks.saveService).toHaveBeenCalledWith(expect.objectContaining({ name: "Corte", priceCents: 3000, active: true, area: "spa" }));
     expect(mocks.refresh).toHaveBeenCalled();
   });
 

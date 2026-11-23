@@ -9,11 +9,15 @@ export interface EditableField {
   label: string;
   inputMode?: "numeric" | "decimal";
   hint?: string;
+  /** Con opciones es un selector; con `multiple`, casillas. El valor va como "a,b". */
+  options?: { value: string; label: string }[];
+  multiple?: boolean;
 }
 
 export interface EditableItem {
   id: string;
   title: string;
+  subtitle?: string;
   active: boolean;
   values: Record<string, string>;
 }
@@ -23,7 +27,7 @@ type ListProps = { fields: EditableField[]; action: AdminAction };
 /** Ficha de un elemento. Campos controlados: un error al guardar no borra lo escrito. */
 function ItemForm(props: ListProps & { item?: EditableItem; heading: string }) {
   const { item, fields } = props;
-  const blank = Object.fromEntries(fields.map((f) => [f.name, ""]));
+  const blank = Object.fromEntries(fields.map((f) => [f.name, f.options?.[0].value ?? ""]));
   const [values, setValues] = useState(item?.values ?? blank);
   const [active, setActive] = useState(item?.active ?? true);
 
@@ -41,24 +45,70 @@ function ItemForm(props: ListProps & { item?: EditableItem; heading: string }) {
     <form action={formAction} aria-label={props.heading} className="space-y-3 rounded-2xl border border-border bg-card p-4">
       <input type="hidden" name="id" value={item?.id ?? ""} />
       <h3 className="font-heading text-xl wrap-anywhere">{props.heading}</h3>
+      {item?.subtitle && <p className="-mt-2 text-sm text-muted-foreground">{item.subtitle}</p>}
       <div className="grid gap-3 sm:grid-cols-3">
-        {fields.map((field) => (
-          <div key={field.name} className={field.name === "name" ? "sm:col-span-3" : undefined}>
-            <label htmlFor={`${id}-${field.name}`} className="mb-1 block text-sm">
-              {field.label}
-            </label>
-            <input
-              id={`${id}-${field.name}`}
-              name={field.name}
-              required
-              inputMode={field.inputMode}
-              value={values[field.name]}
-              onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
-              className={panelField}
-            />
-            {field.hint && <p className="mt-1 text-xs text-muted-foreground">{field.hint}</p>}
-          </div>
-        ))}
+        {fields.map((field) => {
+          const set = (value: string) => setValues({ ...values, [field.name]: value });
+          const chosen = values[field.name].split(",");
+          return (
+            <div key={field.name} className={field.name === "name" || field.multiple ? "sm:col-span-3" : undefined}>
+              {field.multiple ? (
+                <fieldset>
+                  <legend className="mb-1 text-sm">{field.label}</legend>
+                  <div className="flex flex-wrap gap-x-6">
+                    {field.options?.map((o) => (
+                      <label key={o.value} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          name={field.name}
+                          value={o.value}
+                          checked={chosen.includes(o.value)}
+                          onChange={(e) =>
+                            set(field.options!.filter((x) => (x.value === o.value ? e.target.checked : chosen.includes(x.value))).map((x) => x.value).join(","))
+                          }
+                          className="size-5 accent-primary"
+                        />
+                        {o.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              ) : (
+                <>
+                  <label htmlFor={`${id}-${field.name}`} className="mb-1 block text-sm">
+                    {field.label}
+                  </label>
+                  {field.options ? (
+                    <select
+                      id={`${id}-${field.name}`}
+                      name={field.name}
+                      value={values[field.name]}
+                      onChange={(e) => set(e.target.value)}
+                      className={panelField}
+                    >
+                      {field.options.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`${id}-${field.name}`}
+                      name={field.name}
+                      required
+                      inputMode={field.inputMode}
+                      value={values[field.name]}
+                      onChange={(e) => set(e.target.value)}
+                      className={panelField}
+                    />
+                  )}
+                </>
+              )}
+              {field.hint && <p className="mt-1 text-xs text-muted-foreground">{field.hint}</p>}
+            </div>
+          );
+        })}
       </div>
       <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm">
         <input

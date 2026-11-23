@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AREA_LABEL, SERVICE_AREAS } from "@/core/entities/catalog";
 import { getUseCases } from "@/infrastructure/container";
 import { EditableList } from "@/presentation/components/panel/editable-list";
 import { saveServiceAction } from "../admin-actions";
 import { requirePanelSession } from "../session";
+
+const areaOptions = SERVICE_AREAS.map((value) => ({ value, label: AREA_LABEL[value] }));
 
 export const metadata: Metadata = { title: "Servicios" };
 
@@ -32,12 +35,14 @@ async function Services() {
         { name: "name", label: "Nombre" },
         { name: "durationMinutes", label: "Duración (minutos)", inputMode: "numeric", hint: "De 5 en 5, hasta 240." },
         { name: "price", label: "Precio (S/)", inputMode: "decimal" },
+        { name: "area", label: "Área", options: areaOptions },
       ]}
       items={services.map((s) => ({
         id: s.id,
         title: s.name,
+        subtitle: AREA_LABEL[s.area ?? "barberia"],
         active: s.active,
-        values: { name: s.name, durationMinutes: String(s.durationMinutes), price: (s.priceCents / 100).toFixed(2) },
+        values: { name: s.name, durationMinutes: String(s.durationMinutes), price: (s.priceCents / 100).toFixed(2), area: s.area ?? "barberia" },
       }))}
     />
   );

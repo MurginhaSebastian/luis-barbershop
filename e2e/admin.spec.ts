@@ -94,6 +94,22 @@ test.describe("servicios", () => {
     await expect(card(page, "Fade").getByLabel("Visible en la web")).not.toBeChecked();
   });
 
+  test("el área de un servicio se cambia y se conserva, y sin precio no se muestra", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/servicios");
+    const form = card(page, "Manicure de prueba");
+    await expect(form.getByLabel("Área")).toHaveValue("spa");
+    await form.getByLabel("Área").selectOption({ label: "Barbería" });
+    await form.getByRole("button", { name: "Guardar" }).click();
+    await expect(form.getByText("Guardado.")).toBeVisible();
+    await page.reload();
+    await expect(card(page, "Manicure de prueba").getByLabel("Área")).toHaveValue("barberia");
+
+    await card(page, "Manicure de prueba").getByLabel("Precio (S/)").fill("0");
+    await card(page, "Manicure de prueba").getByRole("button", { name: "Guardar" }).click();
+    await expect(card(page, "Manicure de prueba").getByRole("alert")).toContainText("Pon un precio");
+  });
+
   test("un dato inválido se explica y no borra lo escrito", async ({ page }) => {
     await login(page);
     await page.goto("/panel/servicios");
@@ -133,6 +149,25 @@ test.describe("barberos", () => {
     await form.getByLabel("Nombre").fill("Barbero renombrado");
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(card(page, "Barbero renombrado")).toBeVisible();
+  });
+
+  test("las áreas de un profesional se cambian, y siempre queda una", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/barberos");
+    const form = card(page, "Estilista invitada");
+    const spa = form.getByRole("group", { name: "Áreas" }).getByLabel("Spa y estilista");
+    await expect(spa).toBeChecked();
+    await form.getByLabel("Barbería", { exact: true }).check();
+    await form.getByRole("button", { name: "Guardar" }).click();
+    await expect(form.getByText("Guardado.")).toBeVisible();
+
+    await page.reload();
+    await expect(card(page, "Estilista invitada").getByLabel("Barbería", { exact: true })).toBeChecked();
+    await card(page, "Estilista invitada").getByLabel("Barbería", { exact: true }).uncheck();
+    await card(page, "Estilista invitada").getByLabel("Spa y estilista").uncheck();
+    await card(page, "Estilista invitada").getByRole("button", { name: "Guardar" }).click();
+    await expect(card(page, "Estilista invitada").getByRole("alert")).toContainText("al menos un área");
+    await expect(page.getByText("Luis · Dueño · Barbería")).toBeVisible();
   });
 
   test("un barbero nuevo se puede elegir al reservar", async ({ page }) => {

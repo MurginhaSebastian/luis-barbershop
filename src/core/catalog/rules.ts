@@ -22,9 +22,10 @@ function assertValidPrice(priceCents: number) {
   }
 }
 
-export function assertValidService(service: { name: string; durationMinutes: number; priceCents: number }) {
+export function assertValidService(service: { name: string; durationMinutes: number; priceCents: number; active?: boolean }) {
   assertValidName(service.name);
   assertValidPrice(service.priceCents);
+  if (service.active && service.priceCents === 0) throw new InvalidCatalogError("Pon un precio antes de mostrar el servicio.");
   const { durationMinutes } = service;
   if (
     !Number.isInteger(durationMinutes) ||
@@ -41,8 +42,9 @@ export function assertValidProduct(product: { name: string; priceCents: number }
   assertValidPrice(product.priceCents);
 }
 
-export function assertValidBarber(barber: { name: string }) {
+export function assertValidBarber(barber: { name: string; areas?: readonly string[] }) {
   assertValidName(barber.name);
+  if (barber.areas?.length === 0) throw new InvalidCatalogError("Elige al menos un área.");
 }
 
 /** El dueño conserva su nombre y sigue visible. */

@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { AREA_LABEL, SERVICE_AREAS } from "@/core/entities/catalog";
 import { getUseCases } from "@/infrastructure/container";
 import { EditableList } from "@/presentation/components/panel/editable-list";
 import { saveBarberAction } from "../admin-actions";
 import { requirePanelSession } from "../session";
+
+const areaOptions = SERVICE_AREAS.map((value) => ({ value, label: AREA_LABEL[value] }));
 
 export const metadata: Metadata = { title: "Barberos" };
 
@@ -25,12 +28,15 @@ async function Barbers() {
   const owner = barbers.find((b) => b.isOwner);
   return (
     <>
-      {owner && <p className="mt-6 rounded-lg border border-border px-4 py-3 font-medium">{owner.name} · Dueño</p>}
+      {owner && <p className="mt-6 rounded-lg border border-border px-4 py-3 font-medium">{owner.name} · Dueño · {(owner.areas ?? ["barberia"]).map((a) => AREA_LABEL[a]).join(", ")}</p>}
       <EditableList
         addHeading="Añadir barbero"
         action={saveBarberAction}
-        fields={[{ name: "name", label: "Nombre" }]}
-        items={barbers.filter((b) => !b.isOwner).map((b) => ({ id: b.id, title: b.name, active: b.active, values: { name: b.name } }))}
+        fields={[
+          { name: "name", label: "Nombre" },
+          { name: "areas", label: "Áreas", options: areaOptions, multiple: true },
+        ]}
+        items={barbers.filter((b) => !b.isOwner).map((b) => ({ id: b.id, title: b.name, active: b.active, subtitle: (b.areas ?? ["barberia"]).map((a) => AREA_LABEL[a]).join(", "), values: { name: b.name, areas: (b.areas ?? ["barberia"]).join(",") } }))}
       />
     </>
   );
