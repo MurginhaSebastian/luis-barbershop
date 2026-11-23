@@ -194,7 +194,7 @@ export function DataStep(props: {
           </p>
           <p className="mt-2 max-w-md text-sm text-muted-foreground">
             Al reservar aceptas nuestra{" "}
-            <Link href="/privacidad" className="underline underline-offset-4">
+            <Link href="/privacidad" className="inline-flex min-h-11 items-center underline underline-offset-4">
               política de privacidad
             </Link>
             .

@@ -37,9 +37,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-dvh flex-col antialiased">
         {/* Fija: reservar y moverse por la portada quedan siempre a mano. */}
         <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur">
-          <div className={`${container} flex items-center justify-between gap-3 py-2 md:gap-6 md:py-4`}>
+          <div className={`${container} flex items-center justify-between gap-3 py-2 md:gap-6 md:py-3`}>
             <Link href="/" className="inline-flex min-h-11 items-center">
-              <Image src="/images/logo.webp" alt={SHOP_NAME} width={56} height={56} sizes="(min-width: 768px) 56px, 48px" preload className="size-12 md:size-14" />
+              <Image src="/images/logo.webp" alt={SHOP_NAME} width={52} height={52} sizes="(min-width: 768px) 52px, 48px" preload className="size-12 md:size-13" />
             </Link>
             <nav aria-label="Principal" className="flex items-center gap-1">
               <Suspense fallback={null}>

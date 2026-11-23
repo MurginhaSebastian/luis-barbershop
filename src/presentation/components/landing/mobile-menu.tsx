@@ -11,12 +11,11 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
   const close = () => menu.current?.removeAttribute("open");
 
   useEffect(() => {
-    if (!open) return;
     const outside = (event: PointerEvent) => {
       if (!menu.current?.contains(event.target as Node)) close();
     };
     const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || !menu.current?.open) return;
       close();
       menu.current?.querySelector("summary")?.focus();
     };
@@ -26,7 +25,8 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
       document.removeEventListener("pointerdown", outside);
       document.removeEventListener("keydown", escape);
     };
-  }, [open]);
+    // Siempre montados: así Escape funciona en cuanto el menú se abre, sin esperar al render de `open`.
+  }, []);
 
   return (
     <details ref={menu} onToggle={(e) => setOpen(e.currentTarget.open)} className="md:hidden">
