@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import type { AdminAction, AdminState } from "./admin-state";
 import { FormStatus, panelField, panelSave } from "./form-status";
 
@@ -42,7 +42,14 @@ function ItemForm(props: ListProps & { item?: EditableItem; heading: string }) {
 
   const id = item?.id ?? "nuevo";
   return (
-    <form action={formAction} aria-label={props.heading} className="space-y-3 rounded-2xl border border-border bg-card p-4">
+    <form
+      // `action=` haría form.reset() al terminar y devolvería las casillas controladas a su valor inicial sin re-renderizar.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        startTransition(() => formAction(form));
+      }}
+      aria-label={props.heading} className="space-y-3 rounded-2xl border border-border bg-card p-4">
       <input type="hidden" name="id" value={item?.id ?? ""} />
       <h3 className="font-heading text-xl wrap-anywhere">{props.heading}</h3>
       {item?.subtitle && <p className="-mt-2 text-sm text-muted-foreground">{item.subtitle}</p>}

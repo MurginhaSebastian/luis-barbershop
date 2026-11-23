@@ -160,6 +160,7 @@ test.describe("barberos", () => {
     await form.getByLabel("Barbería", { exact: true }).check();
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByText("Guardado.")).toBeVisible();
+    await expect(form.getByLabel("Barbería", { exact: true })).toBeChecked();
 
     await page.reload();
     await expect(card(page, "Estilista invitada").getByLabel("Barbería", { exact: true })).toBeChecked();
@@ -194,6 +195,10 @@ test.describe("barberos", () => {
     await form.getByLabel("Visible en la web").uncheck();
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByText(/1 cita por venir/)).toBeVisible();
+    // Regresión: el reinicio automático del formulario devolvía la casilla a "marcada".
+    await expect(form.getByLabel("Visible en la web")).not.toBeChecked();
+    await page.reload();
+    await expect(card(page, "Barbero invitado").getByLabel("Visible en la web")).not.toBeChecked();
 
     await chooseServices(page, [/Corte clásico/]);
     await expect(page.getByRole("main").getByRole("link", { name: "Barbero invitado", exact: true })).toHaveCount(0);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import type { ShopContact, SiteSection, SiteSettings } from "@/core/entities/site";
 import type { AdminAction, AdminState } from "./admin-state";
 import { FormStatus, panelField, panelSave } from "./form-status";
@@ -67,7 +67,14 @@ export function SectionsForm({ sections, action }: { sections: SiteSettings["sec
   const [visible, setVisible] = useState(sections);
   const [state, formAction, pending] = useActionState<AdminState, FormData>(action, {});
   return (
-    <form action={formAction} aria-label="Secciones visibles" className="mt-4 space-y-1 rounded-2xl border border-border bg-card p-4">
+    <form
+      // Sin `action=`: su form.reset() devolvería las casillas controladas a su valor inicial.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        startTransition(() => formAction(form));
+      }}
+      aria-label="Secciones visibles" className="mt-4 space-y-1 rounded-2xl border border-border bg-card p-4">
       <p className="mb-2 text-sm text-muted-foreground">Servicios y reserva se muestran siempre.</p>
       {(Object.keys(SECTION_LABELS) as SiteSection[]).map((section) => (
         <label key={section} className="flex min-h-11 cursor-pointer items-center gap-3">
