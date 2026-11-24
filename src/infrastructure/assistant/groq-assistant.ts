@@ -81,6 +81,13 @@ const completion = z.object({
       }),
     )
     .min(1),
+  usage: z
+    .object({
+      prompt_tokens: z.number().nullish(),
+      completion_tokens: z.number().nullish(),
+      prompt_tokens_details: z.object({ cached_tokens: z.number().nullish() }).nullish(),
+    })
+    .nullish(),
 });
 
 /** Para los registros: solo los 3 últimos dígitos del celular. */
@@ -97,12 +104,19 @@ const limaNow = new Intl.DateTimeFormat("es-PE", {
   hour12: false,
 });
 
-export function systemPrompt(now: Date, contact: string | undefined, catalog = "", hours = ""): string {
+/** Lo que cambia cada minuto va aparte, en el último mensaje del usuario: así el prefijo del prompt se cachea en Groq. */
+export function contextBlock(now: Date): string {
+  return [
+    `CONTEXTO: ahora en Perú es ${limaNow.format(now)} (fecha ${shopDateOf(now)}, zona America/Lima, UTC−5).`,
+    `PRÓXIMOS DÍAS: ${describeUpcomingDays(now)}. Para "el sábado", "mañana", etc., usa la fecha de PRÓXIMOS DÍAS; nunca la calcules.`,
+  ].join("\n");
+}
+
+/** Solo lo estable (cambia cuando el dueño edita algo): nada que dependa de la hora. */
+export function systemPrompt(contact: string | undefined, catalog = "", hours = ""): string {
   const luis = contact ? `el WhatsApp de Luis: +${contact}` : "que hable directamente con la barbería";
   return [
-    "Eres el asistente virtual de reservas de " + SHOP_NAME + ", una barbería en Trujillo (Perú). Atiendes por WhatsApp.",
-    `Ahora en Perú es ${limaNow.format(now)} (fecha ${shopDateOf(now)}, zona America/Lima, UTC−5).`,
-    `PRÓXIMOS DÍAS: ${describeUpcomingDays(now)}. Para "el sábado", "mañana", etc., usa la fecha de PRÓXIMOS DÍAS; nunca la calcules.`,
+    "Eres el asistente virtual de reservas de " + SHOP_NAME + ", una barbería en Trujillo (Perú). Atiendes por WhatsApp. La fecha, la hora y PRÓXIMOS DÍAS están en el CONTEXTO del último mensaje del cliente.",
     ...(catalog ? [catalog] : []),
     ...(hours ? [`HORARIO: ${hours}.`] : []),
     "Reglas:",
@@ -209,9 +223,10 @@ export class GroqAssistant implements AiAssistantPort {
   private async converse(phone: string, text: string, now: Date, contact: string | undefined, done: Mutation[]): Promise<string> {
     const history = await this.deps.conversations.recent(phone, new Date(now.getTime() - HISTORY_WINDOW_MS), HISTORY_TURNS);
     const messages: ChatMessage[] = [
-      { role: "system", content: systemPrompt(now, contact, await this.catalogLine(), await this.hoursLine()) },
+      { role: "system", content: systemPrompt(contact, await this.catalogLine(), await this.hoursLine()) },
       ...history,
-      { role: "user", content: text },
+      // Solo en la petición: no se guarda en el historial. Las rondas de herramientas se añaden detrás, sin tocarlo.
+      { role: "user", content: `${text}\n\n${contextBlock(now)}` },
     ];
     const signal = AbortSignal.timeout(TIMEOUT_MS);
     // Si el principal da 429/5xx, el resto de las rondas de este mensaje va con el de respaldo.
@@ -303,8 +318,15 @@ export class GroqAssistant implements AiAssistantPort {
     }
     // Una clave mala u otro 4xx, o el respaldo también caído: se cae al básico.
     if (!response.ok) throw new AssistantUnavailableError(`Groq ${response.status}: ${(await response.text()).slice(0, 200)}`);
-    const parsed = completion.safeParse(await response.json().catch(() => null));
+    const raw: unknown = await response.json().catch(() => null);
+    const parsed = completion.safeParse(raw);
     if (!parsed.success) throw new AssistantUnavailableError("Groq devolvió una respuesta inesperada");
+    const usage = parsed.data.usage;
+    if (usage) {
+      console.info(
+        `asistente de IA: uso ${run.model} entrada=${usage.prompt_tokens ?? "?"} cacheados=${usage.prompt_tokens_details?.cached_tokens ?? 0} salida=${usage.completion_tokens ?? "?"}`,
+      );
+    }
     const choice = parsed.data.choices[0];
     // Cortada por el tope y sin nada utilizable (el razonamiento se comió los tokens): cae al aviso amable.
     if (choice.finish_reason === "length" && !choice.message.content?.trim() && !choice.message.tool_calls?.length) {

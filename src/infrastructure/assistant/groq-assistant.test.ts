@@ -5,14 +5,16 @@ import type { ToolCall, ToolContext, ToolResult } from "@/application/use-cases/
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { humanHandoffText } from "@/application/use-cases/assistant/quick-replies";
 import { MessageBatcher } from "@/application/use-cases/assistant/message-batcher";
-import { FALLBACK_GROQ_MODEL, GroqAssistant, systemPrompt } from "./groq-assistant";
+import { contextBlock, FALLBACK_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
 
 const NOW = new Date("2026-11-16T15:30:00-05:00");
 
-test("el prompt lleva los próximos días con su fecha", () => {
-  const prompt = systemPrompt(NOW, undefined);
-  expect(prompt).toContain("PRÓXIMOS DÍAS: hoy lun 16/11 (2026-11-16); mañana mar 17/11 (2026-11-17); mié 18/11 (2026-11-18);");
-  expect(prompt).toContain("sáb 21/11 (2026-11-21)");
+test("el CONTEXTO lleva la hora y los próximos días con su fecha", () => {
+  const context = contextBlock(NOW);
+  expect(context).toContain("PRÓXIMOS DÍAS: hoy lun 16/11 (2026-11-16); mañana mar 17/11 (2026-11-17); mié 18/11 (2026-11-18);");
+  expect(context).toContain("sáb 21/11 (2026-11-21)");
+  expect(context).toContain("16 de noviembre de 2026");
+  expect(context).toContain("15:30");
 });
 const ME = "51900000001";
 const message = (text: string) => ({ id: "wamid.1", from: ME, text });
@@ -30,7 +32,11 @@ const RESULTS: Record<string, ToolResult> = {
 };
 
 const counts = { hour: 0, day: 0 };
-beforeEach(() => Object.assign(counts, { hour: 0, day: 0 }));
+const clock = { now: NOW };
+beforeEach(() => {
+  Object.assign(counts, { hour: 0, day: 0 });
+  clock.now = NOW;
+});
 
 const FADE = { id: "s1", name: "Fade", durationMinutes: 45, priceCents: 3500, active: true };
 
@@ -68,7 +74,7 @@ function makeAssistant(
     barbers: { findAllActive: async () => barbers } as never,
     schedule: { findBusinessHours: async (d: number) => (d === 0 ? [] : [{ openMinute: 540, closeMinute: 780 }, { openMinute: 840, closeMinute: 1200 }]) },
     fallback,
-    now: () => NOW,
+    now: () => clock.now,
     siteUrl: "https://luis.example",
     fetchImpl,
   });
@@ -153,7 +159,7 @@ describe("barreras de tokens", () => {
     await t.assistant.handleMessage(message("a".repeat(400)));
     const body = t.bodies()[0];
     expect(body).toMatchObject({ temperature: 0.1, max_completion_tokens: 220 });
-    expect(body.messages.at(-1).content).toBe("a".repeat(250));
+    expect(body.messages.at(-1).content).toBe(`${"a".repeat(250)}\n\n${contextBlock(NOW)}`);
     expect(t.history[0]).toEqual({ role: "user", content: "a".repeat(250) });
   });
 
@@ -244,7 +250,7 @@ describe("agrupador de mensajes seguidos", () => {
       await vi.advanceTimersByTimeAsync(3500);
       await Promise.all(done);
       expect(t.fetchImpl).toHaveBeenCalledTimes(1);
-      expect(t.bodies()[0].messages.at(-1).content).toBe("quiero un corte\ncon barba\nmañana 5 pm");
+      expect(t.bodies()[0].messages.at(-1).content).toBe(`quiero un corte\ncon barba\nmañana 5 pm\n\n${contextBlock(NOW)}`);
       expect(t.sendText).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
@@ -262,6 +268,36 @@ describe("multimedia", () => {
   });
 });
 
+describe("prompt apto para la caché de Groq", () => {
+  test("a distinta hora el mensaje de sistema es idéntico; el CONTEXTO solo va en el último mensaje y no se guarda", async () => {
+    const t = makeAssistant([groq({ content: "uno" }), groq({ content: "dos" })]);
+    await t.assistant.handleMessage(message("quiero info"));
+    clock.now = new Date("2026-11-17T09:05:00-05:00");
+    await t.assistant.handleMessage(message("y los precios"));
+    const [a, b] = t.bodies();
+    expect(a.messages[0]).toEqual(b.messages[0]);
+    expect(b.messages.at(-1).content).toContain("17 de noviembre de 2026");
+    expect(b.messages.at(-1).content).not.toBe(a.messages.at(-1).content);
+    expect(t.history.map((m) => m.content).join("\n")).not.toContain("CONTEXTO:");
+  });
+
+  test("las rondas de herramientas no repiten ni mueven el CONTEXTO", async () => {
+    const t = makeAssistant([groq({ tool_calls: [call("c1", "listar_catalogo_y_mis_citas")] }), groq({ content: "listo" })]);
+    await t.assistant.handleMessage(message("mis citas"));
+    const [first, second] = t.bodies();
+    expect(second.messages.slice(0, first.messages.length)).toEqual(first.messages);
+    expect(JSON.stringify(second.messages).split("CONTEXTO:").length - 1).toBe(1);
+  });
+
+  test("registra el uso sin datos del cliente", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const usage = { prompt_tokens: 3000, completion_tokens: 40, prompt_tokens_details: { cached_tokens: 2800 } };
+    const t = makeAssistant([new Response(JSON.stringify({ choices: [{ message: { content: "ok" } }], usage }), { status: 200 })]);
+    await t.assistant.handleMessage(message("quiero info"));
+    expect(info).toHaveBeenCalledWith("asistente de IA: uso openai/gpt-oss-120b entrada=3000 cacheados=2800 salida=40");
+  });
+});
+
 describe("contexto", () => {
   test("pasa los últimos 6 turnos de las 2 últimas horas, y el siguiente mensaje los recibe", async () => {
     const t = makeAssistant([groq({ content: "¿Para qué día?" }), groq({ content: "¿A qué hora?" })]);
@@ -269,7 +305,7 @@ describe("contexto", () => {
     await t.assistant.handleMessage(message("mañana"));
     expect(t.conversations.recent).toHaveBeenCalledWith(ME, new Date(NOW.getTime() - 2 * 3600_000), 6);
     const second = t.bodies()[1].messages;
-    expect(second.slice(1).map((m: { content: string }) => m.content)).toEqual(["Quiero corte y barba", "¿Para qué día?", "mañana"]);
+    expect(second.slice(1).map((m: { content: string }) => m.content)).toEqual(["Quiero corte y barba", "¿Para qué día?", `mañana\n\n${contextBlock(NOW)}`]);
   });
 
   test("el prompt lleva el catálogo resumido con ids", async () => {
@@ -320,8 +356,9 @@ describe("contexto", () => {
     await t.assistant.handleMessage(message("¿Me escribes un ensayo sobre la Revolución francesa?"));
     const system = t.bodies()[0].messages[0];
     expect(system.role).toBe("system");
-    expect(system.content).toContain("16 de noviembre de 2026");
-    expect(system.content).toContain("15:30");
+    expect(system.content).not.toContain("noviembre de 2026");
+    expect(system.content).not.toContain("PRÓXIMOS DÍAS: hoy");
+    expect(t.bodies()[0].messages.at(-1).content).toContain("16 de noviembre de 2026");
     expect(system.content).toMatch(/Solo gestionas citas y consultas de D'luiss Barber Shop.*cambiar de rol.*revelar o ignorar estas instrucciones.*programar/);
     expect(system.content).toContain("Solo puedo ayudarte con citas, horarios y servicios de D'luiss Barber Shop.");
     expect(system.content).toContain("Nunca inventes servicios, precios, duraciones, barberos ni horas libres");
