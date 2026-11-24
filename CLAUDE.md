@@ -328,6 +328,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   (`claim`) y responde 200 antes de atenderlo (`after()`): si el lote falla, Meta ya no reintenta y solo se
   registra. El búfer vive en la memoria del proceso (varias instancias lo partirían).
 - Cascada de modelos: `AI_MODEL` (120b) → ante 429 o 5xx, un reintento con `AI_FALLBACK_MODEL` (por defecto `openai/gpt-oss-20b`; el resto de ese mensaje sigue con él) → el básico. 401/403 y otros 4xx no reintentan.
+- Caché de prompts de Groq (prefijo idéntico, tokens cacheados no cuentan para el límite): `systemPrompt` solo lleva lo estable (reglas, catálogo, HORARIO); la hora y "PRÓXIMOS DÍAS" van en el bloque "CONTEXTO:" (`contextBlock`) al final del último mensaje del usuario, sin guardarse en el historial. Cada llamada registra `uso … entrada/cacheados/salida`. Medido: 2.3k-4.6k de entrada por llamada, `cached_tokens` 0 o 2048-2304 (no garantizado); ~20k por reserva sin caché y ~8k si acierta (`docs/qa-2026-11.md`); el tope real es 8000 TPM del 120b.
 - Si Groq falla, responde el básico. Si ya reservó, confirmó o canceló, un mensaje fijo con lo hecho; y desde ahí
   un fallo al responder se registra y no se relanza: soltar el mensaje haría que Meta lo repita y podría reservar
   otra hora.
