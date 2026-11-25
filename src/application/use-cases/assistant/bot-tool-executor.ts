@@ -124,7 +124,7 @@ export class BotToolExecutor {
     const next =
       appointment.status === AppointmentStatus.CONFIRMED
         ? "Quedó confirmada: faltan menos de 2 horas."
-        : "Quedó pendiente: 35 minutos antes le escribiremos por WhatsApp para que confirme.";
+        : "Quedó pendiente: 35 minutos antes te escribiremos por WhatsApp para que confirmes.";
     return done({ appointment: view, next }, failed);
   }
 

@@ -5,7 +5,7 @@ import type { ToolCall, ToolContext, ToolResult } from "@/application/use-cases/
 import { DEFAULT_SITE_SETTINGS } from "@/core/entities/site";
 import { humanHandoffText } from "@/application/use-cases/assistant/quick-replies";
 import { MessageBatcher } from "@/application/use-cases/assistant/message-batcher";
-import { contextBlock, FALLBACK_GROQ_MODEL, GroqAssistant } from "./groq-assistant";
+import { contextBlock, FALLBACK_GROQ_MODEL, GroqAssistant, systemPrompt } from "./groq-assistant";
 
 const NOW = new Date("2026-11-16T15:30:00-05:00");
 
@@ -15,6 +15,12 @@ test("el CONTEXTO lleva la hora y los próximos días con su fecha", () => {
   expect(context).toContain("sáb 21/11 (2026-11-21)");
   expect(context).toContain("16 de noviembre de 2026");
   expect(context).toContain("15:30");
+});
+test("el prompt habla de tú tras reservar y limita las sugerencias de un estilo fuera de la lista al área", () => {
+  const prompt = systemPrompt("51900000000");
+  expect(prompt).toContain("te escribiremos por WhatsApp para que confirmes");
+  expect(prompt).not.toContain("le escribiremos");
+  expect(prompt).toContain("ofrece 2 o 3 servicios del CATÁLOGO del área que corresponde (un corte: Barbería)");
 });
 const ME = "51900000001";
 const message = (text: string) => ({ id: "wamid.1", from: ME, text });

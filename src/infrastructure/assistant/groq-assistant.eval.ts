@@ -95,7 +95,7 @@ function scriptedWorld(mine: Mine, calls: Call[]) {
       case "reservar_cita":
         return {
           ok: true,
-          data: { appointment: appointment("Mateo"), next: "Quedó pendiente: 35 minutos antes le escribiremos por WhatsApp para que confirme." },
+          data: { appointment: appointment("Mateo"), next: "Quedó pendiente: 35 minutos antes te escribiremos por WhatsApp para que confirmes." },
         };
       default:
         return { ok: false, error: "NO_ACTIVE_APPOINTMENTS", message: "Este número no tiene citas activas." };
