@@ -180,6 +180,16 @@ describe("barreras de tokens", () => {
     await t.assistant.handleMessage(message("quiero info"));
     expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
   });
+
+  test("cortada por length con texto a medias o relleno: no se envía; se contesta con las horas ya consultadas", async () => {
+    const t = makeAssistant([
+      groq({ tool_calls: [call("c1", "consultar_huecos_dinamicos", { serviceIds: ["s1"], date: "2026-11-17" })] }),
+      new Response(JSON.stringify({ choices: [{ finish_reason: "length", message: { content: "Horas: 15:00 … … hor ... Okay …" } }] }), { status: 200 }),
+    ]);
+    t.executeTool.mockResolvedValueOnce({ ok: true, data: { date: "2026-11-17", slots: [{ time: "15:00" }, { time: "16:00" }] } });
+    await t.assistant.handleMessage(message("fade en la tarde"));
+    expect(t.sendText).toHaveBeenCalledWith(ME, "Horas libres el 17/11: 15:00, 16:00. ¿Cuál prefieres?");
+  });
 });
 
 describe("límite de uso por celular", () => {
@@ -393,7 +403,9 @@ describe("contexto", () => {
     expect(content).toContain("HORARIO: lun–sáb 9:00–13:00 y 14:00–20:00; dom cerrado.");
     expect(content).toContain("¿Te estás refiriendo al área de Barbería o al área de Spa y estilista?");
     expect(content).toContain("foto de referencia");
-    expect(content).toContain("solo agendas citas");
+    expect(content).toContain("yo solo agendo citas");
+    expect(content).toContain("3 a 5 horas concretas");
+    expect(content).toContain("Nunca muestres ids");
     expect(content).toContain("Atiendes todos los días");
   });
 
