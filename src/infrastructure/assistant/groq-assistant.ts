@@ -11,7 +11,7 @@ import type { IServiceRepository } from "@/application/ports/repositories/servic
 import type { IScheduleRepository } from "@/application/ports/repositories/schedule-repository";
 import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import type { BotToolExecutor, ToolResult } from "@/application/use-cases/assistant/bot-tool-executor";
-import { botToolDefinitions } from "@/application/use-cases/assistant/bot-tools";
+import { botToolDefinitions, isBotTool } from "@/application/use-cases/assistant/bot-tools";
 import { codeInMessage } from "@/core/entities/confirmation";
 import { normalizePhone } from "@/core/entities/customer";
 import { cleanModelText } from "./clean-model-text";
@@ -36,6 +36,9 @@ const MAX_INPUT_CHARS = 250;
 const MAX_OUTPUT_TOKENS = 220;
 /** Tiempo total para todas las rondas: el webhook no puede quedarse colgado. */
 const TIMEOUT_MS = 12_000;
+/** Ante un 429 breve se espera y se reintenta el principal si luego quedan al menos 6 s del plazo. */
+const MAX_RETRY_WAIT_MS = 4_000;
+const MIN_LEFT_AFTER_WAIT_MS = 6_000;
 const MEDIA_REPLY = "Por ahora solo leo mensajes de texto. Escríbeme qué servicio, día y hora quieres y te ayudo con tu cita.";
 const greetingReply = (hours: string) =>
   "¡Hola! Soy el asistente automático de reservas de " + SHOP_NAME + "." + (hours ? ` Atendemos ${hours}.` : "") +
@@ -62,6 +65,8 @@ export interface GroqAssistantDeps {
   now: () => Date;
   siteUrl?: string;
   fetchImpl?: typeof fetch;
+  /** Espera inyectable (las pruebas no esperan de verdad). */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 /** Groq no respondió a tiempo o respondió algo inservible: se cae al asistente básico. */
@@ -92,6 +97,38 @@ const completion = z.object({
     })
     .nullish(),
 });
+
+/** Segundos de espera que pide Groq: `retry-after` o, si no, `x-ratelimit-reset-tokens` ("2.5s", "1m3s", "400ms"). */
+export function retryAfterMs(headers: Headers): number | null {
+  const seconds = Number(headers.get("retry-after"));
+  if (headers.get("retry-after") && Number.isFinite(seconds)) return seconds * 1000;
+  const reset = headers.get("x-ratelimit-reset-tokens")?.match(/^(?:(\d+)m(?!s))?(?:(\d+(?:\.\d+)?)s)?(?:(\d+(?:\.\d+)?)ms)?$/);
+  if (!reset || !reset[0]) return null;
+  return Math.ceil(Number(reset[1] ?? 0) * 60_000 + Number(reset[2] ?? 0) * 1000 + Number(reset[3] ?? 0));
+}
+
+const toolUseFailed = z.object({ error: z.object({ code: z.literal("tool_use_failed"), failed_generation: z.string() }) });
+const failedCall = z.object({ name: z.string(), arguments: z.union([z.string(), z.record(z.string(), z.unknown())]).optional() });
+
+/**
+ * Cuerpo 400 `tool_use_failed` de Groq: si `failed_generation` es una sola llamada JSON cuyo nombre, sin el sufijo
+ * "<|channel|>…", es una herramienta conocida y sus argumentos son JSON, la devuelve como si el modelo la hubiera
+ * pedido bien. El esquema de la herramienta lo valida luego BotToolExecutor. Si algo no cuadra, null.
+ */
+export function recoverToolCall(body: string): { id: string; function: { name: string; arguments: string } } | null {
+  try {
+    const failed = toolUseFailed.parse(JSON.parse(body)).error.failed_generation;
+    const parsed: unknown = JSON.parse(failed);
+    const call = failedCall.parse(Array.isArray(parsed) && parsed.length === 1 ? parsed[0] : parsed);
+    const name = call.name.split("<|")[0].trim();
+    if (!isBotTool(name)) return null;
+    const args = typeof call.arguments === "string" ? call.arguments : JSON.stringify(call.arguments ?? {});
+    if (args.trim()) JSON.parse(args);
+    return { id: "call_recovered", function: { name, arguments: args } };
+  } catch {
+    return null;
+  }
+}
 
 /** Para los registros: solo los 3 últimos dígitos del celular. */
 const mask = (phone: string) => `…${phone.slice(-3)}`;
@@ -240,7 +277,7 @@ export class GroqAssistant implements AiAssistantPort {
     ];
     const signal = AbortSignal.timeout(TIMEOUT_MS);
     // Si el principal da 429/5xx, el resto de las rondas de este mensaje va con el de respaldo.
-    const run = { model: this.deps.model };
+    const run = { model: this.deps.model, deadline: Date.now() + TIMEOUT_MS };
     // Una llamada idéntica en el mismo mensaje reutiliza el resultado (el modelo a veces repite la consulta).
     const seen = new Map<string, ToolResult>();
     for (let round = 0; ; round++) {
@@ -329,14 +366,28 @@ export class GroqAssistant implements AiAssistantPort {
     }
   }
 
-  private async complete(messages: ChatMessage[], withTools: boolean, signal: AbortSignal, run: { model: string }) {
+  private async complete(messages: ChatMessage[], withTools: boolean, signal: AbortSignal, run: { model: string; deadline: number }) {
     let response = await this.post(run.model, messages, withTools, signal);
+    const wait = response.status === 429 ? retryAfterMs(response.headers) : null;
+    if (wait !== null && wait <= MAX_RETRY_WAIT_MS && run.deadline - Date.now() - wait >= MIN_LEFT_AFTER_WAIT_MS) {
+      console.warn(`asistente de IA: Groq 429 en ${run.model}; espera ${wait} ms y reintenta`);
+      await (this.deps.sleep ?? ((ms) => new Promise<void>((done) => setTimeout(done, ms))))(wait);
+      response = await this.post(run.model, messages, withTools, signal);
+    }
     const backup = this.deps.fallbackModel;
     // 429 (límite) o 5xx: una sola vez con el modelo de respaldo, dentro del mismo plazo.
     if ((response.status === 429 || response.status >= 500) && backup && backup !== run.model) {
       console.warn(`asistente de IA: Groq ${response.status} en ${run.model}; se usa ${backup}`);
       run.model = backup;
       response = await this.post(backup, messages, withTools, signal);
+    }
+    // gpt-oss a veces corrompe el nombre de la herramienta ("cancelar_cita<|channel|>commentary"): Groq da 400 con lo que quiso llamar.
+    if (response.status === 400 && withTools) {
+      const body = await response.text();
+      const recovered = recoverToolCall(body);
+      if (!recovered) throw new AssistantUnavailableError(`Groq 400: ${body.slice(0, 200)}`);
+      console.warn(`asistente de IA: herramienta recuperada de tool_use_failed: ${recovered.function.name}`);
+      return { content: null, tool_calls: [recovered] };
     }
     // Una clave mala u otro 4xx, o el respaldo también caído: se cae al básico.
     if (!response.ok) throw new AssistantUnavailableError(`Groq ${response.status}: ${(await response.text()).slice(0, 200)}`);

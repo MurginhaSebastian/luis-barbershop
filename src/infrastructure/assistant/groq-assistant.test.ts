@@ -68,6 +68,7 @@ function makeAssistant(
     append: vi.fn(async (_phone: string, turns: readonly ConversationTurn[]) => void history.push(...turns)),
   };
   const sendText = vi.fn<(phone: string, text: string) => Promise<void>>(async () => {});
+  const sleep = vi.fn<(ms: number) => Promise<void>>(async () => {});
   const fallback = { handleMessage: vi.fn<() => Promise<MessageOutcome>>(async () => ({ kind: "no-code" })) };
   const assistant = new GroqAssistant({
     apiKey: "gsk_prueba",
@@ -85,9 +86,10 @@ function makeAssistant(
     now: () => clock.now,
     siteUrl: "https://luis.example",
     fetchImpl,
+    sleep,
   });
   const bodies = () => fetchImpl.mock.calls.map(([, init]) => JSON.parse(String(init?.body)));
-  return { assistant, fetchImpl, executeTool, conversations, history, sendText, fallback, bodies };
+  return { assistant, fetchImpl, executeTool, conversations, history, sendText, fallback, bodies, sleep };
 }
 
 let warn: ReturnType<typeof vi.spyOn>;
@@ -480,6 +482,92 @@ describe("si Groq falla", () => {
       expect(t.fallback.handleMessage).not.toHaveBeenCalled();
       expect(JSON.stringify(warn.mock.calls)).not.toContain(ME);
     }
+  });
+
+  describe("429 breve en el principal", () => {
+    const limited = (headers: Record<string, string | undefined>) => new Response("límite", { status: 429, headers: headers as Record<string, string> });
+
+    test("retry-after corto: espera y reintenta el principal, sin saltar al respaldo", async () => {
+      const t = makeAssistant([limited({ "retry-after": "2" }), groq({ content: "Hola, ¿qué corte quieres?" })], undefined, undefined, FALLBACK_GROQ_MODEL);
+      await t.assistant.handleMessage(message("quiero info"));
+      expect(t.sleep).toHaveBeenCalledWith(2000);
+      expect(t.bodies().map((b) => b.model)).toEqual(["openai/gpt-oss-120b", "openai/gpt-oss-120b"]);
+      expect(t.sendText).toHaveBeenCalledWith(ME, "Hola, ¿qué corte quieres?");
+    });
+
+    test("x-ratelimit-reset-tokens corto también cuenta", async () => {
+      const t = makeAssistant([limited({ "x-ratelimit-reset-tokens": "1.5s" }), groq({ content: "ok" })], undefined, undefined, FALLBACK_GROQ_MODEL);
+      await t.assistant.handleMessage(message("quiero info"));
+      expect(t.sleep).toHaveBeenCalledWith(1500);
+    });
+
+    test("si el reintento también da 429, salta al respaldo", async () => {
+      const t = makeAssistant([limited({ "retry-after": "1" }), limited({ "retry-after": "1" }), groq({ content: "ok" })], undefined, undefined, FALLBACK_GROQ_MODEL);
+      await t.assistant.handleMessage(message("quiero info"));
+      expect(t.bodies().map((b) => b.model)).toEqual(["openai/gpt-oss-120b", "openai/gpt-oss-120b", FALLBACK_GROQ_MODEL]);
+    });
+
+    test("espera larga o sin cabeceras: salta al respaldo sin esperar", async () => {
+      for (const headers of [{ "retry-after": "20" }, { "x-ratelimit-reset-tokens": "1m3s" }, {}]) {
+        const t = makeAssistant([limited(headers), groq({ content: "ok" })], undefined, undefined, FALLBACK_GROQ_MODEL);
+        await t.assistant.handleMessage(message("quiero info"));
+        expect(t.sleep).not.toHaveBeenCalled();
+        expect(t.bodies().map((b) => b.model)).toEqual(["openai/gpt-oss-120b", FALLBACK_GROQ_MODEL]);
+      }
+    });
+  });
+
+  describe("tool_use_failed con el nombre corrupto de gpt-oss", () => {
+    const failed = (generation: unknown) =>
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "Failed to call a function. Please adjust your prompt. See 'failed_generation' for more details.",
+            type: "invalid_request_error",
+            code: "tool_use_failed",
+            failed_generation: typeof generation === "string" ? generation : JSON.stringify(generation),
+          },
+        }),
+        { status: 400 },
+      );
+
+    test("cancelar_cita<|channel|>commentary: ejecuta cancelar_cita con sus argumentos y sigue el flujo", async () => {
+      const t = makeAssistant([failed({ name: "cancelar_cita<|channel|>commentary", arguments: { appointmentId: "a1" } })]);
+      t.executeTool.mockResolvedValueOnce({ ok: true, data: { appointment: { when: "mar, 17 nov, 17:00", barberName: "Luis", services: ["Fade"] } } });
+      await t.assistant.handleMessage(message("mejor cancela mi cita"));
+      expect(t.executeTool).toHaveBeenCalledTimes(1);
+      expect(t.executeTool.mock.calls[0][0]).toEqual({ name: "cancelar_cita", arguments: { appointmentId: "a1" } });
+      expect(t.executeTool.mock.calls[0][1].verifiedPhone).toBe(ME);
+      expect(t.sendText).toHaveBeenCalledWith(ME, expect.stringContaining("quedó cancelada"));
+    });
+
+    test("argumentos como cadena y llamada dentro de una lista", async () => {
+      const t = makeAssistant([failed([{ name: "confirmar_asistencia<|channel|>commentary", arguments: "{}" }])]);
+      t.executeTool.mockResolvedValueOnce({ ok: true, data: { appointment: { when: "mar, 17 nov, 17:00" } } });
+      await t.assistant.handleMessage(message("confirmo"));
+      expect(t.executeTool.mock.calls[0][0]).toEqual({ name: "confirmar_asistencia", arguments: {} });
+    });
+
+    test("herramienta desconocida, JSON roto o sin failed_generation: no ejecuta nada", async () => {
+      for (const body of [
+        failed({ name: "borrar_todo<|channel|>commentary", arguments: {} }),
+        failed('{"name":"cancelar_cita<|channel|>commentary","arguments":{"appointmentId":'),
+        failed({ name: "cancelar_cita", arguments: "no es json" }),
+        failed("texto cualquiera"),
+        new Response('{"error":{"message":"otro","code":"invalid_request"}}', { status: 400 }),
+      ]) {
+        const t = makeAssistant([body]);
+        await t.assistant.handleMessage(message("mejor cancela mi cita"));
+        expect(t.executeTool).not.toHaveBeenCalled();
+        expect(t.sendText).toHaveBeenCalledWith(ME, expect.stringContaining("no puedo responderte"));
+      }
+    });
+
+    test("argumentos que no pasan el esquema: BotToolExecutor real los rechaza", async () => {
+      const { BotToolExecutor } = await import("@/application/use-cases/assistant/bot-tool-executor");
+      const result = await new BotToolExecutor({} as never).executeTool({ name: "cancelar_cita", arguments: { appointmentId: 42 } }, { verifiedPhone: ME, now: NOW });
+      expect(result).toMatchObject({ ok: false, error: "INVALID_ARGUMENTS" });
+    });
   });
 
   test("429 en los dos modelos: aviso amable, sin más reintentos", async () => {
