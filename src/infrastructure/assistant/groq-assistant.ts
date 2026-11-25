@@ -259,6 +259,7 @@ export class GroqAssistant implements AiAssistantPort {
         ...(answer.content && { content: answer.content }),
         tool_calls: calls.map((c) => ({ id: c.id, type: "function", function: { name: c.function.name, arguments: c.function.arguments ?? "" } })),
       });
+      const doneBefore = done.length;
       for (const call of calls) {
         const key = `${call.function.name}\0${call.function.arguments?.trim() ?? ""}`;
         const result = seen.get(key) ?? (await this.runTool(call.function.name, call.function.arguments, phone, now, aliases));
@@ -268,6 +269,8 @@ export class GroqAssistant implements AiAssistantPort {
         }
         messages.push({ role: "tool", tool_call_id: call.id, name: call.function.name, content: JSON.stringify(aliases.encode(result)) });
       }
+      // Reservó, confirmó o canceló: el mensaje sale de los datos de la herramienta, sin otra llamada al modelo (ahorra ~2k tokens y 429).
+      if (done.length > doneBefore) return afterMutation(done.at(-1)!, contact, this.deps.botNumber);
     }
   }
 
@@ -407,12 +410,16 @@ function rescueReply(looked: readonly Mutation[]): string | null {
 
 /** Respuesta fija con lo último que se hizo, para cuando Groq falla después de reservar, confirmar o cancelar. */
 function afterMutation(mutation: Mutation, contact: string | undefined, botNumber?: string | null): string {
-  const data = mutation.data as { appointment?: { when?: string; barberName?: string }; next?: string };
-  const when = data.appointment?.when ? ` del ${data.appointment.when}` : "";
+  const data = mutation.data as { appointment?: { when?: string; barberName?: string; services?: string[] }; next?: string; note?: string };
+  const a = data.appointment;
+  const what = [a?.services?.length && `de ${a.services.join(" + ")}`, a?.barberName && `con ${a.barberName}`, a?.when && `del ${a.when}`].filter(Boolean).join(" ");
   const ask = contact ? ` Si necesitas algo más, escribe a Luis ${reachLuis(contact, botNumber)}.` : "";
-  if (mutation.tool === "reservar_cita") {
-    return `Listo: tu cita${when}${data.appointment?.barberName ? ` con ${data.appointment.barberName}` : ""} quedó registrada. ${data.next ?? ""}${ask}`.replace(/\s+/g, " ").trim();
-  }
-  if (mutation.tool === "cancelar_cita") return `Listo: tu cita quedó cancelada.${ask}`;
-  return `Listo: tu cita${when} quedó confirmada.${ask}`;
+  const cita = `tu cita${what && ` ${what}`}`;
+  const text =
+    mutation.tool === "reservar_cita"
+      ? `Listo: ${cita} quedó registrada. ${data.next ?? ""}`
+      : mutation.tool === "cancelar_cita"
+        ? `Listo: ${cita} quedó cancelada. Si quieres otra hora, dime día y hora.`
+        : `Listo: ${cita} ${data.note ? "ya estaba confirmada" : "quedó confirmada"}.`;
+  return `${text}${ask}`.replace(/\s+/g, " ").trim();
 }

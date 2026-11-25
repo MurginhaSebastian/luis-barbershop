@@ -26,7 +26,7 @@ const RESULTS: Record<string, ToolResult> = {
   consultar_huecos_dinamicos: { ok: true, data: { totalDurationMinutes: 30, slots: [{ startTime: "2026-11-17T17:00:00-05:00" }] } },
   reservar_cita: {
     ok: true,
-    data: { appointment: { when: "mar, 17 nov, 17:00", barberName: "Luis" }, next: "Quedó pendiente: 35 minutos antes le escribiremos." },
+    data: { appointment: { when: "mar, 17 nov, 17:00", barberName: "Luis", services: ["Fade"] }, next: "Quedó pendiente: 35 minutos antes le escribiremos." },
     failedNotices: 1,
   },
 };
@@ -98,26 +98,25 @@ describe("varias rondas de herramientas", () => {
       groq({ tool_calls: [call("c1", "listar_catalogo_y_mis_citas")] }),
       groq({ tool_calls: [call("c2", "consultar_huecos_dinamicos", { serviceIds: ["s1"], date: "2026-11-17" })] }),
       groq({ tool_calls: [call("c3", "reservar_cita", { customerName: "Sebastián", serviceIds: ["s1"], startTime: "2026-11-17T17:00:00-05:00" })] }),
-      groq({ content: "¡Listo, Sebastián! Tu corte quedó para mañana a las 17:00." }),
     ]);
     expect(await t.assistant.handleMessage(message("Corte mañana a las 5 pm, soy Sebastián"))).toEqual({ kind: "answered" });
 
     expect(t.executeTool.mock.calls.map(([c]) => c.name)).toEqual(["listar_catalogo_y_mis_citas", "consultar_huecos_dinamicos", "reservar_cita"]);
     for (const [, context] of t.executeTool.mock.calls) expect(context).toEqual({ verifiedPhone: ME, now: NOW });
-    expect(t.sendText).toHaveBeenCalledWith(ME, "¡Listo, Sebastián! Tu corte quedó para mañana a las 17:00.");
+    // Tras reservar no hay otra llamada al modelo: el mensaje sale de los datos de la herramienta.
+    const reply = t.sendText.mock.calls[0][1];
+    expect(reply).toMatch(/^Listo: tu cita de Fade con Luis del mar, 17 nov, 17:00 quedó registrada\. Quedó pendiente: 35 minutos antes le escribiremos\. .*\+51900000000\.$/);
 
     const bodies = t.bodies();
-    expect(bodies).toHaveLength(4);
+    expect(bodies).toHaveLength(3);
     expect(bodies[0]).toMatchObject({ model: "openai/gpt-oss-120b", tool_choice: "auto", reasoning_effort: "low" });
     expect(bodies[0].tools.map((tool: { function: { name: string } }) => tool.function.name)).toContain("reservar_cita");
-    // El resultado vuelve al modelo con su id de llamada y sin los avisos fallidos, que se registran aparte.
-    const toolMessage = bodies[3].messages.find((m: { tool_call_id?: string }) => m.tool_call_id === "c3");
-    expect(JSON.parse(toolMessage.content)).toEqual({ ok: true, data: RESULTS.reservar_cita.ok && RESULTS.reservar_cita.data });
+    // Los avisos fallidos se registran aparte.
     expect(warn).toHaveBeenCalledWith("asistente de IA: avisos que no salieron", { tool: "reservar_cita", failedNotices: 1, phone: "…001" });
     expect(JSON.stringify(warn.mock.calls)).not.toContain(ME);
     expect(t.history).toEqual([
       { role: "user", content: "Corte mañana a las 5 pm, soy Sebastián" },
-      { role: "assistant", content: "¡Listo, Sebastián! Tu corte quedó para mañana a las 17:00." },
+      { role: "assistant", content: reply },
     ]);
   });
 
@@ -347,21 +346,20 @@ describe("contexto", () => {
       [
         groq({ tool_calls: [call("c1", "listar_catalogo_y_mis_citas")] }),
         groq({ tool_calls: [call("c2", "cancelar_cita", { appointmentId: "a1" }), call("c3", "consultar_huecos_dinamicos", { serviceIds: ["s1"], date: "2026-11-17", barberId: "b1" })] }),
-        groq({ content: "Listo" }),
       ],
       [{ id: BARBER, name: "Luis", active: true }],
       [{ ...FADE, id: SERVICE }],
     );
     t.executeTool.mockResolvedValueOnce({ ok: true, data: { myActiveAppointments: [{ id: APPOINTMENT, barberName: "Luis" }] } });
     await t.assistant.handleMessage(message("cancela mi cita"));
-    const [first, second, third] = t.bodies();
+    const [first, second] = t.bodies();
     expect(first.messages[0].content).toContain("Fade 45 min S/35 [s1]. Barberos: Luis [b1]");
     expect(JSON.stringify(first.messages)).not.toContain(SERVICE);
     expect(JSON.stringify(first.tools)).not.toContain("uuid");
     expect(second.messages.at(-1).content).toBe(JSON.stringify({ ok: true, data: { myActiveAppointments: [{ id: "a1", barberName: "Luis" }] } }));
     expect(t.executeTool.mock.calls[1][0].arguments).toEqual({ appointmentId: APPOINTMENT });
     expect(t.executeTool.mock.calls[2][0].arguments).toEqual({ serviceIds: [SERVICE], date: "2026-11-17", barberId: BARBER });
-    expect(JSON.stringify(third.messages)).not.toContain(APPOINTMENT);
+    expect(JSON.stringify(second.messages)).not.toContain(APPOINTMENT);
   });
 
   test("los alias internos que el modelo deja escapar no llegan al cliente", async () => {
@@ -558,7 +556,26 @@ describe("si Groq falla", () => {
     ]);
     expect(await t.assistant.handleMessage(message("reserva mañana 5 pm"))).toEqual({ kind: "answered" });
     expect(t.fallback.handleMessage).not.toHaveBeenCalled();
-    expect(t.sendText.mock.calls[0][1]).toMatch(/^Listo: tu cita del mar, 17 nov, 17:00 con Luis quedó registrada\..*\+51900000000/);
+    expect(t.sendText.mock.calls[0][1]).toMatch(/^Listo: tu cita de Fade con Luis del mar, 17 nov, 17:00 quedó registrada\..*\+51900000000/);
+  });
+
+  test.each([
+    ["cancelar_cita", {}, /^Listo: tu cita de Fade con Luis del mar, 17 nov, 17:00 quedó cancelada\./],
+    ["confirmar_asistencia", {}, /^Listo: tu cita de Fade con Luis del mar, 17 nov, 17:00 quedó confirmada\./],
+    ["confirmar_asistencia", { note: "Ya estaba confirmada." }, /ya estaba confirmada\./],
+  ])("tras %s con éxito responde sin otra llamada al modelo", async (tool, extra, expected) => {
+    const t = makeAssistant([groq({ tool_calls: [call("c1", tool)] })]);
+    t.executeTool.mockResolvedValueOnce({ ok: true, data: { appointment: { when: "mar, 17 nov, 17:00", barberName: "Luis", services: ["Fade"] }, ...extra } });
+    await t.assistant.handleMessage(message("hazlo"));
+    expect(t.bodies()).toHaveLength(1);
+    expect(t.sendText.mock.calls[0][1]).toMatch(expected);
+  });
+
+  test("si la herramienta de cambio falla, el modelo sigue y explica", async () => {
+    const t = makeAssistant([groq({ tool_calls: [call("c1", "cancelar_cita")] }), groq({ content: "No tienes citas." })]);
+    t.executeTool.mockResolvedValueOnce({ ok: false, error: "NO_ACTIVE_APPOINTMENTS", message: "Sin citas." });
+    await t.assistant.handleMessage(message("cancela"));
+    expect(t.sendText).toHaveBeenCalledWith(ME, "No tienes citas.");
   });
 
   test("si ya reservó y la respuesta no sale, no lanza: un reintento podría reservar otra hora", async () => {

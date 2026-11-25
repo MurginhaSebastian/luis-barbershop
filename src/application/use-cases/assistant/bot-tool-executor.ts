@@ -161,7 +161,8 @@ export class BotToolExecutor {
     const outcome = await this.deps.confirmation.cancel(target.appointment);
     if (outcome.kind === "cancelled") {
       const failed = await notices([() => this.deps.push.notifyCancelled(outcome.appointment)]);
-      return done({ appointmentId: outcome.appointment.id, status: AppointmentStatus.CANCELLED }, failed);
+      const [view] = await this.views([outcome.appointment]);
+      return done({ appointmentId: outcome.appointment.id, status: AppointmentStatus.CANCELLED, appointment: view }, failed);
     }
     if (outcome.kind === "too-late") {
       return fail(

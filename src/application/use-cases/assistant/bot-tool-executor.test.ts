@@ -388,7 +388,7 @@ describe("cancelar_cita", () => {
   test("una cita que nació confirmada (sin código) se cancela con 35 min o más", async () => {
     w.book(id(31), ME, lima("11:00"), AppointmentStatus.CONFIRMED);
     at("10:25");
-    expect(await call("cancelar_cita")).toMatchObject({ ok: true, data: { appointmentId: id(31), status: "CANCELLED" } });
+    expect(await call("cancelar_cita")).toMatchObject({ ok: true, data: { appointmentId: id(31), status: "CANCELLED", appointment: { barberName: expect.any(String) } } });
     expect(w.push.notifyCancelled).toHaveBeenCalled();
   });
 
