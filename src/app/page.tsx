@@ -8,7 +8,7 @@ import { ParaEllas } from "@/presentation/components/landing/para-ellas";
 import { About, ClosingCta, HowToBook, Products, Testimonials, VisitUs, WhyUs } from "@/presentation/components/landing/sections";
 import { ServiceGallery } from "@/presentation/components/landing/service-gallery";
 import { ShopFacts } from "@/presentation/components/landing/shop-facts";
-import { container, ctaClass, sectionTitle } from "@/presentation/components/landing/styles";
+import { container, ctaClass, ghostCtaClass, sectionTitle } from "@/presentation/components/landing/styles";
 import { testimonials } from "@/presentation/content/testimonials";
 import { describeOpening } from "@/presentation/lib/hours";
 import { jsonLdHtml, shopJsonLd } from "@/presentation/lib/json-ld";
@@ -95,12 +95,32 @@ async function CatalogSections() {
         <h2 id="servicios-t" className={sectionTitle}>
           Servicios
         </h2>
-        <p className="mt-4 max-w-md text-muted-foreground">
-          Toca un servicio para reservarlo. Puedes sumar otros en el siguiente paso.
-        </p>
-        <div className="mt-10">
-          <ServiceGallery services={barberia} assistant={assistant} />
-        </div>
+        {barberia.length > 0 ? (
+          <>
+            <p className="mt-4 max-w-md text-muted-foreground">
+              Toca un servicio para reservarlo. Puedes sumar otros en el siguiente paso.
+            </p>
+            <div className="mt-10">
+              <ServiceGallery services={barberia} assistant={assistant} />
+            </div>
+          </>
+        ) : (
+          <div className="mt-6">
+            <p className="max-w-prose text-muted-foreground">
+              Estamos actualizando nuestra carta de servicios. Escríbenos y te contamos todo lo que tenemos para ti.
+            </p>
+            {contact.whatsapp && (
+              <a
+                href={whatsappLink(contact.whatsapp, assistant ? "Hola, tengo una consulta." : undefined)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${ghostCtaClass} mt-6`}
+              >
+                Consúltanos por WhatsApp
+              </a>
+            )}
+          </div>
+        )}
       </section>
       {sections.paraEllas && (
         <ParaEllas
