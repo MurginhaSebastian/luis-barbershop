@@ -48,7 +48,7 @@ const BARBERS = [
 ];
 
 const iso = (date: string, hour: number) => `${date}T${String(hour).padStart(2, "0")}:00:00-05:00`;
-const slots = (date: string) => [10, 11, 12].map((h) => ({ startTime: iso(date, h), time: `${h}:00` }));
+const slots = (date: string) => [10, 11, 12, 15, 16, 17, 18].map((h) => ({ startTime: iso(date, h), time: `${h}:00` }));
 const appointment = (barberName: string) => ({
   id: uid(201), startTime: iso("2026-11-25", 16), endTime: iso("2026-11-25", 17), when: "mié, 25 nov, 16:00", status: "PENDING", barberName, services: ["Clásico"],
 });
@@ -184,6 +184,12 @@ const noOwnerAsked = (r: Run) => (r.calls.some((c) => c.name === "consultar_huec
 const noBarberChosen = (r: Run) => (r.calls.some((c) => c.name === "consultar_huecos_dinamicos" && c.args.barberId) ? "eligió barbero sin que lo pidieran" : null);
 const forOwner = (date: string) => called("consultar_huecos_dinamicos", (a) => a.barberId === LUIS && a.date === date, ` de Luis el ${date}`);
 const isOffTopic = exactly(OFFTOPIC_REPLY);
+/** Ofrece al menos `min` horas concretas y todas desde las 15:00. */
+const afternoonHours = (min: number) => (r: Run) => {
+  const hours = [...r.reply.matchAll(/\b(\d{1,2}):\d{2}\b/g)].map((m) => Number(m[1]));
+  if (hours.length < min) return `ofreció ${hours.length} horas, esperaba al menos ${min}`;
+  return hours.every((h) => h >= 15) ? null : `ofreció horas de la mañana: ${hours.join(", ")}`;
+};
 /** Estilo fuera del catálogo: foto de referencia, dice que solo agenda, no lo da por existente ni le pone precio/duración. */
 const styleOutside = (style: RegExp) =>
   wrap(
@@ -223,6 +229,9 @@ const SCENARIOS: Scenario[] = [
   { name: "áreas: pestañas 1x1 directo a Spa", text: "quiero pestañas 1x1 mañana", check: wrap(saidNot(/area de barberia o/), called("consultar_huecos_dinamicos", (a) => !a.barberId || a.barberId === ANA), noOwnerAsked) },
   { name: "áreas: ¿hacen uñas?", text: "¿hacen uñas?", check: said(/manicure|pedicure/) },
   { name: "áreas: un desvanecido es fade", text: "quiero un desvanecido", check: said(/fade/) },
+  // Horas concretas y sin jerga
+  { name: "horas: fade el sábado en la tarde", text: "quiero un desvanecido para este sábado en la tarde", check: wrap(called("consultar_huecos_dinamicos"), afternoonHours(3), saidNot(/slots|starttime|barberid|\bb\d\b|\(ver /)) },
+  { name: "horas: Luis, sin jerga", text: "y Luis va a estar?", check: saidNot(/slots|starttime|barberid|\bb\d\b|\(ver /) },
   // Fuera de la lista
   { name: "estilo: no inventa, invita con foto", text: "quiero el corte estilo samurái con trenzas fluorescentes", check: styleOutside(/samurai|trenzas|fluorescentes/) },
   { name: "estilo: pompadour", text: "oye y me podrías hacer un corte pompadour?", check: styleOutside(/pompadour/) },
