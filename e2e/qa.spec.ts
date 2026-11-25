@@ -197,7 +197,7 @@ test.describe("catálogo en situaciones raras", () => {
   test("sin servicios la web lo dice y no se puede continuar", async ({ page }) => {
     await sql("UPDATE services SET active = false");
     await page.goto("/");
-    await expect(page.getByText("Pronto publicaremos nuestros servicios.")).toBeVisible();
+    await expect(page.getByText("Estamos actualizando nuestra carta de servicios.")).toBeVisible();
     await page.goto("/reservar");
     await expect(page.getByRole("button", { name: "Continuar" })).toBeDisabled();
   });
