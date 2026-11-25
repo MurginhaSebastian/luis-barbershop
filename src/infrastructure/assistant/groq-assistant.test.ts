@@ -129,6 +129,17 @@ describe("varias rondas de herramientas", () => {
     expect(t.history.at(-1)).toEqual({ role: "assistant", content: "Tu cita de *Fade* con *Luis*" });
   });
 
+  test("el relleno basura del modelo no llega al cliente ni al historial; solo relleno es un fallo", async () => {
+    const junk = "¿Quieres ? ? ? ? ?\n\n\n\nOops! Parece…\n\n\n\n... ¡Perfecto! El Fade dura 45 min.";
+    const t = makeAssistant([groq({ content: junk })]);
+    await t.assistant.handleMessage(message("quiero info"));
+    expect(t.sendText).toHaveBeenCalledWith(ME, "¡Perfecto! El Fade dura 45 min.");
+    expect(t.history.at(-1)).toEqual({ role: "assistant", content: "¡Perfecto! El Fade dura 45 min." });
+    const empty = makeAssistant([groq({ content: "? ? ?\n\nSorry…" })]);
+    await empty.assistant.handleMessage(message("quiero info"));
+    expect(empty.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+  });
+
   test("como mucho 3 rondas: si el modelo sigue pidiendo herramientas, no se ejecutan más", async () => {
     const always = () => groq({ tool_calls: [call("c", "listar_catalogo_y_mis_citas")] });
     const t = makeAssistant([always(), always(), always(), always(), always()]);

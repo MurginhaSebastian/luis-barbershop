@@ -15,6 +15,7 @@ import { botToolDefinitions } from "@/application/use-cases/assistant/bot-tools"
 import { codeInMessage } from "@/core/entities/confirmation";
 import { normalizePhone } from "@/core/entities/customer";
 import { shopDateOf } from "@/core/scheduling/availability";
+import { cleanModelText } from "./clean-model-text";
 import { humanHandoffText, OFFTOPIC_REPLY, quickReplyKind, reachLuis, sharesChat } from "@/application/use-cases/assistant/quick-replies";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -243,9 +244,10 @@ export class GroqAssistant implements AiAssistantPort {
       const answer = await this.complete(messages, withTools, signal, run);
       const calls = answer.tool_calls ?? [];
       if (calls.length === 0 || !withTools) {
-        if (calls.length > 0 || !answer.content?.trim()) throw new AssistantUnavailableError("sin respuesta en texto");
+        const text = cleanModelText(answer.content ?? "");
+        if (calls.length > 0 || !text) throw new AssistantUnavailableError("sin respuesta en texto");
         // WhatsApp marca la negrita con un solo asterisco.
-        return answer.content.trim().replace(/\*\*(.+?)\*\*/g, "*$1*");
+        return text.replace(/\*\*(.+?)\*\*/g, "*$1*");
       }
       messages.push({
         role: "assistant",
