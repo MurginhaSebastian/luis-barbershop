@@ -15,7 +15,7 @@ import { botToolDefinitions } from "@/application/use-cases/assistant/bot-tools"
 import { codeInMessage } from "@/core/entities/confirmation";
 import { normalizePhone } from "@/core/entities/customer";
 import { shopDateOf } from "@/core/scheduling/availability";
-import { humanHandoffText, OFFTOPIC_REPLY, quickReplyKind } from "@/application/use-cases/assistant/quick-replies";
+import { humanHandoffText, OFFTOPIC_REPLY, quickReplyKind, reachLuis, sharesChat } from "@/application/use-cases/assistant/quick-replies";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 /** llama-3.3-70b-versatile se retiró el 16-ago-2026 (salvo contratos empresariales); este es su reemplazo. */
@@ -54,6 +54,8 @@ export interface GroqAssistantDeps {
   services: IServiceRepository;
   barbers: IBarberRepository;
   schedule: Pick<IScheduleRepository, "findBusinessHours">;
+  /** Número del bot (WHATSAPP_DISPLAY_NUMBER): si es el de Luis, se le deriva "por este mismo chat". */
+  botNumber?: string | null;
   /** El asistente básico: atiende los códigos y responde cuando Groq no puede. */
   fallback: AiAssistantPort;
   now: () => Date;
@@ -113,8 +115,12 @@ export function contextBlock(now: Date): string {
 }
 
 /** Solo lo estable (cambia cuando el dueño edita algo): nada que dependa de la hora. */
-export function systemPrompt(contact: string | undefined, catalog = "", hours = ""): string {
-  const luis = contact ? `el WhatsApp de Luis: +${contact}` : "que hable directamente con la barbería";
+export function systemPrompt(contact: string | undefined, catalog = "", hours = "", botNumber?: string | null): string {
+  const luis = !contact
+    ? "dale que hable directamente con la barbería"
+    : sharesChat(contact, botNumber)
+      ? "dile que Luis le responderá por este mismo chat, sin dar ningún número"
+      : `dale el WhatsApp de Luis: +${contact}`;
   return [
     "Eres el asistente virtual de reservas de " + SHOP_NAME + ", una barbería en Trujillo (Perú). Atiendes por WhatsApp. La fecha, la hora y PRÓXIMOS DÍAS están en el CONTEXTO del último mensaje del cliente.",
     ...(catalog ? [catalog] : []),
@@ -125,7 +131,7 @@ export function systemPrompt(contact: string | undefined, catalog = "", hours = 
     "3. Antes de reservar, confirma con el cliente los servicios, el día, la hora, el barbero (o sin preferencia) y su nombre.",
     "4. Si confirmar_asistencia o cancelar_cita devuelve MULTIPLE_APPOINTMENTS_FOUND, pregunta a cuál de sus citas se refiere (día, hora y barbero) y vuelve a llamar con su appointmentId.",
     "5. Usa los ids del CATÁLOGO. listar_catalogo_y_mis_citas solo sirve para ver las citas del cliente: llámala antes de usar un appointmentId (no los conservas de mensajes anteriores).",
-    `6. Preguntar por Luis o el dueño (¿estará?, ¿me atiende?) o si eres Luis NO es pedir una persona: primero llama listar_catalogo_y_mis_citas y, si tiene cita, di con quién es; sin cita consulta sus horas con su barberId (regla 9); si eres Luis, di que eres el asistente automático. Solo ante un reclamo o un "quiero hablar con una persona", dale ${luis}.`,
+    `6. Preguntar por Luis o el dueño (¿estará?, ¿me atiende?) o si eres Luis NO es pedir una persona: primero llama listar_catalogo_y_mis_citas y, si tiene cita, di con quién es; sin cita consulta sus horas con su barberId (regla 9); si eres Luis, di que eres el asistente automático. Solo ante un reclamo o un "quiero hablar con una persona", ${luis}.`,
     "7. Las herramientas ya saben quién escribe: nunca pidas ni uses otro número de celular.",
     "8. Tras reservar, repite lo que diga el campo next de reservar_cita. Si la cita quedó pendiente, no digas que está confirmada: di que quedó separada y que 35 minutos antes le escribiremos por WhatsApp para que la confirme.",
     "9. No ofrezcas ni sugieras al dueño (al preguntar por preferencia de barbero, no lo nombres; solo se lista si preguntan qué barberos hay); si el cliente lo pide por nombre, consulta sus horas con su barberId. \"Luis\" y \"el dueño\" son el barbero marcado dueño: si preguntan si estará o si los atenderá, con cita di con quién es (listar_catalogo_y_mis_citas); sin cita, consulta sus horas del día que digan (hoy si no dicen), sin afirmar si está o no en el local. Si preguntan qué barberos hay, nombra a todos con el dueño al final. Si no pide barbero, consulta sin barberId. Si consultar_huecos_dinamicos no trae horas y trae alternatives, ofrécelas en esa respuesta (otro barbero ese día o el próximo día libre) y deja elegir; nunca respondas solo que está lleno. Si acepta otro barbero, reserva con su barberId.",
@@ -167,7 +173,7 @@ export class GroqAssistant implements AiAssistantPort {
       return { kind: "answered" };
     }
     if (await this.overLimit(phone, now)) {
-      const next = whatsapp ? `escribe directamente a Luis al +${whatsapp}` : "vuelve a escribirme más tarde";
+      const next = whatsapp ? `escribe directamente a Luis ${reachLuis(whatsapp, this.deps.botNumber)}` : "vuelve a escribirme más tarde";
       await this.deps.messaging.sendText(phone, `Has enviado muchos mensajes seguidos. Para seguir, ${next}.`);
       return { kind: "answered" };
     }
@@ -183,13 +189,13 @@ export class GroqAssistant implements AiAssistantPort {
         // Sin historial: este aviso no es parte de la conversación.
         const options = [
           this.deps.siteUrl && `reserva en ${this.deps.siteUrl}/reservar`,
-          whatsapp && `escribe a Luis al +${whatsapp}`,
+          whatsapp && `escribe a Luis ${reachLuis(whatsapp, this.deps.botNumber)}`,
         ].filter(Boolean);
         await this.deps.messaging.sendText(phone, `Perdona, ahora mismo no puedo responderte. Vuelve a escribirme en un minuto${options.map((o) => `, o ${o}`).join("")}.`);
         return { kind: "answered" };
       }
       // Ya reservó, confirmó o canceló: se le dice eso, no las instrucciones de siempre.
-      reply = afterMutation(done.at(-1)!, whatsapp);
+      reply = afterMutation(done.at(-1)!, whatsapp, this.deps.botNumber);
     }
     await this.deliver(phone, text, reply, now, done.length > 0);
     return { kind: "answered" };
@@ -198,7 +204,7 @@ export class GroqAssistant implements AiAssistantPort {
   private async quickReply(phone: string, text: string, now: Date, whatsapp: string | undefined): Promise<string | null> {
     const kind = quickReplyKind(text);
     if (kind === "offtopic") return OFFTOPIC_REPLY;
-    if (kind === "human") return whatsapp ? humanHandoffText(whatsapp) : null;
+    if (kind === "human") return whatsapp ? humanHandoffText(whatsapp, this.deps.botNumber) : null;
     if (!kind) return null;
     // A mitad de una reserva, un "👍" o un "ok" es un sí: va al modelo.
     const open = await this.deps.conversations.recent(phone, new Date(now.getTime() - HISTORY_WINDOW_MS), 1);
@@ -223,7 +229,7 @@ export class GroqAssistant implements AiAssistantPort {
   private async converse(phone: string, text: string, now: Date, contact: string | undefined, done: Mutation[]): Promise<string> {
     const history = await this.deps.conversations.recent(phone, new Date(now.getTime() - HISTORY_WINDOW_MS), HISTORY_TURNS);
     const messages: ChatMessage[] = [
-      { role: "system", content: systemPrompt(contact, await this.catalogLine(), await this.hoursLine()) },
+      { role: "system", content: systemPrompt(contact, await this.catalogLine(), await this.hoursLine(), this.deps.botNumber) },
       ...history,
       // Solo en la petición: no se guarda en el historial. Las rondas de herramientas se añaden detrás, sin tocarlo.
       { role: "user", content: `${text}\n\n${contextBlock(now)}` },
@@ -356,10 +362,10 @@ export class GroqAssistant implements AiAssistantPort {
 }
 
 /** Respuesta fija con lo último que se hizo, para cuando Groq falla después de reservar, confirmar o cancelar. */
-function afterMutation(mutation: Mutation, contact: string | undefined): string {
+function afterMutation(mutation: Mutation, contact: string | undefined, botNumber?: string | null): string {
   const data = mutation.data as { appointment?: { when?: string; barberName?: string }; next?: string };
   const when = data.appointment?.when ? ` del ${data.appointment.when}` : "";
-  const ask = contact ? ` Si necesitas algo más, escribe a Luis al +${contact}.` : "";
+  const ask = contact ? ` Si necesitas algo más, escribe a Luis ${reachLuis(contact, botNumber)}.` : "";
   if (mutation.tool === "reservar_cita") {
     return `Listo: tu cita${when}${data.appointment?.barberName ? ` con ${data.appointment.barberName}` : ""} quedó registrada. ${data.next ?? ""}${ask}`.replace(/\s+/g, " ").trim();
   }

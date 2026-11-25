@@ -7,6 +7,7 @@ import type { IConfirmationRepository } from "@/application/ports/repositories/c
 import type { ICustomerRepository } from "@/application/ports/repositories/customer-repository";
 import type { ISiteSettingsRepository } from "@/application/ports/repositories/site-settings-repository";
 import { shopDateTime } from "@/application/shop-time";
+import { reachLuis, SAME_CHAT_HANDOFF, sharesChat } from "@/application/use-cases/assistant/quick-replies";
 import { type Appointment, AppointmentStatus } from "@/core/entities/appointment";
 import {
   type BookingConfirmation,
@@ -185,7 +186,7 @@ export class BookingConfirmationUseCase implements AiAssistantPort {
         return `Listo, cancelamos tu cita del ${shopDateTime(outcome.appointment.slot.start)}. Gracias por avisar: la hora queda libre para otro cliente. ${book}`;
       case "too-late": {
         const { whatsapp } = (await this.deps.siteSettings.get()).contact;
-        const call = whatsapp ? `Si no puedes venir, avísanos al +${whatsapp}.` : "Si no puedes venir, avísanos en la barbería.";
+        const call = whatsapp ? `Si no puedes venir, avísanos ${reachLuis(whatsapp, this.deps.confirmationNumber)}.` : "Si no puedes venir, avísanos en la barbería.";
         return `Tu cita del ${shopDateTime(outcome.appointment.slot.start)} ya está confirmada y faltan menos de ${CUSTOMER_CANCEL_MIN_MINUTES} minutos: no se puede cancelar por aquí. ${call}`;
       }
       case "already-confirmed":
@@ -204,7 +205,11 @@ export class BookingConfirmationUseCase implements AiAssistantPort {
       case "answered": {
         // Este número solo confirma: las consultas van al WhatsApp de Luis, que las lee él.
         const { whatsapp } = (await this.deps.siteSettings.get()).contact;
-        const ask = whatsapp ? `Para consultas escríbenos a +${whatsapp}.` : book;
+        const ask = !whatsapp
+          ? book
+          : sharesChat(whatsapp, this.deps.confirmationNumber)
+            ? SAME_CHAT_HANDOFF
+            : `Para consultas escríbenos a +${whatsapp}.`;
         return `Este número solo confirma o cancela citas: envía tu código, por ejemplo "Confirmo mi cita KRT482" o "Cancelar KRT482". ${ask}`;
       }
     }

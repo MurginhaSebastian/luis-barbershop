@@ -264,6 +264,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - El enlace de confirmar apunta a `WHATSAPP_DISPLAY_NUMBER` (el número de la API, un chip aparte), **no** a
   `contact.whatsapp`: el de Luis sigue en su app para las consultas, y quien escriba sin código al número
   automático recibe ese contacto.
+- El bot puede compartir número con Luis (coexistencia de Meta): si `contact.whatsapp` es `WHATSAPP_DISPLAY_NUMBER`, la derivación dice "por este mismo chat" en vez de dar el número (`sharesChat`/`reachLuis`, `quick-replies.ts`).
 - El cliente envía "Confirmo mi cita KRT482" con el enlace `wa.me` de la confirmación. `/api/whatsapp` verifica
   la firma de Meta sobre el cuerpo original y `handleMessage` busca el código **junto al número** que escribe
   (el código no es único). Fotos, audios, videos, stickers y documentos llegan como `media` (sin texto): el asistente

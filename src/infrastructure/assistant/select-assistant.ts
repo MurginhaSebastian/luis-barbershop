@@ -20,6 +20,8 @@ export interface AssistantDeps {
   schedule: Pick<IScheduleRepository, "findBusinessHours">;
   now: () => Date;
   siteUrl?: string;
+  /** Número del bot, para saber si comparte chat con Luis. */
+  botNumber?: string | null;
 }
 
 let warned = false;

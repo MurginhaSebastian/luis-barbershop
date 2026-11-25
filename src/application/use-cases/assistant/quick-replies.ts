@@ -1,3 +1,4 @@
+import { normalizePhone } from "@/core/entities/customer";
 import { SHOP_NAME } from "@/core/entities/site";
 
 export type QuickReplyKind = "offtopic" | "human" | "greeting" | "nonsense";
@@ -5,8 +6,21 @@ export type QuickReplyKind = "offtopic" | "human" | "greeting" | "nonsense";
 /** La frase fija ante desvíos: la usan el prompt (regla 1) y la respuesta sin modelo. */
 export const OFFTOPIC_REPLY = "Solo puedo ayudarte con citas, horarios y servicios de " + SHOP_NAME + ".";
 
+/** El bot comparte número con Luis (coexistencia de Meta): derivarlo a su número lo mandaría a este mismo chat. */
+export function sharesChat(whatsapp: string, botNumber?: string | null): boolean {
+  return !!botNumber && normalizePhone(whatsapp) === normalizePhone(botNumber);
+}
+
+/** Cómo se llega a Luis dentro de una frase: por este chat si comparte número con el bot, si no por su número. */
+export function reachLuis(whatsapp: string, botNumber?: string | null, preposition = "al"): string {
+  return sharesChat(whatsapp, botNumber) ? "por este mismo chat" : `${preposition} +${whatsapp}`;
+}
+
+export const SAME_CHAT_HANDOFF = "Luis te responderá por este mismo chat en cuanto pueda.";
+
 /** Un solo sitio para el texto que deriva al cliente con el barbero. */
-export function humanHandoffText(whatsapp: string): string {
+export function humanHandoffText(whatsapp: string, botNumber?: string | null): string {
+  if (sharesChat(whatsapp, botNumber)) return `Hola, ${SAME_CHAT_HANDOFF}`;
   return `Hola, si quieres contactarte directamente con el barbero, escríbele a este número: +${whatsapp} (https://wa.me/${whatsapp.replace(/\D/g, "")}) y con gusto te atenderá.`;
 }
 

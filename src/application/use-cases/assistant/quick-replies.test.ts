@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { humanHandoffText, quickReplyKind } from "./quick-replies";
+import { humanHandoffText, quickReplyKind, reachLuis } from "./quick-replies";
 
 describe("quickReplyKind", () => {
   it.each(["Quiero hablar con Luis", "puedo hablar con el barbero?", "quiero comunicarme con una persona", "contactar al dueño", "necesito un humano", "tengo una queja", "Un RECLAMO", "hablar con el encargado"])(
@@ -45,5 +45,18 @@ describe("quickReplyKind", () => {
 
   it("derivación con el número", () => {
     expect(humanHandoffText("51999111222")).toContain("+51999111222 (https://wa.me/51999111222)");
+    expect(humanHandoffText("51999111222", "51888000111")).toContain("+51999111222 (https://wa.me/51999111222)");
+  });
+
+  it.each(["51999111222", "+51 999 111 222", "+51999-111-222"])("mismo número del bot (%s): se deriva por este chat, sin repetir el número", (bot) => {
+    const text = humanHandoffText("51999111222", bot);
+    expect(text).toContain("este mismo chat");
+    expect(text).not.toContain("999111222");
+    expect(reachLuis("51999111222", bot)).toBe("por este mismo chat");
+  });
+
+  it("reachLuis con otro número o sin número del bot da el número de Luis", () => {
+    expect(reachLuis("51999111222", "51888000111")).toBe("al +51999111222");
+    expect(reachLuis("51999111222", null, "a")).toBe("a +51999111222");
   });
 });

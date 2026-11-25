@@ -82,6 +82,7 @@ export function getUseCases() {
       assistant: selectAssistant(process.env, {
         ...deps,
         fallback: bookingConfirmation,
+        botNumber: deps.confirmationNumber,
         tools: botTools,
         conversations,
       }),

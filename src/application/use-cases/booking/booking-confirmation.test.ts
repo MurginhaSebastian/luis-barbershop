@@ -237,6 +237,13 @@ describe("confirmar por WhatsApp", () => {
     expect(replied()[0].text).toContain("escríbenos a +51900000000");
   });
 
+  test("si el bot comparte número con Luis, no se repite el número: se responde por este mismo chat", async () => {
+    const shared = new BookingConfirmationUseCase({ ...t.deps, confirmationNumber: "+51 900 000 000" });
+    await shared.handleMessage(message("Hola, ¿tienen hora el sábado?"));
+    expect(replied()[0].text).toContain("este mismo chat");
+    expect(replied()[0].text).not.toContain("900000000");
+  });
+
   test("sin WhatsApp de contacto, la consulta se manda a la web", async () => {
     t.site.settings = { ...DEFAULT_SITE_SETTINGS, contact: {} };
     await useCase.handleMessage(message("Hola, ¿tienen hora el sábado?"));

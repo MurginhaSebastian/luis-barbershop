@@ -45,6 +45,7 @@ function makeAssistant(
   barbers: object[] = [{ id: "b1", name: "Luis", active: true }],
   services: object[] = [FADE],
   fallbackModel?: string,
+  botNumber?: string,
 ) {
   const queue = [...responses];
   const fetchImpl = vi.fn<typeof fetch>(async () => {
@@ -66,6 +67,7 @@ function makeAssistant(
     apiKey: "gsk_prueba",
     model: "openai/gpt-oss-120b",
     fallbackModel,
+    botNumber,
     tools: { executeTool },
     conversations,
     messaging: { sendText, sendTemplate: async () => {} },
@@ -185,6 +187,18 @@ describe("límite de uso por celular", () => {
     expect(t.sendText).toHaveBeenCalledWith(ME, blocked ? LIMITED : "ok");
     expect(t.fetchImpl).toHaveBeenCalledTimes(blocked ? 0 : 1);
     expect(t.history).toEqual(blocked ? [] : expect.any(Array));
+  });
+
+  test("con el número del bot igual al de Luis, la derivación es por este chat", async () => {
+    Object.assign(counts, { hour: 12, day: 12 });
+    const t = makeAssistant([], undefined, undefined, undefined, "+51 900 000 000");
+    await t.assistant.handleMessage(message("quiero info"));
+    expect(t.sendText).toHaveBeenCalledWith(ME, "Has enviado muchos mensajes seguidos. Para seguir, escribe directamente a Luis por este mismo chat.");
+    Object.assign(counts, { hour: 0, day: 0 });
+    await t.assistant.handleMessage(message("quiero hablar con Luis"));
+    const handoff = String(t.sendText.mock.calls.at(-1)?.[1]);
+    expect(handoff).toContain("este mismo chat");
+    expect(handoff).not.toContain("900000000");
   });
 
   test("un código no cuenta ni se limita", async () => {
