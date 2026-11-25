@@ -9,6 +9,12 @@ const JUNK =
   "¿Quieres ? ? ? ? ? ... ? ?\n\n\n\n¡    \n\n\n\nOops! Parece…  \n\n\n\n  \n\n\n\nSorry…  \n\n\n\n… \n\n\n\n... \n\n\n\n... … \n\n\n\n... ...\n\n\n\nSorry… \n\n\n\n... ";
 
 describe("cleanModelText", () => {
+  test("quita las coletillas de formato copiadas del prompt", () => {
+    expect(cleanModelText("Tengo estas horas (una por línea):\n15:00 (uno por línea)\n16:00 (ver slots)\nUsa el startTime (startTime) que elijas (es rápido).")).toBe(
+      "Tengo estas horas:\n15:00\n16:00\nUsa el startTime que elijas (es rápido).",
+    );
+  });
+
   test("la salida basura de la demo queda desde ¡Perfecto!", () => {
     expect(cleanModelText(JUNK + GOOD)).toBe(GOOD);
   });

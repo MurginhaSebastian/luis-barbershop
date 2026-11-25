@@ -5,10 +5,13 @@ const FILLER_LINE = /^\W*(oops|sorry)\b/i;
 /** "¿Quieres ? ? ? ?": tres o más signos sueltos seguidos. */
 const QUESTION_RUN = /(?:\?\s+){3,}/;
 const LEADING_JUNK = /^(?:[\s?]|\.{2,}|…)+/;
+/** Instrucciones de formato copiadas del prompt: "(una por línea)", "(ver slots)", "(startTime)". */
+const FORMAT_HINT = /[ \t]*\([^()\n]*\b(?:por l[ií]nea|slots?|starttimes?|herramientas?)\b[^()\n]*\)/gi;
 
 /** Quita el relleno basura que el modelo a veces antepone a su respuesta. Si no queda nada, devuelve "". */
 export function cleanModelText(text: string): string {
   return text
+    .replace(FORMAT_HINT, "")
     .split("\n")
     .map((line) => (line.trim() === "" ? "" : line))
     .filter((line) => line === "" || (CONTENT.test(line) && !QUESTION_RUN.test(line + " ") && !(FILLER_LINE.test(line) && line.length <= 40)))
