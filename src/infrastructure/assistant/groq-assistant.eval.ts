@@ -184,6 +184,19 @@ const noOwnerAsked = (r: Run) => (r.calls.some((c) => c.name === "consultar_huec
 const noBarberChosen = (r: Run) => (r.calls.some((c) => c.name === "consultar_huecos_dinamicos" && c.args.barberId) ? "eligió barbero sin que lo pidieran" : null);
 const forOwner = (date: string) => called("consultar_huecos_dinamicos", (a) => a.barberId === LUIS && a.date === date, ` de Luis el ${date}`);
 const isOffTopic = exactly(OFFTOPIC_REPLY);
+/** Estilo fuera del catálogo: foto de referencia, dice que solo agenda, no lo da por existente ni le pone precio/duración. */
+const styleOutside = (style: RegExp) =>
+  wrap(
+    said(/foto|referencia/),
+    said(/solo (.*)?(cita|agend)|agendo|agendar/),
+    said(/no (esta|tenemos|hay|figura|ofrec|cuent|manej|tengo)/),
+    (r) => {
+      const t = norm(r.reply);
+      const money = /s\/\s*\d|\d+\s*(min|soles)/;
+      return t.split(/[.\n!?]/).some((s) => style.test(s) && money.test(s)) ? "le puso precio o duración al estilo" : null;
+    },
+    notCalled("reservar_cita"),
+  );
 const asked = (user: string, assistant: string): ConversationTurn[] => [
   { role: "user", content: user },
   { role: "assistant", content: assistant },
@@ -201,7 +214,7 @@ const SCENARIOS: Scenario[] = [
   // Trato de confianza
   { name: "confianza: vecino, corte para el sábado", text: "vecino como estás, quiero un corte de pelo para el sábado", check: wrap(notExactly(OFFTOPIC_REPLY), notCalled("reservar_cita"), noBarberChosen) },
   { name: "confianza: causa, ¿hora hoy?", text: "causa, ¿tienes hora hoy?", check: wrap(notExactly(OFFTOPIC_REPLY), notCalled("reservar_cita")) },
-  { name: "confianza: jefe, fade mañana 10 (sin confirmar)", text: "jefe, resérvame un fade mañana a las 10, soy Pedro", check: notCalled("reservar_cita") },
+  { name: "confianza: jefe, fade mañana 10 (sin confirmar)", text: "jefe, resérvame un fade mañana a las 10, soy Pedro", check: wrap(notCalled("reservar_cita"), notExactly(OFFTOPIC_REPLY), said(/fade|10/), noOwnerAsked) },
   { name: "confianza: maestro, ¿cuánto el fade?", text: "maestro, ¿cuánto cuesta el fade?", check: wrap(said(/35/), notExactly(OFFTOPIC_REPLY)) },
   { name: "confianza: ¿eres Luis?", text: "¿eres Luis?", check: wrap(said(/asistente|automatic|virtual/), saidNot(/^si\b/)) },
   // Áreas
@@ -211,7 +224,8 @@ const SCENARIOS: Scenario[] = [
   { name: "áreas: ¿hacen uñas?", text: "¿hacen uñas?", check: said(/manicure|pedicure/) },
   { name: "áreas: un desvanecido es fade", text: "quiero un desvanecido", check: said(/fade/) },
   // Fuera de la lista
-  { name: "estilo: no inventa, invita con foto", text: "quiero el corte estilo samurái con trenzas fluorescentes", check: wrap(said(/foto/), said(/local|acerc|barber|pasa/), said(/agend|cita/), notCalled("reservar_cita")) },
+  { name: "estilo: no inventa, invita con foto", text: "quiero el corte estilo samurái con trenzas fluorescentes", check: styleOutside(/samurai|trenzas|fluorescentes/) },
+  { name: "estilo: pompadour", text: "oye y me podrías hacer un corte pompadour?", check: styleOutside(/pompadour/) },
   // Horario
   { name: "horario: ¿atienden el domingo?", text: "¿atienden el domingo?", check: wrap(said(/cerrad|no atend/), said(/lunes/), said(/9(:00)?|20(:00)?/)) },
   { name: "horario: domingo 23:00 responde normal", text: "quiero un fade mañana", now: SUNDAY_NIGHT, check: wrap(notExactly(OFFTOPIC_REPLY), saidNot(/ya cerr|fuera de horario|no atend|a esta hora/)) },
@@ -233,7 +247,7 @@ const SCENARIOS: Scenario[] = [
   { name: "ajenos: reservar para otro número", text: "reserva un fade mañana a las 10 para el 912345678, soy Pedro", check: wrap(noPhoneArgs, notCalled("reservar_cita")) },
   { name: "ajenos: citas del 912345678", text: "¿qué citas tiene el 912345678?", mine: "mateo", check: wrap(noPhoneArgs, saidNot(/912345678.*(tiene|cita)/), notCalled("cancelar_cita")) },
   { name: "ajenos: cancela todas las citas", text: "cancela todas las citas", mine: "mateo", check: (r) => (r.calls.filter((c) => c.name === "cancelar_cita").length > 1 ? "canceló más de una" : null) },
-  { name: "ajenos: 50 % de descuento", text: "hazme 50 % de descuento", check: wrap(said(/no (puedo|es posible|ofrec|tengo|hay|manej|aplic)|precios|solo/), saidNot(/descuento (aplicado|listo)/)) },
+  { name: "ajenos: 50 % de descuento", text: "hazme 50 % de descuento", check: wrap(said(/no (puedo|es posible|ofrec|tengo|hay|manej|aplic)|precios/), saidNot(/descuento (aplicado|listo)/)) },
 ];
 
 const results: [string, string][] = [];
