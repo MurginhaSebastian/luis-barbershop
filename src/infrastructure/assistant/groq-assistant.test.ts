@@ -144,7 +144,7 @@ describe("varias rondas de herramientas", () => {
     const always = () => groq({ tool_calls: [call("c", "listar_catalogo_y_mis_citas")] });
     const t = makeAssistant([always(), always(), always(), always(), always()]);
     await t.assistant.handleMessage(message("quiero info"));
-    expect(t.executeTool).toHaveBeenCalledTimes(3);
+    expect(t.executeTool).toHaveBeenCalledTimes(1); // la misma llamada no se repite
     expect(t.fetchImpl).toHaveBeenCalledTimes(4);
     expect(t.bodies()[3]).not.toHaveProperty("tools"); // la última petición, sin herramientas
     // Sin respuesta en texto y sin nada hecho: aviso amable, no las instrucciones del básico.
@@ -461,6 +461,59 @@ describe("si Groq falla", () => {
     await t.assistant.handleMessage(message("quiero info"));
     expect(t.bodies().map((b) => b.model)).toEqual(["openai/gpt-oss-120b", FALLBACK_GROQ_MODEL, FALLBACK_GROQ_MODEL]);
     expect(t.sendText).toHaveBeenCalledWith(ME, "Listo");
+  });
+
+  describe("rescate con lo ya consultado", () => {
+    const HUECOS = { ok: true, data: { date: "2026-11-28", slots: [{ time: "15:00" }, { time: "15:30" }] } } as const;
+    const query = () => groq({ tool_calls: [call("c1", "consultar_huecos_dinamicos", { serviceIds: ["s1"], date: "2026-11-28" })] });
+    const toolUseFailed = () => new Response('{"error":{"message":"Tool choice is none, but model called a tool","code":"tool_use_failed"}}', { status: 400 });
+
+    test("400 tool_use_failed en la ronda final tras consultar: responde con las horas", async () => {
+      const t = makeAssistant([query(), toolUseFailed()]);
+      t.executeTool.mockResolvedValueOnce(HUECOS);
+      await t.assistant.handleMessage(message("horas para fade el sábado"));
+      expect(t.sendText).toHaveBeenCalledWith(ME, "Horas libres el 28/11: 15:00, 15:30. ¿Cuál prefieres?");
+      expect(t.history.at(-1)?.content).toContain("15:30");
+    });
+
+    test("429 en los dos modelos tras consultar: responde con las horas", async () => {
+      const t = makeAssistant([query(), new Response("a", { status: 429 }), new Response("b", { status: 429 })], undefined, undefined, FALLBACK_GROQ_MODEL);
+      t.executeTool.mockResolvedValueOnce(HUECOS);
+      await t.assistant.handleMessage(message("horas para fade el sábado"));
+      expect(t.sendText).toHaveBeenCalledWith(ME, "Horas libres el 28/11: 15:00, 15:30. ¿Cuál prefieres?");
+    });
+
+    test("sin horas, ofrece las alternatives", async () => {
+      const t = makeAssistant([query(), toolUseFailed()]);
+      t.executeTool.mockResolvedValueOnce({
+        ok: true,
+        data: { date: "2026-11-28", slots: [], alternatives: { otherBarbers: [{ name: "Ana", slots: [{ time: "10:00" }] }], nextFree: { date: "2026-11-30", slots: [{ time: "09:00" }] } } },
+      });
+      await t.assistant.handleMessage(message("horas para fade el sábado"));
+      expect(t.sendText).toHaveBeenCalledWith(ME, "Ese día no hay horas libres. Te ofrezco:\nCon Ana: 10:00\nEl 30/11: 09:00\n¿Cuál prefieres?");
+    });
+
+    test("tras listar, responde con las citas del cliente", async () => {
+      const t = makeAssistant([groq({ tool_calls: [call("c1", "listar_catalogo_y_mis_citas")] }), toolUseFailed()]);
+      t.executeTool.mockResolvedValueOnce({ ok: true, data: { myActiveAppointments: [{ when: "mar, 17 nov, 17:00", barberName: "Luis" }] } });
+      await t.assistant.handleMessage(message("¿tengo cita?"));
+      expect(t.sendText).toHaveBeenCalledWith(ME, "Tus citas:\n- mar, 17 nov, 17:00 con Luis");
+    });
+
+    test("una llamada idéntica en el mismo mensaje no ejecuta la herramienta dos veces", async () => {
+      const t = makeAssistant([query(), groq({ tool_calls: [call("c2", "consultar_huecos_dinamicos", { serviceIds: ["s1"], date: "2026-11-28" })] }), groq({ content: "Hay 15:00." })]);
+      await t.assistant.handleMessage(message("horas para fade el sábado"));
+      expect(t.executeTool).toHaveBeenCalledTimes(1);
+      // El modelo recibe igualmente el resultado de su segunda llamada.
+      expect(t.bodies()[2].messages.filter((m: { role: string }) => m.role === "tool")).toHaveLength(2);
+      expect(t.sendText).toHaveBeenCalledWith(ME, "Hay 15:00.");
+    });
+
+    test("fallo sin resultados útiles: la disculpa de siempre", async () => {
+      const t = makeAssistant([groq({ tool_calls: [call("c1", "listar_catalogo_y_mis_citas")] }), toolUseFailed()]);
+      await t.assistant.handleMessage(message("hola, ¿qué tienen?"));
+      expect(t.sendText).toHaveBeenCalledWith(ME, FRIENDLY);
+    });
   });
 
   test("si ya reservó, le confirma la reserva en vez de las instrucciones de siempre", async () => {

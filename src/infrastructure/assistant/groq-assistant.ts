@@ -179,14 +179,17 @@ export class GroqAssistant implements AiAssistantPort {
       return { kind: "answered" };
     }
     const done: Mutation[] = [];
+    const looked: Mutation[] = [];
     let reply: string;
     try {
-      reply = await this.converse(phone, text, now, whatsapp, done);
+      reply = await this.converse(phone, text, now, whatsapp, done, looked);
     } catch (error) {
       // Sin nada hecho, un error de la base o de la app se relanza: el mensaje se libera y Meta reintenta.
       if (!(error instanceof AssistantUnavailableError) && done.length === 0) throw error;
       console.error("asistente de IA sin respuesta", { error: String(error), phone: mask(phone) });
-      if (done.length === 0) {
+      // Ya reservó, confirmó o canceló: se le dice eso, no las instrucciones de siempre.
+      const rescue = done.length > 0 ? afterMutation(done.at(-1)!, whatsapp, this.deps.botNumber) : rescueReply(looked);
+      if (!rescue) {
         // Sin historial: este aviso no es parte de la conversación.
         const options = [
           this.deps.siteUrl && `reserva en ${this.deps.siteUrl}/reservar`,
@@ -195,8 +198,7 @@ export class GroqAssistant implements AiAssistantPort {
         await this.deps.messaging.sendText(phone, `Perdona, ahora mismo no puedo responderte. Vuelve a escribirme en un minuto${options.map((o) => `, o ${o}`).join("")}.`);
         return { kind: "answered" };
       }
-      // Ya reservó, confirmó o canceló: se le dice eso, no las instrucciones de siempre.
-      reply = afterMutation(done.at(-1)!, whatsapp, this.deps.botNumber);
+      reply = rescue;
     }
     await this.deliver(phone, text, reply, now, done.length > 0);
     return { kind: "answered" };
@@ -227,7 +229,8 @@ export class GroqAssistant implements AiAssistantPort {
     );
   }
 
-  private async converse(phone: string, text: string, now: Date, contact: string | undefined, done: Mutation[]): Promise<string> {
+  /** `done`: lo que cambió citas; `looked`: consultas con resultado, para contestar si el modelo ya no responde. */
+  private async converse(phone: string, text: string, now: Date, contact: string | undefined, done: Mutation[], looked: Mutation[]): Promise<string> {
     const history = await this.deps.conversations.recent(phone, new Date(now.getTime() - HISTORY_WINDOW_MS), HISTORY_TURNS);
     const messages: ChatMessage[] = [
       { role: "system", content: systemPrompt(contact, await this.catalogLine(), await this.hoursLine(), this.deps.botNumber) },
@@ -238,6 +241,8 @@ export class GroqAssistant implements AiAssistantPort {
     const signal = AbortSignal.timeout(TIMEOUT_MS);
     // Si el principal da 429/5xx, el resto de las rondas de este mensaje va con el de respaldo.
     const run = { model: this.deps.model };
+    // Una llamada idéntica en el mismo mensaje reutiliza el resultado (el modelo a veces repite la consulta).
+    const seen = new Map<string, ToolResult>();
     for (let round = 0; ; round++) {
       // Tras 3 rondas de herramientas, la última petición va sin herramientas: tiene que responder con texto.
       const withTools = round < MAX_TOOL_ROUNDS;
@@ -255,8 +260,12 @@ export class GroqAssistant implements AiAssistantPort {
         tool_calls: calls.map((c) => ({ id: c.id, type: "function", function: { name: c.function.name, arguments: c.function.arguments ?? "" } })),
       });
       for (const call of calls) {
-        const result = await this.runTool(call.function.name, call.function.arguments, phone, now);
-        if (result.ok && MUTATING.has(call.function.name)) done.push({ tool: call.function.name, data: result.data });
+        const key = `${call.function.name}\0${call.function.arguments?.trim() ?? ""}`;
+        const result = seen.get(key) ?? (await this.runTool(call.function.name, call.function.arguments, phone, now));
+        if (!seen.has(key)) {
+          seen.set(key, result);
+          if (result.ok) (MUTATING.has(call.function.name) ? done : looked).push({ tool: call.function.name, data: result.data });
+        }
         messages.push({ role: "tool", tool_call_id: call.id, name: call.function.name, content: JSON.stringify(result) });
       }
     }
@@ -361,6 +370,37 @@ export class GroqAssistant implements AiAssistantPort {
       console.error("asistente de IA: no se guardó el historial", { error: String(error), phone: mask(phone) });
     }
   }
+}
+
+type SlotList = { time?: string }[];
+const times = (slots: SlotList | undefined) => (slots ?? []).map((s) => s.time).filter(Boolean).join(", ");
+const dayMonth = (date: string) => date.split("-").reverse().slice(0, 2).join("/");
+
+/**
+ * Sin respuesta del modelo pero con consultas ya hechas en este mensaje: las horas libres (o sus alternativas) o las
+ * citas del cliente, tal como las devolvió la herramienta. null si no hay nada útil.
+ */
+function rescueReply(looked: readonly Mutation[]): string | null {
+  for (const { tool, data } of looked.toReversed()) {
+    if (tool === "consultar_huecos_dinamicos") {
+      const d = data as {
+        date?: string;
+        slots?: SlotList;
+        alternatives?: { otherBarbers?: { name?: string; slots?: SlotList }[]; nextFree?: { date?: string; slots?: SlotList } | null };
+      };
+      if (times(d.slots)) return `Horas libres${d.date ? ` el ${dayMonth(d.date)}` : ""}: ${times(d.slots)}. ¿Cuál prefieres?`;
+      const lines = [
+        ...(d.alternatives?.otherBarbers ?? []).filter((b) => times(b.slots)).map((b) => `Con ${b.name}: ${times(b.slots)}`),
+        ...(d.alternatives?.nextFree && times(d.alternatives.nextFree.slots) ? [`El ${dayMonth(d.alternatives.nextFree.date ?? "")}: ${times(d.alternatives.nextFree.slots)}`] : []),
+      ];
+      if (lines.length > 0) return `Ese día no hay horas libres. Te ofrezco:\n${lines.join("\n")}\n¿Cuál prefieres?`;
+    }
+    if (tool === "listar_catalogo_y_mis_citas") {
+      const mine = (data as { myActiveAppointments?: { when?: string; barberName?: string }[] }).myActiveAppointments ?? [];
+      if (mine.length > 0) return `Tus citas:\n${mine.map((a) => `- ${a.when}${a.barberName ? ` con ${a.barberName}` : ""}`).join("\n")}`;
+    }
+  }
+  return null;
 }
 
 /** Respuesta fija con lo último que se hizo, para cuando Groq falla después de reservar, confirmar o cancelar. */
