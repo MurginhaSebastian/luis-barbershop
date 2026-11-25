@@ -84,6 +84,27 @@ test.describe("portada", () => {
     }
   });
 
+  test("sin servicios de barbería activos, Servicios muestra un aviso y WhatsApp, sin tarjetas", async ({ page }) => {
+    await withE2eDatabase(async (db) => {
+      await db.query("UPDATE services SET active = false WHERE area = 'barberia'");
+      await db.query("INSERT INTO site_settings (id, data) VALUES (1, $1)", [{ contact: { whatsapp: "51900000000" } }]);
+    });
+    try {
+      await page.goto("/");
+      const section = page.getByRole("region", { name: "Servicios" });
+      await expect(section).toContainText("Estamos actualizando nuestra carta de servicios");
+      await expect(section).not.toContainText("Toca un servicio");
+      await expect(section.getByRole("link", { name: "Consúltanos por WhatsApp" })).toHaveAttribute("href", /^https:\/\/wa\.me\/51900000000/);
+      await expect(page.getByRole("link", { name: /Reservar este servicio/ })).toHaveCount(0);
+      await expectNoSeriousA11yIssues(page, "Servicios sin servicios");
+    } finally {
+      await withE2eDatabase(async (db) => {
+        await db.query("UPDATE services SET active = true WHERE area = 'barberia'");
+        await db.query("DELETE FROM site_settings");
+      });
+    }
+  });
+
   test("el botón principal lleva a la reserva", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "Reservar cita" }).first().click();
@@ -367,6 +388,7 @@ test.describe("accesibilidad", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: /Qué día/ })).toBeFocused();
 
+    await chooseDay(page); // un día futuro: hoy, de noche, ya no tiene horas
     await page.getByRole("region", { name: "Tarde" }).getByRole("link").first().focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: "Tus datos" })).toBeFocused();
