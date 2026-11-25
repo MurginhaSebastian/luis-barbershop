@@ -29,6 +29,19 @@ export class IdAliases {
     return this.walk(value, (s) => this.toId.get(s) ?? s);
   }
 
+  /** Quita de un texto para el cliente los alias que el modelo dejó escapar: "(b3)", "[b3]", "id=b3" o "Luis b3". */
+  strip(text: string): string {
+    const known = [...this.toId.keys()].toSorted((x, y) => y.length - x.length).join("|");
+    if (!known) return text;
+    const a = `(?:${known})`;
+    const out = text
+      .replace(new RegExp(String.raw`\s*[(\[]\s*(?:ids?\s*[:=]?\s*)?${a}\s*[)\]]`, "gi"), "")
+      .replace(new RegExp(String.raw`\s*\bids?\s*[:=]\s*${a}\b`, "gi"), "")
+      .replace(new RegExp(String.raw`(?<=\p{L}) ${a}(?![\w:./])`, "gu"), "");
+    // Solo si quitó algo: no se toca el espaciado de un texto normal.
+    return out === text ? text : out.replace(/ +([,.;:!?])/g, "$1");
+  }
+
   private walk(value: unknown, map: (s: string) => string): unknown {
     if (typeof value === "string") return map(value);
     if (Array.isArray(value)) return value.map((v) => this.walk(v, map));

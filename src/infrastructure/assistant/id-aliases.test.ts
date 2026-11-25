@@ -24,4 +24,17 @@ describe("IdAliases", () => {
   test("un alias inventado no se traduce: el validador lo rechaza", () => {
     expect(new IdAliases().decode({ appointmentId: "a9" })).toEqual({ appointmentId: "a9" });
   });
+
+  test("strip quita los alias conocidos que el modelo deja ver, y nada más", () => {
+    const a = new IdAliases();
+    a.register("b", BARBER);
+    a.register("b", "00000000-0000-4000-8000-000000000102");
+    a.register("b", "00000000-0000-4000-8000-000000000103");
+    a.register("s", SERVICE);
+    expect(a.strip("Puedes elegir a Luis (b3), al Barbero invitado (b1) o a Ana [b2].")).toBe("Puedes elegir a Luis, al Barbero invitado o a Ana.");
+    expect(a.strip("Con Luis (id b3) y Ana id=b2 o Pedro b1, el Fade (s1) sale S/ 35")).toBe("Con Luis y Ana o Pedro, el Fade sale S/ 35");
+    const normal = "Fade de 60 min a S/ 35, hoy a las 3:00 y a las b9 o la tienda s1:30 con la sala b2.5";
+    expect(a.strip(normal)).toBe(normal);
+    expect(new IdAliases().strip("Luis (b3)")).toBe("Luis (b3)");
+  });
 });

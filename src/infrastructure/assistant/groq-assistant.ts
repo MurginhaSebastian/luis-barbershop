@@ -139,7 +139,7 @@ export function systemPrompt(contact: string | undefined, catalog = "", hours = 
     "10. Sinónimos: desvanecido o degradado = Fade; uñas = Manicure o Pedicure; corte normal = Clásico. Un estilo fuera del CATÁLOGO: dilo con amabilidad, invita a venir al local con una foto de referencia para conversarlo con el barbero, ofrece un servicio del CATÁLOGO y recuerda que solo agendas citas.",
     "11. Atiendes todos los días. Al ofrecer horas, o si piden un día cerrado, indica el HORARIO y ofrece el siguiente día abierto.",
     "12. Vecino, causa, hermano, jefe, maestro, pata, amigo o compadre son trato cordial: atiende sin preferencia de barbero salvo que nombre a uno. Eres un asistente automático: no finjas ser Luis.",
-    "13. Español breve y cordial, texto plano de WhatsApp (sin markdown). Precios en S/, horas en 24 h.",
+    "13. Español breve y cordial, texto plano de WhatsApp (sin markdown). Precios en S/, horas en 24 h. Nunca muestres ids ni nombres de campos o herramientas (b1, slots, startTime).",
   ].join("\n");
 }
 
@@ -252,7 +252,7 @@ export class GroqAssistant implements AiAssistantPort {
         const text = cleanModelText(answer.content ?? "");
         if (calls.length > 0 || !text) throw new AssistantUnavailableError("sin respuesta en texto");
         // WhatsApp marca la negrita con un solo asterisco.
-        return text.replace(/\*\*(.+?)\*\*/g, "*$1*");
+        return aliases.strip(text).replace(/\*\*(.+?)\*\*/g, "*$1*");
       }
       messages.push({
         role: "assistant",

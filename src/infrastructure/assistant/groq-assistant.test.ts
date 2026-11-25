@@ -364,6 +364,16 @@ describe("contexto", () => {
     expect(JSON.stringify(third.messages)).not.toContain(APPOINTMENT);
   });
 
+  test("los alias internos que el modelo deja escapar no llegan al cliente", async () => {
+    const t = makeAssistant([groq({ content: "Puedes elegir a Luis (b2), al Barbero invitado (b1) o a Ana [b3]. El Fade cuesta S/ 35." })], [
+      { id: "b1", name: "Barbero invitado", active: true },
+      { id: "b2", name: "Luis", active: true, isOwner: true },
+      { id: "b3", name: "Ana", active: true },
+    ]);
+    await t.assistant.handleMessage(message("¿qué barberos hay?"));
+    expect(t.sendText).toHaveBeenCalledWith(ME, "Puedes elegir a Luis, al Barbero invitado o a Ana. El Fade cuesta S/ 35.");
+  });
+
   test("el catálogo agrupa los servicios por área y cada profesional lleva la suya", async () => {
     const t = makeAssistant([groq({ content: "hola" })], [
       { id: "b1", name: "Luis", active: true, isOwner: true },
