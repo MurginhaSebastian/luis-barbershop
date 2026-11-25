@@ -3,48 +3,40 @@ import { z } from "zod";
 // Herramientas que podrá usar el asistente de IA. Sus parámetros los llena el modelo, así que nunca incluyen el
 // celular del cliente: ese lo pone el servidor (ToolContext.verifiedPhone), tomado del remitente firmado por Meta.
 // Sin .transform(): el mismo esquema se exporta a JSON Schema para declarar la herramienta al LLM.
+// Descripciones cortas a propósito: viajan en cada petición y el límite gratis es por tokens/minuto.
 
-const serviceIds = z.array(z.uuid()).min(1).max(5).describe("Ids de los servicios elegidos (de listar_catalogo_y_mis_citas).");
-const barberId = z.uuid().nullable().optional().describe("Id del barbero; vacío o null = sin preferencia.");
-const appointmentId = z
-  .uuid()
-  .optional()
-  .describe("Id de la cita (de listar_catalogo_y_mis_citas). Vacío: la única cita activa del cliente.");
+const serviceIds = z.array(z.uuid()).min(1).max(5);
+const barberId = z.uuid().nullable().optional().describe("Sin él, sin preferencia.");
+const appointmentId = z.uuid().optional().describe("Sin él, la única cita.");
 
 export const BOT_TOOLS = {
   listar_catalogo_y_mis_citas: {
-    description:
-      "Servicios y barberos activos con sus ids, y las citas activas de este cliente. Úsala antes que las demás.",
+    description: "Citas activas del cliente, con sus ids.",
     schema: z.object({}),
   },
   consultar_huecos_dinamicos: {
-    description:
-      "Horas libres de un día para esos servicios (la cita dura la suma de sus duraciones), en hora de Lima.",
+    description: "Horas libres de un día (hora de Lima).",
     schema: z.object({
       serviceIds,
-      date: z.iso.date().describe("Día en formato YYYY-MM-DD, en el calendario de Lima."),
+      date: z.iso.date(),
       barberId,
     }),
   },
   reservar_cita: {
-    description:
-      "Reserva para quien escribe en este chat. Con menos de 2 h de antelación nace confirmada; si no, queda pendiente y se le pedirá confirmar 35 min antes.",
+    description: "Reserva para quien escribe.",
     schema: z.object({
-      customerName: z.string().trim().min(2).max(60).describe("Nombre de quien viene a la cita."),
+      customerName: z.string().trim().min(2).max(60),
       serviceIds,
       barberId,
-      startTime: z.iso
-        .datetime({ offset: true })
-        .describe("Una hora de inicio tal como la devolvió consultar_huecos_dinamicos (con -05:00)."),
+      startTime: z.iso.datetime({ offset: true }).describe("Tal como lo devolvió consultar_huecos_dinamicos."),
     }),
   },
   confirmar_asistencia: {
-    description: "Confirma que el cliente vendrá. Sirve también si su cita está en riesgo, mientras nadie haya tomado la hora.",
+    description: "Confirma que el cliente vendrá.",
     schema: z.object({ appointmentId }),
   },
   cancelar_cita: {
-    description:
-      "Cancela una cita del cliente: con 35 min o más de antelación, o con menos si aún no la había confirmado.",
+    description: "Cancela una cita del cliente.",
     schema: z.object({ appointmentId }),
   },
 } as const;
@@ -55,14 +47,19 @@ export const isBotTool = (name: string): name is BotToolName => Object.hasOwn(BO
 
 /** Lo que el adaptador del LLM declara: nombre, descripción y parámetros en JSON Schema. */
 export function botToolDefinitions() {
-  return Object.entries(BOT_TOOLS).map(([name, tool]) => ({
-    name,
-    description: tool.description,
-    // Los patrones de uuid y fecha cuestan cientos de tokens por petición y Zod los valida igual en el servidor.
-    parameters: z.toJSONSchema(tool.schema, {
+  return Object.entries(BOT_TOOLS).map(([name, tool]) => {
+    const parameters = z.toJSONSchema(tool.schema, {
       override: ({ jsonSchema }) => {
+        // Los patrones de uuid y fecha cuestan cientos de tokens por petición y Zod los valida igual en el servidor.
         delete jsonSchema.pattern;
+        // Los límites y additionalProperties tampoco hacen falta: el ejecutor valida con Zod (los descarta o los rechaza).
+        for (const key of ["minItems", "maxItems", "minLength", "maxLength"]) delete jsonSchema[key];
+        if (jsonSchema.additionalProperties === false) delete jsonSchema.additionalProperties;
+        // El adaptador de Groq usa alias cortos (s1, b1, a1) en vez de uuid: el formato no se declara.
+        if (jsonSchema.format === "uuid") delete jsonSchema.format;
       },
-    }),
-  }));
+    });
+    delete parameters.$schema;
+    return { name, description: tool.description, parameters };
+  });
 }

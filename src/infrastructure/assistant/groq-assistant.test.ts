@@ -336,7 +336,32 @@ describe("contexto", () => {
   test("el prompt lleva el catálogo resumido con ids", async () => {
     const t = makeAssistant([groq({ content: "hola" })]);
     await t.assistant.handleMessage(message("quiero info"));
-    expect(t.bodies()[0].messages[0].content).toContain("CATÁLOGO. Servicios: Barbería: Fade 45 min S/35 id=s1. Barberos: Luis id=b1 (Barbería).");
+    expect(t.bodies()[0].messages[0].content).toContain("CATÁLOGO. Servicios: Barbería: Fade 45 min S/35 [s1]. Barberos: Luis [b1] (Barbería).");
+  });
+
+  test("el modelo ve alias cortos en vez de uuid y el ejecutor recibe siempre los ids reales", async () => {
+    const SERVICE = "00000000-0000-4000-8000-000000000001";
+    const BARBER = "00000000-0000-4000-8000-000000000101";
+    const APPOINTMENT = "00000000-0000-4000-8000-000000000201";
+    const t = makeAssistant(
+      [
+        groq({ tool_calls: [call("c1", "listar_catalogo_y_mis_citas")] }),
+        groq({ tool_calls: [call("c2", "cancelar_cita", { appointmentId: "a1" }), call("c3", "consultar_huecos_dinamicos", { serviceIds: ["s1"], date: "2026-11-17", barberId: "b1" })] }),
+        groq({ content: "Listo" }),
+      ],
+      [{ id: BARBER, name: "Luis", active: true }],
+      [{ ...FADE, id: SERVICE }],
+    );
+    t.executeTool.mockResolvedValueOnce({ ok: true, data: { myActiveAppointments: [{ id: APPOINTMENT, barberName: "Luis" }] } });
+    await t.assistant.handleMessage(message("cancela mi cita"));
+    const [first, second, third] = t.bodies();
+    expect(first.messages[0].content).toContain("Fade 45 min S/35 [s1]. Barberos: Luis [b1]");
+    expect(JSON.stringify(first.messages)).not.toContain(SERVICE);
+    expect(JSON.stringify(first.tools)).not.toContain("uuid");
+    expect(second.messages.at(-1).content).toBe(JSON.stringify({ ok: true, data: { myActiveAppointments: [{ id: "a1", barberName: "Luis" }] } }));
+    expect(t.executeTool.mock.calls[1][0].arguments).toEqual({ appointmentId: APPOINTMENT });
+    expect(t.executeTool.mock.calls[2][0].arguments).toEqual({ serviceIds: [SERVICE], date: "2026-11-17", barberId: BARBER });
+    expect(JSON.stringify(third.messages)).not.toContain(APPOINTMENT);
   });
 
   test("el catálogo agrupa los servicios por área y cada profesional lleva la suya", async () => {
@@ -349,7 +374,7 @@ describe("contexto", () => {
     ]);
     await t.assistant.handleMessage(message("quiero info"));
     expect(t.bodies()[0].messages[0].content).toContain(
-      "Servicios: Barbería: Fade 60 min S/35 id=s1 | Spa y estilista: Manicure 80 min S/40 id=s2. Barberos: Ana id=b2 (Spa y estilista); Luis id=b1 (dueño, Barbería).",
+      "Servicios: Barbería: Fade 60 min S/35 [s1] | Spa y estilista: Manicure 80 min S/40 [s2]. Barberos: Ana [b1] (Spa y estilista); Luis [b2] (dueño, Barbería).",
     );
   });
 
@@ -371,7 +396,7 @@ describe("contexto", () => {
     ]);
     await t.assistant.handleMessage(message("quiero info"));
     const content = t.bodies()[0].messages[0].content as string;
-    expect(content).toContain("Barberos: Ana id=b2 (Barbería); Luis id=b1 (dueño, Barbería).");
+    expect(content).toContain("Barberos: Ana [b1] (Barbería); Luis [b2] (dueño, Barbería).");
     expect(content).toContain("No ofrezcas ni sugieras al dueño");
     expect(content).toContain("alternatives");
   });
