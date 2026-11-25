@@ -53,6 +53,37 @@ test.describe("portada", () => {
     await expect(page.getByLabel(/Manicure de prueba/)).toBeChecked();
   });
 
+  test("cada enlace /#ancla de la cabecera y del menú móvil tiene su sección", async ({ page }, info) => {
+    await page.goto("/");
+    await page.getByRole("heading", { name: "Horario", level: 2 }).waitFor();
+    if (info.project.name === "movil") await page.locator("summary", { hasText: "Menú" }).click();
+    const hrefs = await page.locator('a[href^="/#"]').evaluateAll((as) => as.map((a) => a.getAttribute("href")!.slice(2)));
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const id of hrefs) await expect(page.locator(`[id="${id}"]`), `#${id}`).toHaveCount(1);
+  });
+
+  test("sin servicios de spa activos, Para ellas sale con su texto y WhatsApp, sin rejilla", async ({ page }) => {
+    await withE2eDatabase(async (db) => {
+      await db.query("UPDATE services SET active = false WHERE area = 'spa'");
+      await db.query("INSERT INTO site_settings (id, data) VALUES (1, $1)", [{ contact: { whatsapp: "51900000000" } }]);
+    });
+    try {
+      await page.goto("/");
+      const section = page.getByRole("region", { name: "Para ellas" });
+      await expect(section).toContainText("Dluiss Spa & Beauty");
+      await expect(section).toContainText("Estamos preparando nuestra carta de servicios");
+      await expect(section.getByRole("link", { name: "Consúltanos por WhatsApp" })).toHaveAttribute("href", /^https:\/\/wa\.me\/51900000000/);
+      await expect(section.getByRole("link", { name: /Manicure de prueba/ })).toHaveCount(0);
+      await expect(page.locator('a[href="/#para-ellas"]').first()).toHaveAttribute("href", "/#para-ellas");
+      await expectNoSeriousA11yIssues(page, "Para ellas sin servicios");
+    } finally {
+      await withE2eDatabase(async (db) => {
+        await db.query("UPDATE services SET active = true WHERE area = 'spa'");
+        await db.query("DELETE FROM site_settings");
+      });
+    }
+  });
+
   test("el botón principal lleva a la reserva", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "Reservar cita" }).first().click();

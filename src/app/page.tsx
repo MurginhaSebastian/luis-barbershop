@@ -102,7 +102,13 @@ async function CatalogSections() {
           <ServiceGallery services={barberia} assistant={assistant} />
         </div>
       </section>
-      {sections.paraEllas && spa.length > 0 && <ParaEllas services={spa} assistant={assistant} />}
+      {sections.paraEllas && (
+        <ParaEllas
+          services={spa}
+          assistant={assistant}
+          whatsappHref={contact.whatsapp ? whatsappLink(contact.whatsapp, assistant ? "Hola, tengo una consulta." : undefined) : undefined}
+        />
+      )}
       {sections.about && <About image={images.about} />}
       {sections.whyUs && <WhyUs />}
       {sections.howToBook && <HowToBook assistant={assistant} />}

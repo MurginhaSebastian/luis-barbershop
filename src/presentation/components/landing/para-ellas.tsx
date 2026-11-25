@@ -3,7 +3,7 @@ import type { Service } from "@/core/entities/catalog";
 import { formatPrice } from "@/presentation/lib/format";
 import { spaIconFor } from "@/presentation/lib/spa-icon";
 import { BookLink } from "./book-link";
-import { container, sectionTitle } from "./styles";
+import { container, ghostCtaClass, sectionTitle } from "./styles";
 
 const seals = [
   { label: "Ambiente relajante", Icon: Leaf },
@@ -15,7 +15,15 @@ const seals = [
 const circle = "grid size-12 shrink-0 place-items-center rounded-full border border-rose/50 text-rose";
 
 /** Área de mujeres: Dluiss Spa & Beauty. Cada servicio abre la reserva con ese servicio marcado. */
-export function ParaEllas({ services, assistant }: { services: Service[]; assistant?: string | null }) {
+export function ParaEllas({
+  services,
+  assistant,
+  whatsappHref,
+}: {
+  services: Service[];
+  assistant?: string | null;
+  whatsappHref?: string;
+}) {
   return (
     <section id="para-ellas" aria-labelledby="para-ellas-t" className="scroll-mt-6 border-y border-rose/20 bg-card">
       <div className={`${container} py-20`}>
@@ -28,7 +36,20 @@ export function ParaEllas({ services, assistant }: { services: Service[]; assist
           Un espacio creado para realzar tu belleza, cuidar de ti y darte el momento de bienestar que mereces.
         </p>
 
-        <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {services.length === 0 && (
+          <div className="mt-10">
+            <p className="max-w-prose text-muted-foreground">
+              Estamos preparando nuestra carta de servicios. Escríbenos y te contamos todo lo que tenemos para ti.
+            </p>
+            {whatsappHref && (
+              <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={`${ghostCtaClass} mt-6`}>
+                Consúltanos por WhatsApp
+              </a>
+            )}
+          </div>
+        )}
+
+        {services.length > 0 && <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {services.toSorted((a, b) => b.priceCents - a.priceCents).map((s) => {
             const Icon = spaIconFor(s.name);
             return (
@@ -53,7 +74,7 @@ export function ParaEllas({ services, assistant }: { services: Service[]; assist
               </li>
             );
           })}
-        </ul>
+        </ul>}
 
         <ul className="mt-12 grid grid-cols-2 gap-6 lg:grid-cols-4">
           {seals.map(({ label, Icon }) => (
