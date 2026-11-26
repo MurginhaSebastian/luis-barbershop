@@ -1,14 +1,24 @@
 import { Check } from "lucide-react";
 import Link from "next/link";
+import type { ServiceArea } from "@/core/entities/catalog";
 import { BOOKING_STEPS, bookingHref, type BookingSelection, type BookingStep } from "@/presentation/lib/booking-flow";
 import { cn } from "@/presentation/lib/utils";
 
 /** Progreso de la reserva; los pasos ya hechos son enlaces para volver a cambiarlos. */
-export function StepProgress({ current, selection }: { current: BookingStep; selection: BookingSelection }) {
+export function StepProgress({
+  current,
+  selection,
+  area = "barberia",
+}: {
+  current: BookingStep;
+  selection: BookingSelection;
+  area?: ServiceArea;
+}) {
   return (
     <nav aria-label="Pasos de la reserva">
       <ol className="grid grid-cols-4">
-        {BOOKING_STEPS.map(({ step, label }) => {
+        {BOOKING_STEPS.map(({ step, label: base }) => {
+          const label = step === 2 && area === "spa" ? "Estilista" : base;
           const done = step < current;
           const content = (
             <>

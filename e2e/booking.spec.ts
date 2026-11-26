@@ -207,6 +207,7 @@ test("reserva de spa completa: sin preferencia asigna a la estilista", async ({ 
   await page.getByLabel(/Manicure de prueba/).check();
   await page.getByRole("button", { name: "Continuar" }).click();
   await expect(page.getByRole("heading", { name: "¿Con qué estilista?" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Pasos de la reserva" })).toContainText("Estilista");
   await expect(page.getByRole("main").getByRole("link", { name: "Luis" })).toHaveCount(0);
   await chooseBarber(page, /Sin preferencia/);
   await chooseDay(page);

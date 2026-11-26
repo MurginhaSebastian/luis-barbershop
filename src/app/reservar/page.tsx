@@ -66,7 +66,7 @@ async function Booking({ searchParams }: Pick<PageProps<"/reservar">, "searchPar
     hora: fromUrl.hora,
   };
   let step = resolveStep(requestedStep, selection);
-  const progress = (current: typeof step) => <StepProgress current={current} selection={selection} />;
+  const progress = (current: typeof step) => <StepProgress current={current} selection={selection} area={area} />;
 
   if (step === 1) return <ServiceStep progress={progress(1)} services={services} selection={selection} />;
   if (step === 2) {
