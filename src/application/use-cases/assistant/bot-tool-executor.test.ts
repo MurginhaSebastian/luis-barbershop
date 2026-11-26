@@ -218,15 +218,29 @@ describe("consultar_huecos_dinamicos", () => {
     expect(slots[0].startTime).toBe("2026-11-12T10:30:00-05:00");
   });
 
-  test("franja filtra por mañana o tarde; sin horas en la franja dice las otras aparte", async () => {
-    const base = { serviceIds: [CORTE], date: "2026-11-12", barberId: LUIS };
-    const morning = (await call("consultar_huecos_dinamicos", { ...base, franja: "manana" })) as { data: { slots: { time: string }[] } };
-    expect(morning.data.slots.every((s) => Number(s.time.slice(0, 2)) < 13)).toBe(true);
-    const afternoon = (await call("consultar_huecos_dinamicos", { ...base, franja: "tarde" })) as {
-      data: { slots: { time: string }[]; noSlotsInFranja?: boolean; otherSlots?: { time: string }[] };
-    };
-    expect(afternoon.data.slots.every((s) => Number(s.time.slice(0, 2)) >= 13)).toBe(true);
-    if (afternoon.data.slots.length === 0) expect(afternoon.data).toMatchObject({ noSlotsInFranja: true, otherSlots: expect.any(Array) });
+  type FranjaData = { slots: { time: string }[]; noSlotsInFranja?: boolean; otherSlots?: { time: string }[] };
+  const franja = async (value: "manana" | "tarde") =>
+    ((await call("consultar_huecos_dinamicos", { serviceIds: [CORTE], date: "2026-11-12", barberId: LUIS, franja: value })) as { data: FranjaData }).data;
+
+  test("franja: con horas solo de mañana, pedir tarde dice que no hay y ofrece las de la mañana aparte", async () => {
+    const afternoon = await franja("tarde");
+    expect(afternoon.slots).toEqual([]);
+    expect(afternoon.noSlotsInFranja).toBe(true);
+    expect(afternoon.otherSlots?.map((s) => s.time)).toEqual(["10:00", "10:30", "11:00"]);
+    const morning = await franja("manana");
+    expect(morning.slots.map((s) => s.time)).toEqual(["10:00", "10:30", "11:00", "11:30", "12:00", "12:30"]);
+    expect(morning.noSlotsInFranja).toBeUndefined();
+  });
+
+  test("franja: con horas de mañana y tarde, cada franja trae solo las suyas", async () => {
+    w.deps.schedule.findBusinessHours = async () => [{ openMinute: 600, closeMinute: 1080 }];
+    const afternoon = await franja("tarde");
+    expect(afternoon.slots[0].time).toBe("13:00");
+    expect(afternoon.slots.at(-1)?.time).toBe("17:30");
+    expect(afternoon.noSlotsInFranja).toBeUndefined();
+    const morning = await franja("manana");
+    expect(morning.slots[0].time).toBe("10:00");
+    expect(morning.slots.at(-1)?.time).toBe("12:30");
   });
 
   test("sin barbero es sin preferencia: cualquiera libre", async () => {
