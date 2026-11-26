@@ -242,12 +242,16 @@ export class BotToolExecutor {
     };
   }
 
-  private async freeSlots(args: { serviceIds: string[]; date: string; barberId?: string | null }): Promise<ToolResult> {
+  private async freeSlots(args: { serviceIds: string[]; date: string; barberId?: string | null; franja?: "manana" | "tarde" }): Promise<ToolResult> {
     const services = await loadBookableServices(this.deps.services, args.serviceIds);
     const query = { barberId: args.barberId ?? null, serviceIds: args.serviceIds, date: args.date };
-    const slots = await this.deps.availability.execute(query);
+    const all = await this.deps.availability.execute(query);
+    // La franja se filtra aquí y no en el prompt: el modelo mezclaba horas de la mañana con las de la tarde.
+    const slots = args.franja ? all.filter((s) => (Number(shopTime(s.start).slice(0, 2)) >= AFTERNOON_FROM_HOUR) === (args.franja === "tarde")) : all;
     const base = { date: args.date, totalDurationMinutes: totalDuration(services), slots: slots.map(slotView) };
     if (slots.length > 0) return { ok: true, data: base };
+    // Ese día sí hay horas, pero no en la franja pedida: se dicen aparte.
+    if (all.length > 0) return { ok: true, data: { ...base, noSlotsInFranja: true, otherSlots: all.slice(0, 3).map(slotView) } };
     // Sin horas: otras opciones reservables en esta misma respuesta (máx. 3 horas cada una).
     const alt = await this.deps.availability.alternatives(query);
     const some = (list: TimeSlot[]) => list.slice(0, 3).map(slotView);
@@ -279,6 +283,9 @@ export class BotToolExecutor {
     }));
   }
 }
+
+/** Desde esta hora local, "tarde". */
+const AFTERNOON_FROM_HOUR = 13;
 
 const slotView = (slot: TimeSlot) => ({ startTime: shopIso(slot.start), time: shopTime(slot.start) });
 

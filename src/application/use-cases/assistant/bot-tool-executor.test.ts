@@ -218,6 +218,17 @@ describe("consultar_huecos_dinamicos", () => {
     expect(slots[0].startTime).toBe("2026-11-12T10:30:00-05:00");
   });
 
+  test("franja filtra por mañana o tarde; sin horas en la franja dice las otras aparte", async () => {
+    const base = { serviceIds: [CORTE], date: "2026-11-12", barberId: LUIS };
+    const morning = (await call("consultar_huecos_dinamicos", { ...base, franja: "manana" })) as { data: { slots: { time: string }[] } };
+    expect(morning.data.slots.every((s) => Number(s.time.slice(0, 2)) < 13)).toBe(true);
+    const afternoon = (await call("consultar_huecos_dinamicos", { ...base, franja: "tarde" })) as {
+      data: { slots: { time: string }[]; noSlotsInFranja?: boolean; otherSlots?: { time: string }[] };
+    };
+    expect(afternoon.data.slots.every((s) => Number(s.time.slice(0, 2)) >= 13)).toBe(true);
+    if (afternoon.data.slots.length === 0) expect(afternoon.data).toMatchObject({ noSlotsInFranja: true, otherSlots: expect.any(Array) });
+  });
+
   test("sin barbero es sin preferencia: cualquiera libre", async () => {
     w.book(id(31), OTHER, lima("10:00"));
     const result = await call("consultar_huecos_dinamicos", { serviceIds: [CORTE], date: "2026-11-12" });

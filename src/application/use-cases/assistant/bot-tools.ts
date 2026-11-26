@@ -20,6 +20,7 @@ export const BOT_TOOLS = {
       serviceIds,
       date: z.iso.date(),
       barberId,
+      franja: z.enum(["manana", "tarde"]).optional().describe("Solo si pidió horas de la mañana o de la tarde."),
     }),
   },
   reservar_cita: {
