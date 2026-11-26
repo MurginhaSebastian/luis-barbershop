@@ -9,7 +9,7 @@ const LEADING_JUNK = /^(?:[\s?]|\.{2,}|…)+/;
 const FORMAT_HINT = /[ \t]*\([^()\n]*\b(?:por l[ií]nea|slots?|starttimes?|herramientas?)\b[^()\n]*\)/gi;
 
 /** Caracteres invisibles y asteriscos de negrita sin texto: basura del modelo. */
-const INVISIBLE = /[​-‍⁠﻿]/g;
+const INVISIBLE = /[\u200b-\u200d\u2060\ufeff]/g;
 const EMPTY_BOLD = /(^|\s)\*{1,2}(?=\s*[?!.,]|\s*$)/gm;
 
 /** Quita el relleno basura que el modelo a veces antepone a su respuesta. Si no queda nada, devuelve "". */
