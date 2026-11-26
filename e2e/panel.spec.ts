@@ -316,7 +316,7 @@ test.describe("calendario", () => {
     await expect(events(page)).toHaveCount(4);
   });
 
-  test("escritorio: la ficha se abre junto a la cita, confirma y ofrece WhatsApp; la columna lateral cumple axe", async ({ page }) => {
+  test("escritorio: la ficha ocupa la columna derecha sin tapar el calendario, confirma y ofrece WhatsApp; cumple axe", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const day = await seedDay();
     await login(page);
@@ -324,17 +324,19 @@ test.describe("calendario", () => {
     await expect(events(page)).toHaveCount(4);
     await axe(page);
 
-    const anchor = (await event(page, "Cliente largo").boundingBox())!;
     await event(page, "Cliente largo").click();
     const dialog = page.getByRole("dialog", { name: "Cita de Cliente largo" });
     await expect(dialog).toBeVisible();
-    const box = (await dialog.boundingBox())!;
-    expect(box.x).toBeGreaterThanOrEqual(0);
-    expect(box.y).toBeGreaterThanOrEqual(0);
+    const [box, cal] = [(await dialog.boundingBox())!, (await section(page).boundingBox())!];
+    // No modal: va en la columna derecha, al lado del calendario, y dentro de la pantalla.
+    expect(box.x).toBeGreaterThanOrEqual(cal.x + cal.width - 1);
     expect(box.x + box.width).toBeLessThanOrEqual(1280);
-    expect(box.y + box.height).toBeLessThanOrEqual(800);
-    // En la vista Día la cita ocupa casi todo el ancho y no queda sitio a los lados: la ficha se recorta a la pantalla, a la altura de la cita.
-    expect(box.y <= anchor.y + anchor.height && box.y + box.height >= anchor.y, "la ficha no está a la altura de la cita").toBe(true);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    // Sigue pudiéndose tocar otra cita del calendario: la ficha cambia de cita.
+    await event(page, "Cazador de huecos").click();
+    await expect(page.getByRole("dialog", { name: "Cita de Cazador de huecos" })).toBeVisible();
+    await event(page, "Cliente largo").click();
+    await expect(dialog).toBeVisible();
     await expect(dialog.getByRole("link", { name: "Enviar WhatsApp" })).toHaveAttribute("href", /^https:\/\/wa\.me\/51900000103\?text=/);
     await axe(page);
 
@@ -364,6 +366,20 @@ test.describe("calendario", () => {
     await axe(page);
   });
 
+  test("320×640: el cascarón y la agenda no desbordan, el menú se alcanza y axe no ve fallos serios", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    const day = await seedDay();
+    await login(page);
+    await page.goto(`/panel?dia=${day}`);
+    await expect(events(page)).toHaveCount(4);
+    const nav = page.getByRole("navigation", { name: "Secciones del panel" });
+    await expect(nav.getByRole("link", { name: "Agenda" })).toHaveAttribute("aria-current", "page");
+    await nav.getByRole("button", { name: "Cerrar sesión" }).scrollIntoViewIfNeeded();
+    await expect(nav.getByRole("button", { name: "Cerrar sesión" })).toBeInViewport({ ratio: 1 });
+    await noOverflow(page);
+    await axe(page);
+  });
+
   test("canceladas y vencidas van aparte, debajo de la grilla", async ({ page }) => {
     const day = await seedDay();
     await withE2eDatabase((db) => db.query("UPDATE appointments SET status = 'EXPIRED' WHERE customer_name = 'Cliente en riesgo'"));
@@ -371,6 +387,9 @@ test.describe("calendario", () => {
     await page.goto(`/panel?dia=${day}`);
     await expect(section(page).getByRole("heading", { name: "Canceladas y vencidas" })).toBeVisible();
     await expect(section(page).locator("div.relative button")).toHaveCount(3);
+    // Plegadas: se abren con su encabezado.
+    await expect(event(page, "Cliente en riesgo")).toBeHidden();
+    await section(page).getByRole("heading", { name: "Canceladas y vencidas" }).click();
     await event(page, "Cliente en riesgo").click();
     await expect(page.getByRole("dialog")).toContainText("Vencido");
   });
