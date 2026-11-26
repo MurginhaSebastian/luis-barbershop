@@ -189,6 +189,23 @@ test.describe("portada", () => {
     );
     expect(broken).toEqual([]);
   });
+
+  test("a 320×640 no hay desborde horizontal ni fallos de accesibilidad", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await page.goto("/");
+    await page.getByRole("heading", { name: "Servicios" }).waitFor();
+    await page.evaluate(async () => {
+      for (let y = 0; y < document.body.scrollHeight; y += 300) {
+        window.scrollTo(0, y);
+        await new Promise((r) => setTimeout(r, 80));
+      }
+      window.scrollTo(0, 0);
+    });
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(1000); // que terminen las entradas de Reveal (opacity 0 al inicio)
+    await expectNoHorizontalScroll(page, "portada a 320");
+    await expectNoSeriousA11yIssues(page, "portada a 320");
+  });
 });
 
 test.describe("video de la portada", () => {
