@@ -1,7 +1,7 @@
-# D'luiss Barber Shop: informe del proyecto
+| Portada `/` | 95 | 100 || Dispositivos | `npm run test:devices` | iPhone 15, iPad Mini, Pixel 7, Galaxy S9+ (320 px), Safari, Firefox y Edge 1920. Con capturas; 25 pasadas, 0 fallidas y 3 omitidas de 28 (24 de noviembre). La agenda del panel no se prueba en Safari/iPhone en local (no guardan la cookie segura sin HTTPS) || Navegador | `npm run test:e2e` | 254 pasadas, 0 fallidas y 4 omitidas (24 de noviembre): agenda en 320 px y escritorio, reserva (también la de spa), panel, WhatsApp de punta a punta (recordatorio, en riesgo, vencida, tomar una hora en riesgo), accesibilidad (axe), teclado, seguridad, móvil y escritorio || Mutación | `npm run test:mutation` | Rompe 81 reglas críticas a propósito y exige que alguna prueba lo note: 81 de 81 detectadas el 24 de noviembre || Cobertura | `npm run test:coverage` | 97,6 % de líneas, 96,5 % de sentencias, 90,9 % de ramas y 96,5 % de funciones (24 de noviembre; mínimo exigido: 90 %) || Lógica | `npm test` | 726 pruebas (24 de noviembre): reglas, casos de uso, acciones, herramientas y adaptador de IA (con Groq simulado) y repositorios contra Postgres real |# D'luiss Barber Shop: informe del proyecto
 
 Documento para entender qué se ha construido, qué se pidió, cómo está hecho y qué falta, pensado para
-consultarlo con un experto. Estado al **19 de noviembre de 2026**.
+consultarlo con un experto. Estado al **25 de noviembre de 2026**.
 
 ---
 
@@ -12,7 +12,7 @@ consultarlo con un experto. Estado al **19 de noviembre de 2026**.
 - el barbero (Luis) gestiona su agenda, su catálogo y la propia web desde un panel privado.
 
 **Estado.**
-- Funciona completa en local (en el PC de desarrollo), con 216 commits en GitHub.
+- Funciona completa en local (en el PC de desarrollo), con unos 292 commits en GitHub.
 - **Aún no está publicada en internet**: no tiene hosting, dominio ni HTTPS.
 - Las integraciones externas (WhatsApp de Meta, Supabase, avisos en celulares reales) están programadas y
   probadas con simulaciones, pero **no con los servicios reales**.
@@ -24,12 +24,12 @@ datos reales (teléfonos, direcciones, clientes) ni contraseñas.
 
 | Prueba | Resultado |
 |---|---|
-| Lógica (unitarias e integración) | 601 en 45 archivos, todas pasan (21 de noviembre) |
-| Navegador | 230 pasadas, 0 fallidas y 4 omitidas de 234 (21 de noviembre; las omitidas son los `test.skip` por proyecto de `site.spec.ts`) |
-| Errores sembrados a propósito | 73 de 73 detectados (21 de noviembre; la corrida completa dio 72 porque el texto de un mutante había quedado desfasado, se corrigió y se comprobó a mano contra su prueba) |
-| Cobertura de la lógica | 96,2 % de sentencias, 90,5 % de ramas, 96,76 % de funciones y 97,3 % de líneas (21 de noviembre) |
-| Lighthouse | Accesibilidad y buenas prácticas 100 en las 10 mediciones; rendimiento 91–100 (21 de noviembre; ver tabla en la sección de pruebas) |
-| Dispositivos emulados | 7: 25 pruebas pasadas, 0 fallidas y 3 omitidas de 28 (21 de noviembre) |
+| Lógica (unitarias e integración) | 726 pruebas, todas pasan (24 de noviembre) |
+| Navegador | 254 pasadas, 0 fallidas y 4 omitidas (24 de noviembre; las omitidas son los `test.skip` por proyecto de `site.spec.ts`) |
+| Errores sembrados a propósito | 81 de 81 detectados (24 de noviembre) |
+| Cobertura de la lógica | 96,5 % de sentencias, 90,9 % de ramas, 96,5 % de funciones y 97,6 % de líneas (24 de noviembre) |
+| Lighthouse | Portada: móvil 95 de rendimiento y 100 en accesibilidad, buenas prácticas y SEO; escritorio 100 en todo (24 de noviembre) |
+| Dispositivos emulados | 7: 25 pruebas pasadas, 0 fallidas y 3 omitidas de 28 (24 de noviembre) |
 
 ---
 
@@ -84,13 +84,25 @@ Lo que se fue pidiendo durante el proyecto, en resumen:
 16. **Portada directa al WhatsApp del asistente** (19 de noviembre). Con la IA activa, reservar es escribirle.
 17. **Panel renovado** (19 de noviembre). Calendario y pendientes en dos columnas, barra superior compacta,
     ficha de la cita junto a ella y acciones unificadas.
+18. **Dueño, reparto y alternativas** (23 de noviembre). Ver 4.4.
+19. **Áreas Barbería y Spa y estilista** (23 de noviembre). Área en cada servicio y profesional, reserva por
+    área (con el indicador de pasos que dice "Estilista" en spa, 25 de noviembre) y sección "Para ellas" en la
+    portada.
+20. **Asistente de IA afinado** (23 al 25 de noviembre). Horario, áreas, sinónimos, estilos fuera de la lista,
+    trato de confianza, desvíos con respuesta fija, cascada de modelos, caché y recuperación de errores; ver la
+    sección 5 y la sección 6.
+21. **Arreglos de portada y panel** (23 y 24 de noviembre). Video propio con nombre nuevo, "Para ellas" visible
+    siempre que esté activada, aviso en "Servicios" cuando no hay carta y casilla "Visible" que ya no se
+    vuelve a marcar al guardar.
 
 ---
 
 ## 3. Qué hace hoy la web
 
 ### Para el cliente
-- **Portada.** Video de fondo (con botón de pausa) y servicios con precio y duración. También muestra si la
+- **Portada.** Video de fondo (con botón de pausa) y servicios de Barbería con precio y duración. La sección
+  **"Para ellas"** (Spa y estilista) sale siempre que esté activada en el panel; sin servicios de spa activos
+  muestra un aviso y el botón de WhatsApp. "Servicios" hace lo mismo cuando no hay carta. También muestra si la
   barbería está abierta ahora o cuándo abre (descontando feriados), la dirección, el horario y un botón de
   WhatsApp.
   - **Con el asistente de IA activo**, todos los botones de reservar (cabecera, portada, barra móvil, cierre,
@@ -192,11 +204,11 @@ src/infrastructure/ Implementaciones concretas de los puertos: Postgres, WhatsAp
 **Por qué así.** Las reglas del negocio no dependen de la base de datos ni del proveedor externo. Cambiar
 Postgres por Supabase, o Groq por Claude en la IA, solo toca `infrastructure/`.
 
-### 4.3 Base de datos (13 tablas, 10 migraciones)
+### 4.3 Base de datos (14 tablas, 13 migraciones)
 
 | Tabla | Contenido |
 |---|---|
-| `barbers`, `services`, `products` | Catálogo (se ocultan, no se borran) |
+| `barbers`, `services`, `products` | Catálogo (se ocultan, no se borran). Cada servicio y cada profesional lleva su área (Barbería o Spa y estilista) y un barbero es el dueño |
 | `customers` | Clientes, identificados por celular |
 | `business_hours`, `schedule_blocks` | Horario semanal y bloqueos (por barbero o de toda la barbería) |
 | `appointments` | Citas, con cuándo se confirmaron y cuándo se envió el recordatorio. Una **restricción anti-solape** en la base impide dos citas pendientes o confirmadas a la misma hora del mismo barbero |
@@ -205,6 +217,7 @@ Postgres por Supabase, o Groq por Claude en la IA, solo toca `infrastructure/`.
 | `push_subscriptions` | Dispositivos del barbero que reciben avisos |
 | `booking_confirmations` | Código para confirmar cada cita por WhatsApp y hasta cuándo (15 min antes) |
 | `processed_messages` | Mensajes de WhatsApp ya atendidos (Meta puede repetirlos) |
+| `assistant_messages` | Últimos turnos de cada conversación con el asistente de IA (2 últimas horas; lo de más de 24 h se borra) |
 
 ### 4.4 Reglas de negocio clave
 
@@ -213,6 +226,13 @@ Postgres por Supabase, o Groq por Claude en la IA, solo toca `infrastructure/`.
   - Inicios cada 30 minutos y justo al terminar cada cita o bloqueo.
   - Mínimo 5 minutos de antelación y máximo 14 días.
   - Máximo 2 citas futuras por celular (las que están en riesgo no cuentan).
+- **Áreas.** Los servicios son de **Barbería** o de **Spa y estilista** (la marca de la sección "Para ellas").
+  Una cita no mezcla áreas, y "sin preferencia", el barbero elegido y las alternativas solo cuentan a los
+  profesionales del área. Hoy hay una estilista en el equipo.
+- **Dueño y reparto.** Solo hay un dueño (Luis, el primer barbero creado): no se renombra ni se oculta. Con "sin
+  preferencia" se reparte entre los demás (menos desplazados, luego quien tenga más huecos ese día) y el dueño
+  queda como último recurso. Si el barbero pedido está lleno, se ofrecen otros barberos (el dueño solo si ningún
+  otro puede) y el próximo día con horas, tanto en la web como en el asistente.
 - **Estado al nacer.** Con menos de 2 h de antelación, "confirmada"; si no, "pendiente". Las dos ocupan su
   hueco.
 - **Estados:** pendiente, confirmada, en riesgo, atendida, cancelada, no vino y vencida.
@@ -339,10 +359,36 @@ el sábado en la tarde?") usando cinco herramientas que siguen las mismas reglas
     responde el contacto de Luis; el de IA, un aviso fijo.
   - **Límite por celular:** 12 mensajes por hora y 25 por día; pasado el tope, respuesta fija con el WhatsApp
     de Luis, sin Groq. Los códigos y los botones del recordatorio no cuentan ni se limitan.
-- **Prueba real con Groq.** Reservó bien y el tope de 220 tokens no cortó nada, pero 2 de 4 conversaciones
-  seguidas chocaron con el límite gratuito de 8.000 tokens por minuto (respuesta amable, sin reserva). **Riesgo
-  abierto.** Mejoras posibles: medir los tokens de cada petición, y un segundo modelo de reserva (el límite es
-  por modelo).
+- **Afinado de la conversación** (23 al 25 de noviembre):
+  - Conoce el horario (atiende todos los días: ante un día cerrado ofrece el siguiente abierto), las dos áreas
+    (si el servicio existe en Barbería y en Spa pregunta cuál; si solo en una, no pregunta) y sinónimos
+    ("desvanecido" es fade, "uñas" es manicure o pedicure).
+  - Un estilo fuera de la lista no se inventa: invita a venir con una foto, ofrece uno de la lista y recuerda
+    que solo agenda. Si piden horas "de la tarde" o "de la mañana", la herramienta filtra por franja (no depende
+    del modelo).
+  - Las palabras de confianza ("vecino", "jefe", "causa") son trato cordial, no una preferencia de barbero.
+    Preguntar "¿Luis va a estar?" no pide una persona: con cita, dice con quién es; sin cita, consulta sus horas.
+  - Desvíos (ignora tus instrucciones, haz un poema, programación…), saludos solos, mensajes sin sentido y pedir
+    hablar con una persona tienen respuesta fija, sin gastar Groq.
+  - Reparte entre barberos y ofrece alternativas igual que la web; no sugiere al dueño.
+  - Si Luis comparte número con el bot (coexistencia de Meta), la derivación dice "por este mismo chat" en vez de
+    dar el número.
+- **Resistencia del adaptador:**
+  - Cascada de modelos: `gpt-oss-120b`, y ante un 429 o un error 5xx, un reintento con `gpt-oss-20b`; luego el
+    asistente básico. Ante un 429 breve espera y reintenta antes de saltar.
+  - Caché de prompts de Groq: lo estable (reglas, catálogo, horario) va primero y lo variable (hora, próximos
+    días) al final del último mensaje. Cada llamada registra entrada, cacheados y salida.
+  - Alias de ids: el modelo ve `s1`, `b1`, `a1` en vez de uuid; se deshacen al ejecutar la herramienta y se
+    quitan del texto al cliente. Menos tokens y menos errores.
+  - Limpieza del relleno ("Oops", "? ? ?", coletillas de formato copiadas del prompt) y rescate: sin texto del
+    modelo, se responde con el último resultado útil. Tras reservar, confirmar o cancelar no se vuelve a llamar
+    al modelo.
+  - `recoverToolCall`: si el modelo pequeño corrompe el nombre de la herramienta (error 400
+    `tool_use_failed`), se reconstruye desde el cuerpo del error.
+- **Prueba real con Groq.** Medido el 24 de noviembre: 2,3 a 4,6 mil tokens de entrada por llamada; una reserva
+  gasta unos 20 mil sin caché y unos 8 mil si la caché acierta (no garantizado). El límite gratuito de 8.000
+  tokens por minuto sigue siendo el techo, sobre todo si varios clientes escriben a la vez. **Riesgo abierto.**
+  Resultado de la batería con el modelo real el 25 de noviembre: ver la sección 6.
 - **Si Groq falla** (sin red, demasiadas peticiones, error del servicio), responde el asistente básico. Si ya
   había reservado, confirmado o cancelado, le envía un mensaje fijo con lo hecho.
 - **Sin IA** (sin `AI_PROVIDER`), responde el asistente básico: código y palabras clave.
@@ -361,7 +407,7 @@ el sábado en la tarde?") usando cinco herramientas que siguen las mismas reglas
 | Mutación | `npm run test:mutation` | Rompe 73 reglas críticas a propósito y exige que alguna prueba lo note: 73 de 73 detectadas el 21 de noviembre (un mutante con el texto desfasado se corrigió y se comprobó a mano) |
 | Navegador | `npm run test:e2e` | 230 pasadas, 0 fallidas y 4 omitidas de 234 (21 de noviembre): agenda en 320 px y escritorio, reserva, panel, WhatsApp de punta a punta (recordatorio, en riesgo, vencida, tomar una hora en riesgo), accesibilidad (axe), teclado, seguridad, móvil y escritorio |
 | Dispositivos | `npm run test:devices` | iPhone 15, iPad Mini, Pixel 7, Galaxy S9+ (320 px), Safari, Firefox y Edge 1920. Con capturas; 25 pasadas, 0 fallidas y 3 omitidas de 28 (21 de noviembre). La agenda del panel no se prueba en Safari/iPhone en local (no guardan la cookie segura sin HTTPS) |
-| Lighthouse | `npm run lighthouse` | Medido el 21 de noviembre sobre el build real, ahora también con el calendario y Chats del panel (sesión firmada). Accesibilidad y buenas prácticas, 100 en todas. SEO, 100 en las páginas públicas; 60 en las del panel, que llevan noindex a propósito. Rendimiento: |
+| Lighthouse | `npm run lighthouse` | Medido sobre el build real (la portada el 24 de noviembre; el resto el 21), ahora también con el calendario y Chats del panel (sesión firmada). Accesibilidad y buenas prácticas, 100 en todas. SEO, 100 en las páginas públicas; 60 en las del panel, que llevan noindex a propósito. Rendimiento: |
 
 | Página | Móvil | Escritorio |
 |---|---|---|
@@ -379,8 +425,17 @@ En una primera corrida la portada móvil dio 83 (ruido de la máquina local: LCP
 si es visual, pruebas de navegador puntuales con axe a 320 px y en escritorio. Las pruebas de navegador corren
 sin IA (`AI_PROVIDER=""`); el camino con IA se comprobó a mano en Edge.
 
-**Suite completa.** La corrida de cierre (21 de noviembre) cubrió `npm run check`, la suite E2E entera, la
+**Suite completa.** La corrida de cierre (24 de noviembre) cubrió `npm run check`, la suite E2E entera, la
 mutación, los dispositivos y Lighthouse; no queda nada pendiente de recontar.
+
+**Asistente contra Groq real (25 de noviembre).**
+- Batería `test:ia` (dueño, horas, estilos): 10 casos bien y 1 mal. El que fallaba ("horas de la tarde" ofrecía
+  también las de la mañana) se arregló filtrando por franja en la herramienta, no en el prompt; repetido, pasa.
+- Demo de 9 turnos por WhatsApp simulado (saludo, horas de la tarde, reservar con el dueño, confirmar, estilo
+  fuera de lista, manicure, desvío y cancelar): los 9 bien. La cita se reservó, se confirmó y se canceló de
+  verdad en la base de la demo. Hubo un 429 en el modelo grande y el de respaldo respondió; no hubo ningún
+  error 400 `tool_use_failed`, así que `recoverToolCall` aún no se ha visto con un error real de Groq.
+- Falta una corrida completa de la batería y probar con unas 40 conversaciones reales antes de abrirlo.
 
 Detalle en [`qa-2026-11.md`](qa-2026-11.md) y [`auditoria-2026-11.md`](auditoria-2026-11.md).
 
@@ -444,6 +499,12 @@ Cifras comprobadas en las páginas oficiales en noviembre de 2026. Conviene revi
   - el portafolio de Meta Business con un chip aparte, para activar WhatsApp y la IA;
   - el video propio de la portada;
   - los servicios, precios y horario reales, que se cargan en `/panel`.
+- **Pendientes al 25 de noviembre:**
+  - desplegar en Railway (sigue en pausa);
+  - publicar la app de Meta (verificación del negocio y webhook);
+  - elegir el método de pago de Meta;
+  - enviar a aprobación las plantillas `recordatorio_cita` y `cita_vencida`;
+  - los precios reales del dueño, que se cargan en `/panel/servicios`.
 - **Datos reales.** La dirección y las redes viven solo en `site_settings` (se editan en `/panel/web`), nunca en
   el repositorio, que es público.
 
@@ -550,4 +611,4 @@ Cifras comprobadas en las páginas oficiales en noviembre de 2026. Conviene revi
 | Asistente con Groq | `src/infrastructure/assistant/groq-assistant.ts` |
 | Línea de tiempo del panel | `src/presentation/components/panel/agenda-calendar.tsx`, `src/presentation/lib/timeline.ts` |
 | Reglas de tiempo (2 h, 35 min, 15 min, 5 min) | `src/core/scheduling/booking-policy.ts` |
-| Historial de cambios | `git log` (216 commits desde el 29 de octubre de 2026) |
+| Historial de cambios | `git log` (292 commits desde el 29 de octubre de 2026) |
