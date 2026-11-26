@@ -152,7 +152,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   `presentation/lib/format.ts` (zona America/Lima).
 
 ### Landing (portada)
-- "Para ellas" (`landing/para-ellas.tsx`, `#para-ellas`, acento `--rose` de `globals.css`): Dluiss Spa & Beauty. Sale con
+- "Para ellas" (`landing/para-ellas.tsx`, `#para-ellas`, acento `--rose` de `globals.css`): Dluiss Spa & Beauty. Sale
   siempre que `paraEllas` de `site_settings` esté activada; sin servicios spa activos muestra un aviso y el botón de WhatsApp
   (`#servicios` hace lo mismo sin carta). El mosaico de servicios muestra solo Barbería. En `/reservar`, `StepProgress` recibe el
   área y rotula el paso 2 "Estilista" en spa.
