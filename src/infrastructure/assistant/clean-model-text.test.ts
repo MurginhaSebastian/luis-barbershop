@@ -30,6 +30,11 @@ describe("cleanModelText", () => {
     expect(cleanModelText(text)).toBe(text);
   });
 
+  test("quita invisibles y negritas vacías de la demo (turno 2)", () => {
+    expect(cleanModelText("¿Con cuál hora *​​*​  ?")).toBe("¿Con cuál hora   ?");
+    expect(cleanModelText("Tu hora es **16:00** ok")).toBe("Tu hora es **16:00** ok");
+  });
+
   test("tres o más saltos de línea quedan en dos", () => {
     expect(cleanModelText("Hola\n\n\n\nChao")).toBe("Hola\n\nChao");
   });
