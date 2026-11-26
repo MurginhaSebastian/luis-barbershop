@@ -153,7 +153,9 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 
 ### Landing (portada)
 - "Para ellas" (`landing/para-ellas.tsx`, `#para-ellas`, acento `--rose` de `globals.css`): Dluiss Spa & Beauty. Sale con
-  servicios spa activos y la clave `paraEllas` de `site_settings`; el mosaico de servicios muestra solo Barbería.
+  siempre que `paraEllas` de `site_settings` esté activada; sin servicios spa activos muestra un aviso y el botón de WhatsApp
+  (`#servicios` hace lo mismo sin carta). El mosaico de servicios muestra solo Barbería. En `/reservar`, `StepProgress` recibe el
+  área y rotula el paso 2 "Estilista" en spa.
 - Logos propios en `public/images/`: `logo.webp` en la cabecera (`app/layout.tsx`) y `logo-sello.webp` en el pie y sobre el formulario de `/panel/entrar`, ambos con `next/image`.
 - La marca es `SHOP_NAME` (`core/entities/site.ts`): nunca se escribe a mano. El contacto, la dirección y las redes reales viven solo en `site_settings` (`/panel/web`), jamás en el repo.
 - `/privacidad` (`app/privacidad/page.tsx`): política de privacidad (Ley 29733); dirección y WhatsApp salen de `getSiteSettings` en un `<Suspense>`. La enlazan el pie y el paso de datos de la reserva (sin casilla).
@@ -341,7 +343,7 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
 - `BotToolExecutor.executeTool(llamada, { verifiedPhone, now })` (`application/use-cases/assistant/`) ejecuta las
   5 herramientas de `bot-tools.ts`: `listar_catalogo_y_mis_citas`, `consultar_huecos_dinamicos`, `reservar_cita`,
   `confirmar_asistencia` y `cancelar_cita`. `botToolDefinitions()` las da en JSON Schema para el LLM.
-- El prompt marca al dueño (`(dueño)`, al final del catálogo) y no lo sugiere. `consultar_huecos_dinamicos` sin horas trae
+- El prompt marca al dueño (`(dueño)`, al final del catálogo) y no lo sugiere. `consultar_huecos_dinamicos` acepta `franja` (`manana`|`tarde`, la tarde desde las 13:00) y filtra en el servidor; sin horas trae
   `alternatives` (hasta 3 horas por opción, reservables sin otra ronda).
 - **Ningún esquema lleva el celular**: lo pone el servidor (`verifiedPhone`, el remitente firmado por Meta). Lo
   que el modelo mande de más se descarta. Una cita de otro número responde igual que una que no existe.
