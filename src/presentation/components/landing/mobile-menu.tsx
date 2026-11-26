@@ -29,20 +29,20 @@ export function MobileMenu({ links }: { links: { href: string; label: string }[]
   }, []);
 
   return (
-    <details ref={menu} onToggle={(e) => setOpen(e.currentTarget.open)} className="md:hidden">
-      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-full px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden">
+    <details ref={menu} onToggle={(e) => setOpen(e.currentTarget.open)} className="xl:hidden">
+      <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-sm border border-dark-outline px-3 font-label text-label-lg text-on-dark-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold [&::-webkit-details-marker]:hidden">
         {open ? <X aria-hidden className="size-5" /> : <Menu aria-hidden className="size-5" />}
         {/* En pantallas muy estrechas solo se ve el icono; el nombre sigue para lectores de pantalla. */}
         <span className="max-[369px]:sr-only">Menú</span>
       </summary>
-      <nav aria-label="Secciones" className="absolute inset-x-0 top-full border-b border-border bg-background shadow-lg shadow-black/40">
+      <nav aria-label="Secciones" className="absolute inset-x-0 top-full border-b border-dark-outline bg-dark-elevated shadow-lg shadow-black/40">
         <ul className="mx-auto w-full max-w-6xl px-4 py-2">
           {links.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
                 onClick={close}
-                className="flex min-h-12 items-center border-b border-border/60 font-heading text-xl transition-colors duration-200 last:border-0 hover:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+                className="flex min-h-12 items-center border-b border-dark-outline font-label text-label-lg text-on-dark-canvas transition-colors duration-150 last:border-0 hover:text-gold focus-visible:outline-2 focus-visible:outline-gold"
               >
                 {link.label}
               </Link>

@@ -55,7 +55,7 @@ export function HeroVideo() {
         type="button"
         onClick={toggle}
         aria-label={playing ? "Pausar el video" : "Reproducir el video"}
-        className="absolute top-4 right-4 z-10 grid size-11 cursor-pointer place-items-center rounded-full border border-foreground/40 bg-background/60 text-foreground backdrop-blur transition-colors duration-200 hover:border-primary hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="absolute top-4 right-4 z-10 grid size-11 cursor-pointer place-items-center rounded-full border border-on-dark-canvas/40 bg-dark-canvas/70 text-on-dark-canvas backdrop-blur transition-colors duration-150 hover:border-gold hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
       >
         {playing ? <Pause aria-hidden className="size-4" /> : <Play aria-hidden className="size-4" />}
       </button>

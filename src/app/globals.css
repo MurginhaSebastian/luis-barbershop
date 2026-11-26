@@ -66,6 +66,108 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Tokens de la referencia de Stitch (portada). El "primary" de Stitch se llama `gold` para no pisar el `primary` de
+   shadcn que usan /reservar y /panel. Los status-* de Stitch (-bg/-text/-border) no chocan con los --status-* del
+   panel actual (sin sufijo, -surface y -foreground): conviven hasta migrar el panel. */
+@theme {
+    --color-gold: #d4af6a;
+    --color-on-gold: #111111;
+    --color-gold-on-light: #7d5e20;
+    --color-obsidian-bar: #0b0b0b;
+    --color-on-obsidian-bar: #e5e2dc;
+    --color-dark-canvas: #111111;
+    --color-on-dark-canvas: #f8f7f4;
+    --color-dark-elevated: #181818;
+    --color-on-dark-elevated: #f8f7f4;
+    --color-dark-muted: #a8a49e;
+    --color-dark-outline: #2b2b2b;
+    --color-light-canvas: #f8f7f4;
+    --color-on-light-canvas: #111111;
+    --color-light-card: #ffffff;
+    --color-on-light-card: #111111;
+    --color-light-muted: #5a5650;
+    --color-light-outline: #e6e2da;
+    --color-spa-surface: #f6eae8;
+    --color-on-spa-surface: #1f191a;
+    --color-spa-primary: #8e4b52;
+    --color-on-spa-primary: #ffffff;
+    --color-spa-outline: #dfc4bf;
+    --color-spa-muted: #5e484b;
+    --color-status-open: #22c55e;
+    --color-whatsapp-green: #25d366;
+    --color-on-whatsapp-green: #111111;
+    --color-status-confirmed-bg: #e6f0ea;
+    --color-status-confirmed-text: #1e4d33;
+    --color-status-confirmed-border: #b4d0be;
+    --color-status-pending-bg: #fbf3e0;
+    --color-status-pending-text: #6e4f12;
+    --color-status-pending-border: #e5cd96;
+    --color-status-risk-bg: #f9e8e6;
+    --color-status-risk-text: #8a2e2b;
+    --color-status-risk-border: #e4b4b0;
+    --color-status-done-bg: #eceae6;
+    --color-status-done-text: #4a4742;
+    --color-status-done-border: #d1cec7;
+    --color-destructive-text: #9e2a2b;
+    --color-destructive-border: #e4b4b0;
+
+    --spacing-gutter-xs: 4px;
+    --spacing-gutter-sm: 8px;
+    --spacing-gutter-md: 16px;
+    --spacing-gutter-lg: 24px;
+    --spacing-gutter-xl: 32px;
+    --spacing-section-sm: 48px;
+    --spacing-section-lg: 80px;
+
+    --font-headline: var(--font-display);
+    --font-title: var(--font-sans);
+    --font-body: var(--font-sans);
+    --font-label: var(--font-sans);
+    --font-eyebrow: var(--font-sans);
+
+    --text-display-xl: 44px;
+    --text-display-xl--line-height: 52px;
+    --text-display-xl--letter-spacing: 0.5px;
+    --text-display-xl--font-weight: 700;
+    --text-display-xl-mobile: 26px;
+    --text-display-xl-mobile--line-height: 32px;
+    --text-display-xl-mobile--letter-spacing: 0.25px;
+    --text-display-xl-mobile--font-weight: 700;
+    --text-headline-lg: 40px;
+    --text-headline-lg--line-height: 48px;
+    --text-headline-lg--letter-spacing: -0.25px;
+    --text-headline-lg--font-weight: 700;
+    --text-headline-lg-mobile: 28px;
+    --text-headline-lg-mobile--line-height: 34px;
+    --text-headline-lg-mobile--letter-spacing: -0.25px;
+    --text-headline-lg-mobile--font-weight: 700;
+    --text-headline-md: 28px;
+    --text-headline-md--line-height: 36px;
+    --text-headline-md--font-weight: 600;
+    --text-title-lg: 18px;
+    --text-title-lg--line-height: 26px;
+    --text-title-lg--font-weight: 600;
+    --text-title-md: 16px;
+    --text-title-md--line-height: 24px;
+    --text-title-md--font-weight: 600;
+    --text-body-lg: 16px;
+    --text-body-lg--line-height: 26px;
+    --text-body-md: 14px;
+    --text-body-md--line-height: 22px;
+    --text-label-lg: 14px;
+    --text-label-lg--line-height: 20px;
+    --text-label-lg--letter-spacing: 0.25px;
+    --text-label-lg--font-weight: 600;
+    --text-label-sm: 12px;
+    --text-label-sm--line-height: 16px;
+    --text-label-sm--letter-spacing: 1.5px;
+    --text-label-sm--font-weight: 600;
+    --text-eyebrow: 12px;
+    --text-eyebrow--line-height: 16px;
+    --text-eyebrow--letter-spacing: 2px;
+    --text-eyebrow--font-weight: 600;
+}
+
 :root {
     --background: oklch(1 0 0);
     --foreground: oklch(0.145 0 0);

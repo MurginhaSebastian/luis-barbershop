@@ -10,7 +10,7 @@ interface Fact {
 }
 
 const linkClass =
-  "inline-flex min-h-11 items-center text-sm text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "inline-flex min-h-11 items-center font-label text-label-lg text-gold underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold";
 
 /** Lo primero que pregunta quien llega: si está abierto, dónde queda y cuánto cuesta. Solo datos reales. */
 export function ShopFacts(props: {
@@ -43,16 +43,16 @@ export function ShopFacts(props: {
   if (facts.length === 0) return null;
 
   return (
-    <section aria-label="Datos de la barbería" className="border-b border-border bg-card/50">
-      <dl className={`${container} grid divide-y divide-border sm:auto-cols-fr sm:grid-flow-col sm:divide-x sm:divide-y-0`}>
+    <section aria-label="Datos de la barbería" className="border-b border-dark-outline bg-dark-canvas text-on-dark-canvas">
+      <dl className={`${container} grid divide-y divide-dark-outline sm:auto-cols-fr sm:grid-flow-col sm:divide-x sm:divide-y-0`}>
         {facts.map((fact) => (
           <div key={fact.label} className="py-5 sm:px-6 sm:first:pl-0 sm:last:pr-0">
-            <dt className="text-sm text-muted-foreground">{fact.label}</dt>
+            <dt className="font-eyebrow text-eyebrow uppercase text-dark-muted">{fact.label}</dt>
             <dd className="mt-1 flex items-baseline gap-2">
               {fact.dot && (
                 <span
                   aria-hidden
-                  className={cn("size-2 shrink-0 translate-y-[-0.1em] rounded-full", fact.dot === "open" ? "bg-primary" : "bg-muted-foreground")}
+                  className={cn("size-2 shrink-0 translate-y-[-0.1em] rounded-full", fact.dot === "open" ? "bg-status-open" : "bg-dark-muted")}
                 />
               )}
               {fact.value}

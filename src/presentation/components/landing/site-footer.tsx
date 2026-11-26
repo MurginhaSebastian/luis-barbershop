@@ -4,7 +4,8 @@ import Link from "next/link";
 import { BookLink } from "./book-link";
 import { container } from "./styles";
 
-const linkClass = "inline-flex min-h-11 items-center text-muted-foreground transition-colors duration-200 hover:text-primary";
+const linkClass = "inline-flex min-h-11 items-center text-dark-muted transition-colors duration-150 hover:text-gold";
+const headClass = "font-title text-title-md text-on-dark-canvas";
 
 export function SiteFooter(props: {
   whatsappHref?: string;
@@ -17,18 +18,16 @@ export function SiteFooter(props: {
   const socials = props.socials.filter((s) => s.href);
   return (
     // pb extra en móvil: la portada tiene una barra fija de "Reservar cita" abajo.
-    <footer className="border-t border-border bg-card pb-24 md:pb-0">
-      <div className={`${container} grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4`}>
+    <footer className="border-t border-gold/40 bg-dark-canvas pb-24 font-body text-body-md md:pb-0">
+      <div className={`${container} grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-4`}>
         <div>
-          <Image src="/images/logo-sello.webp" alt="" width={96} height={96} sizes="96px" className="mb-3 size-24" />
-          <p className="font-heading text-2xl text-primary">{SHOP_NAME}</p>
-          <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted-foreground">
-            Cortes, fades y barba. Reserva en línea y te confirmamos por WhatsApp.
-          </p>
+          <Image src="/images/logo-sello.webp" alt="" width={96} height={96} sizes="96px" className="mb-3 size-20" />
+          <p className="font-headline text-title-lg text-gold">{SHOP_NAME}</p>
+          <p className="mt-3 max-w-xs text-dark-muted">Cortes, fades y barba. Reserva en línea y te confirmamos por WhatsApp.</p>
         </div>
 
         <nav aria-label="Contacto">
-          <p className="font-semibold">Contacto</p>
+          <p className={headClass}>Contacto</p>
           <ul className="mt-2">
             <li>
               <BookLink assistant={props.assistant} className={linkClass}>
@@ -49,7 +48,7 @@ export function SiteFooter(props: {
                     {props.address}
                   </a>
                 ) : (
-                  <span className="text-muted-foreground">{props.address}</span>
+                  <span className="text-dark-muted">{props.address}</span>
                 )}
               </li>
             )}
@@ -58,7 +57,7 @@ export function SiteFooter(props: {
 
         {socials.length > 0 && (
           <nav aria-label="Redes sociales">
-            <p className="font-semibold">Síguenos</p>
+            <p className={headClass}>Síguenos</p>
             <ul className="mt-2">
               {socials.map((s) => (
                 <li key={s.label}>
@@ -73,7 +72,7 @@ export function SiteFooter(props: {
 
         {props.complaintsUrl && (
           <nav aria-label="Información legal">
-            <p className="font-semibold">Atención al cliente</p>
+            <p className={headClass}>Atención al cliente</p>
             <ul className="mt-2">
               <li>
                 <a href={props.complaintsUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>
@@ -84,11 +83,11 @@ export function SiteFooter(props: {
           </nav>
         )}
       </div>
-      <div className={`${container} flex flex-wrap gap-x-6 gap-y-2 pb-8`}>
-        <Link href="/privacidad" className={`${linkClass} text-sm underline underline-offset-4`}>
+      <div className={`${container} flex flex-wrap gap-x-6 gap-y-2 border-t border-dark-outline py-4`}>
+        <Link href="/privacidad" className={`${linkClass} underline underline-offset-4`}>
           Política de privacidad
         </Link>
-        <Link href="/panel/entrar" className={`${linkClass} text-sm`}>
+        <Link href="/panel/entrar" className={linkClass}>
           Acceso barbero
         </Link>
       </div>

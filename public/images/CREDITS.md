@@ -14,3 +14,4 @@ atribución obligatoria). Se sustituyen por fotos reales de la barbería en cuan
 | sillon.jpg | Nathon Oski | https://unsplash.com/photos/EW_rqoSdDes |
 
 logo.webp y logo-sello.webp son los logos propios de la barbería (no son de Unsplash).
+- para-ellas.webp: foto propia de la barbería (uso autorizado por el negocio).
