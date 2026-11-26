@@ -5,15 +5,6 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --color-status-pending: var(--status-pending);
-    --color-status-pending-surface: var(--status-pending-surface);
-    --color-status-pending-foreground: var(--status-pending-foreground);
-    --color-status-confirmed: var(--status-confirmed);
-    --color-status-confirmed-surface: var(--status-confirmed-surface);
-    --color-status-confirmed-foreground: var(--status-confirmed-foreground);
-    --color-status-risk: var(--status-risk);
-    --color-status-risk-surface: var(--status-risk-surface);
-    --color-status-risk-foreground: var(--status-risk-foreground);
     --color-cal-canvas: var(--cal-canvas);
     --color-cal-surface: var(--cal-surface);
     --color-cal-line: var(--cal-line);
@@ -66,9 +57,8 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Tokens de la referencia de Stitch (portada). El "primary" de Stitch se llama `gold` para no pisar el `primary` de
-   shadcn que usan /reservar y /panel. Los status-* de Stitch (-bg/-text/-border) no chocan con los --status-* del
-   panel actual (sin sufijo, -surface y -foreground): conviven hasta migrar el panel. */
+/* Tokens de la referencia de Stitch (portada y panel). El "primary" de Stitch se llama `gold` para no pisar el
+   `primary` de shadcn que usa /reservar. */
 @theme {
     --color-gold: #d4af6a;
     --color-on-gold: #111111;
@@ -239,17 +229,6 @@
     --sidebar-accent-foreground: #efe6d8;
     --sidebar-border: #4a3a30;
     --sidebar-ring: #c9a45c;
-    /* Estados de cita en el panel. Colores sólidos: sobre cada superficie, el texto normal y el apagado
-       superan 4.5:1 (comprobado con la fórmula de WCAG; axe lo vigila en las pruebas). */
-    --status-pending: #6a5938;
-    --status-pending-surface: #251f17;
-    --status-pending-foreground: #e6c98a;
-    --status-confirmed: #d4b26a;
-    --status-confirmed-surface: #31291d;
-    --status-confirmed-foreground: #f5efe6;
-    --status-risk: #d4b26a;
-    --status-risk-surface: #1e1914;
-    --status-risk-foreground: #d4b26a;
     /* Calendario del panel: una sola gama dorada sobre café oscuro. */
     --cal-canvas: #14110f;
     --cal-surface: #1c1815;
@@ -262,7 +241,44 @@
     --cal-done-text: #a89f91;
 }
 
+/* Panel: cascarón claro (crema) dentro de una web oscura. Redefine los tokens de shadcn y los --cal-* del chat para que
+   las secciones internas se lean con contraste sobre el fondo crema (primary = dorado sobre claro, 5.9:1). */
+.panel-light {
+    color-scheme: light;
+    --background: #f8f7f4;
+    --foreground: #111111;
+    --card: #ffffff;
+    --card-foreground: #111111;
+    --popover: #ffffff;
+    --popover-foreground: #111111;
+    --primary: #7d5e20;
+    --primary-foreground: #ffffff;
+    --secondary: #eceae6;
+    --secondary-foreground: #111111;
+    --muted: #eceae6;
+    --muted-foreground: #5a5650;
+    --accent: #eceae6;
+    --accent-foreground: #111111;
+    --destructive: #9e2a2b;
+    --border: #e6e2da;
+    --input: #b9b4aa;
+    --ring: #7d5e20;
+    --cal-canvas: #ffffff;
+    --cal-surface: #f8f7f4;
+    --cal-line: #e6e2da;
+    --cal-accent: #7d5e20;
+    --cal-text: #111111;
+    --cal-pending-text: #6e4f12;
+    --cal-done-bg: #eceae6;
+    --cal-done-line: #d1cec7;
+    --cal-done-text: #5a5650;
+}
+
 @layer base {
+  /* El panel trae su propio cascarón: sin la cabecera ni el pie de la web pública. */
+  body:has([data-panel-shell]) > :is(header, footer) {
+    display: none;
+  }
   * {
     @apply border-border outline-ring/50;
     }

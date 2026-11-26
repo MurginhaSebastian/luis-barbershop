@@ -1,27 +1,18 @@
 import type { AppointmentStatus } from "@/core/entities/appointment";
 
+const PENDING = "border-status-pending-border bg-status-pending-bg text-status-pending-text";
+const CONFIRMED = "border-status-confirmed-border bg-status-confirmed-bg text-status-confirmed-text";
+const RISK = "border-status-risk-border bg-status-risk-bg text-status-risk-text";
+const DONE = "border-status-done-border bg-status-done-bg text-status-done-text";
+const LOST = "border-destructive-border bg-light-card text-destructive-text";
+
 // La etiqueta lleva siempre el estado en palabras: el color solo lo refuerza.
-export const STATUS: Record<AppointmentStatus, { label: string; short: string; badge: string; card?: string }> = {
-  PENDING: {
-    label: "Reservado · Por confirmar",
-    short: "Reservado",
-    badge: "border-status-pending bg-status-pending-surface text-status-pending-foreground",
-    card: "border-status-pending bg-status-pending-surface",
-  },
-  CONFIRMED: {
-    label: "Confirmado",
-    short: "Confirmado",
-    badge: "border-status-confirmed bg-status-confirmed-surface text-status-confirmed-foreground",
-    card: "border-status-confirmed bg-status-confirmed-surface",
-  },
-  AT_RISK: {
-    label: "En riesgo",
-    short: "En riesgo",
-    badge: "border-status-risk bg-status-risk-surface text-status-risk-foreground",
-    card: "border-2 border-dashed border-status-risk bg-status-risk-surface",
-  },
-  COMPLETED: { label: "Atendido", short: "Atendido", badge: "border-border text-muted-foreground" },
-  CANCELLED: { label: "Cancelado", short: "Cancelado", badge: "border-destructive/60 text-destructive" },
-  NO_SHOW: { label: "No vino", short: "No vino", badge: "border-destructive/60 text-destructive" },
-  EXPIRED: { label: "Vencido", short: "Vencido", badge: "border-border text-muted-foreground" },
+export const STATUS: Record<AppointmentStatus, { label: string; short: string; badge: string }> = {
+  PENDING: { label: "Reservado · Por confirmar", short: "Reservado", badge: PENDING },
+  CONFIRMED: { label: "Confirmado", short: "Confirmado", badge: CONFIRMED },
+  AT_RISK: { label: "En riesgo", short: "En riesgo", badge: RISK },
+  COMPLETED: { label: "Atendido", short: "Atendido", badge: DONE },
+  CANCELLED: { label: "Cancelado", short: "Cancelado", badge: LOST },
+  NO_SHOW: { label: "No vino", short: "No vino", badge: LOST },
+  EXPIRED: { label: "Vencido", short: "Vencido", badge: DONE },
 };

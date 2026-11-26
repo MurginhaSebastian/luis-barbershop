@@ -143,11 +143,11 @@ export function PushToggle({ publicKey, subscribe, unsubscribe, sendTest }: Push
 }
 
 const secondary =
-  "inline-flex min-h-11 cursor-pointer items-center rounded-full border border-border px-5 text-sm transition-colors duration-200 hover:border-primary hover:text-primary disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "inline-flex min-h-11 cursor-pointer items-center rounded-full border border-light-outline px-5 text-sm transition-colors duration-150 motion-reduce:transition-none hover:border-gold-on-light hover:text-gold-on-light disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-on-light";
 
 function Box({ children }: { children: ReactNode }) {
   return (
-    <section aria-label="Avisos en este dispositivo" className="mt-4 grid gap-2 rounded-2xl border border-border p-4 text-sm text-muted-foreground">
+    <section aria-label="Avisos en este dispositivo" className="grid gap-2 border-t border-light-outline pt-3 text-body-md text-light-muted">
       {children}
     </section>
   );

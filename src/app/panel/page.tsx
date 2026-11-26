@@ -14,9 +14,10 @@ export const metadata: Metadata = { title: "Agenda" };
 
 export default function PanelPage({ searchParams }: PageProps<"/panel">) {
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 pt-4 pb-24 sm:px-6">
-      <h1 className="font-heading text-4xl sm:text-5xl">Agenda</h1>
-      <Suspense fallback={<p className="mt-6 min-h-96 text-muted-foreground">Cargando…</p>}>
+    <main className="mx-auto w-full max-w-7xl p-4 pb-24 sm:p-6 sm:pb-24">
+      {/* La barra de la agenda ya titula con la fecha: el h1 queda para lectores de pantalla. */}
+      <h1 className="sr-only">Agenda</h1>
+      <Suspense fallback={<p className="min-h-96 text-muted-foreground">Cargando…</p>}>
         <Panel searchParams={searchParams} />
       </Suspense>
     </main>

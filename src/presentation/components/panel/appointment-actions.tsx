@@ -4,15 +4,16 @@ import { MessageCircle } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { AgendaItem } from "@/application/use-cases/agenda/get-agenda";
 import type { AppointmentStatus } from "@/core/entities/appointment";
+import { cn } from "@/presentation/lib/utils";
 import { cancellationMessage, confirmationMessage, contactMessage, whatsappLink } from "@/presentation/lib/whatsapp";
 
 export type ChangeStatusAction = (id: string, status: AppointmentStatus) => Promise<{ error?: string }>;
 
 const action =
-  "inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-full px-4 text-sm transition-colors duration-200 disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cal-accent";
-const primary = `${action} bg-cal-accent font-semibold text-cal-canvas hover:bg-cal-pending-text`;
-const secondary = `${action} border border-cal-line hover:border-cal-accent`;
-const quiet = `${action} text-cal-done-text underline-offset-2 hover:text-cal-text hover:underline`;
+  "inline-flex cursor-pointer items-center justify-center gap-gutter-xs rounded-sm px-3 font-label transition-colors duration-150 motion-reduce:transition-none disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-on-light";
+const primary = `${action} bg-gold text-on-gold hover:opacity-90`;
+const secondary = `${action} border border-light-outline bg-light-canvas text-on-light-card hover:border-gold-on-light`;
+const danger = `${action} border border-destructive-border bg-light-card text-destructive-text hover:bg-status-risk-bg`;
 
 /** Las acciones que el estado de la cita permite; las comparten la ficha y la columna de pendientes. */
 export function AppointmentActions(props: { item: AgendaItem; changeStatus: ChangeStatusAction; compact?: boolean }) {
@@ -35,10 +36,10 @@ export function AppointmentActions(props: { item: AgendaItem; changeStatus: Chan
   };
 
   return (
-    <div className={props.compact ? "mt-2" : "mt-4"}>
-      <div className="flex flex-wrap gap-2">
+    <div className={props.compact ? "mt-2" : "mt-4 border-t border-light-outline pt-4"}>
+      <div className={props.compact ? "flex flex-wrap gap-2 [&>*]:min-h-9 [&>*]:text-label-sm" : "grid grid-cols-2 gap-2 [&>*]:min-h-11 [&>*]:text-label-lg"}>
         {status !== "CONFIRMED" && (
-          <button type="button" disabled={pending} className={primary} onClick={() => change("CONFIRMED")}>
+          <button type="button" disabled={pending} className={cn(primary, "col-span-2")} onClick={() => change("CONFIRMED")}>
             Confirmar cita
           </button>
         )}
@@ -46,7 +47,7 @@ export function AppointmentActions(props: { item: AgendaItem; changeStatus: Chan
           href={whatsappLink(item.phone, status === "CONFIRMED" ? confirmationMessage(item) : contactMessage(item))}
           target="_blank"
           rel="noopener noreferrer"
-          className={secondary}
+          className={cn(secondary, "col-span-2")}
         >
           <MessageCircle aria-hidden className="size-4" />
           Enviar WhatsApp
@@ -61,7 +62,7 @@ export function AppointmentActions(props: { item: AgendaItem; changeStatus: Chan
             </button>
           </>
         )}
-        <button type="button" disabled={pending} className={quiet} onClick={cancel}>
+        <button type="button" disabled={pending} className={cn(danger, "col-span-2")} onClick={cancel}>
           Cancelar
         </button>
       </div>

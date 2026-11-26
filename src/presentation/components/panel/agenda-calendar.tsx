@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type CSSProperties } from "react";
 import type { Agenda, AgendaItem } from "@/application/use-cases/agenda/get-agenda";
@@ -15,20 +15,16 @@ import { STATUS } from "./appointment-status";
 type View = Agenda["view"];
 type Open = (id: string, anchor?: HTMLElement) => void;
 
-const GREY = "bg-cal-done-text";
-const DONE = "border-l-[3px] border-cal-done-line bg-cal-done-bg text-cal-done-text";
-// Una sola gama dorada: lo firme es más intenso; lo pendiente, más tenue; lo que corre riesgo, punteado.
+const DONE = "border-status-done-border bg-status-done-bg text-status-done-text";
+// Colores de Stitch: la etiqueta de cada cita dice el estado en palabras; el color solo lo refuerza.
 const LOOK: Record<AppointmentStatus, { cls: string; dot: string }> = {
-  CONFIRMED: { cls: "border-l-[3px] border-cal-accent bg-cal-accent/22 text-cal-text", dot: "bg-cal-accent" },
-  PENDING: { cls: "border-l-[3px] border-cal-accent/45 bg-cal-accent/9 text-cal-pending-text", dot: "bg-cal-accent/45" },
-  AT_RISK: {
-    cls: "border border-dashed border-cal-accent bg-cal-accent/5 text-cal-accent shadow-[inset_3px_0_0_var(--cal-accent)]",
-    dot: "border border-cal-accent",
-  },
-  COMPLETED: { cls: DONE, dot: GREY },
-  NO_SHOW: { cls: DONE, dot: GREY },
-  CANCELLED: { cls: DONE, dot: GREY },
-  EXPIRED: { cls: DONE, dot: GREY },
+  CONFIRMED: { cls: "border-status-confirmed-border bg-status-confirmed-bg text-status-confirmed-text", dot: "bg-current" },
+  PENDING: { cls: "border-status-pending-border bg-status-pending-bg text-status-pending-text", dot: "bg-current" },
+  AT_RISK: { cls: "border-2 border-status-risk-text bg-status-risk-bg text-status-risk-text", dot: "border border-current" },
+  COMPLETED: { cls: DONE, dot: "bg-current" },
+  NO_SHOW: { cls: DONE, dot: "bg-current" },
+  CANCELLED: { cls: DONE, dot: "bg-current" },
+  EXPIRED: { cls: DONE, dot: "bg-current" },
 };
 
 const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
@@ -45,9 +41,9 @@ const PERIOD = {
 } as const;
 
 const href = (view: View, date?: string) => `/panel?vista=${view}${date ? `&dia=${date}` : ""}`;
-const pill =
-  "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-cal-line px-3 text-sm transition-colors duration-200 hover:border-cal-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-const focus = "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-cal-accent";
+const motion = "transition-colors duration-150 motion-reduce:transition-none";
+const focus = "focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-gold-on-light";
+const pill = `inline-flex min-h-10 cursor-pointer items-center justify-center rounded-sm border border-light-outline bg-light-canvas px-3 font-label text-label-lg ${motion} hover:bg-light-card hover:border-gold-on-light ${focus}`;
 
 function title(view: View, date: string, days: readonly string[]): string {
   const month = (d: string) => MONTHS[Number(d.slice(5, 7)) - 1];
@@ -64,7 +60,7 @@ function dayMinutes(date: string, iv: Interval): [number, number] | null {
   return e > s ? [s, e] : null;
 }
 
-function EventButton(props: { item: AgendaItem; onOpen: Open; label?: boolean; className?: string; style?: CSSProperties }) {
+function EventButton(props: { item: AgendaItem; onOpen: Open; label?: boolean; detail?: boolean; className?: string; style?: CSSProperties }) {
   const { item } = props;
   const time = formatTime(item.start);
   const { short } = STATUS[item.status];
@@ -74,10 +70,17 @@ function EventButton(props: { item: AgendaItem; onOpen: Open; label?: boolean; c
       aria-label={`${time} ${item.customerName}, ${short}`}
       onClick={(event) => props.onOpen(item.id, event.currentTarget)}
       style={props.style}
-      className={cn("flex min-h-6 min-w-0 cursor-pointer items-start gap-1 overflow-hidden rounded-md px-1.5 py-0.5 text-left text-xs", focus, LOOK[item.status].cls, props.className)}
+      className={cn("flex min-h-6 min-w-0 cursor-pointer items-start gap-1 overflow-hidden rounded-sm border px-1.5 py-0.5 text-left text-xs", motion, "hover:border-gold-on-light", focus, LOOK[item.status].cls, props.className)}
     >
-      <span className="min-w-0 flex-1 truncate font-bold">
-        <span className="tabular-nums">{time}</span> {item.customerName}
+      <span className="min-w-0 flex-1 font-bold">
+        <span className="block truncate">
+          <span className="tabular-nums">{time}</span> {item.customerName}
+        </span>
+        {props.detail && (
+          <span aria-hidden className="block truncate font-normal">
+            {item.services.join(", ")} · {item.barberName}
+          </span>
+        )}
       </span>
       {props.label && (
         <span aria-hidden className="mt-px hidden shrink-0 text-[10px] sm:inline">
@@ -118,7 +121,7 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
   };
 
   return (
-    <div className="overflow-x-auto rounded-b-xl border border-t-0 border-cal-line bg-cal-canvas">
+    <div className="overflow-x-auto rounded-b-md border border-t-0 border-light-outline bg-light-card">
       <div className={cn("flex pb-3", agenda.days.length > 1 && "min-w-[640px]")}>
         <div className="w-12 shrink-0">
           <div className="h-14" />
@@ -128,7 +131,7 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
                 key={h}
                 aria-hidden
                 style={{ top: px(h * 60) }}
-                className="absolute right-1 -translate-y-1/2 text-[11px] tabular-nums text-cal-done-text first:translate-y-0"
+                className="absolute right-1 -translate-y-1/2 text-[11px] tabular-nums text-light-muted first:translate-y-0"
               >
                 {String(h).padStart(2, "0")}:00
               </span>
@@ -163,10 +166,10 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
               )
             : [];
           return (
-            <div key={d} className="min-w-0 flex-1 border-l border-cal-line">
-              <div className="flex h-14 flex-col items-center justify-center text-xs text-cal-done-text">
+            <div key={d} className="min-w-0 flex-1 border-l border-light-outline">
+              <div className="flex h-14 flex-col items-center justify-center text-xs text-light-muted">
                 <span className="capitalize">{parts.weekday}</span>
-                <span className={cn("flex size-7 items-center justify-center rounded-full text-sm", isToday && "bg-cal-accent font-semibold text-cal-canvas")}>
+                <span className={cn("flex size-7 items-center justify-center rounded-full text-sm", isToday && "bg-gold font-semibold text-on-gold")}>
                   {parts.day}
                 </span>
               </div>
@@ -174,13 +177,13 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
                 className="relative"
                 style={{
                   height,
-                  backgroundImage: `repeating-linear-gradient(to bottom, var(--cal-line) 0 1px, transparent 1px ${60 * CAL_PX_PER_MINUTE}px)`,
+                  backgroundImage: `repeating-linear-gradient(to bottom, var(--color-light-outline) 0 1px, transparent 1px ${60 * CAL_PX_PER_MINUTE}px)`,
                 }}
               >
-                {closed.map(([s, e], i) => shade(s, e, "bg-cal-line/40", `c${i}`))}
+                {closed.map(([s, e], i) => shade(s, e, "bg-light-outline/40", `c${i}`))}
                 {blocks.map((b, i) => {
                   const m = dayMinutes(d, b);
-                  return m && shade(m[0], m[1], "bg-cal-line/80", `b${i}`);
+                  return m && shade(m[0], m[1], "bg-light-outline/80", `b${i}`);
                 })}
                 {gaps.map((g, i) => {
                   const m = dayMinutes(d, g);
@@ -191,7 +194,7 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
                         key={`g${i}`}
                         aria-hidden
                         style={{ top: px(from) + 1, height: (to - from) * CAL_PX_PER_MINUTE - 2 }}
-                        className="pointer-events-none absolute inset-x-1 rounded-md border border-dashed border-cal-line px-1.5 py-0.5 text-[11px] text-cal-done-text"
+                        className="pointer-events-none absolute inset-x-1 rounded-sm border border-dashed border-light-outline bg-light-canvas px-1.5 py-0.5 text-[11px] text-light-muted"
                       >
                         Libre
                       </div>
@@ -204,13 +207,14 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
                     item={item}
                     onOpen={props.onOpen}
                     label={agenda.view === "dia"}
+                    detail={agenda.view === "dia" && h >= 44}
                     style={{ top, height: h, left: `calc(${(lane / lanes) * 100}% + 1px)`, width: `calc(${100 / lanes}% - 2px)` }}
                     className="absolute"
                   />
                 ))}
                 {isToday && nowMinute >= grid.startMinute && nowMinute <= grid.endMinute && (
-                  <div aria-hidden style={{ top: px(nowMinute) }} className="pointer-events-none absolute inset-x-0 z-10 h-0.5 bg-cal-accent">
-                    <span className="absolute -top-[3px] -left-1 size-2 rounded-full bg-cal-accent" />
+                  <div aria-hidden style={{ top: px(nowMinute) }} className="pointer-events-none absolute inset-x-0 z-10 h-0.5 bg-gold-on-light">
+                    <span className="absolute -top-[3px] -left-1 size-2 rounded-full bg-gold-on-light" />
                   </div>
                 )}
               </div>
@@ -224,8 +228,8 @@ function TimeGrid(props: { agenda: Agenda; items: AgendaItem[]; barber: string |
 
 function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; today: string; onOpen: Open }) {
   return (
-    <div className="rounded-b-xl border border-t-0 border-cal-line bg-cal-canvas">
-      <div className="grid grid-cols-7 border-b border-cal-line text-center text-[11px] text-cal-done-text">
+    <div className="rounded-b-md border border-t-0 border-light-outline bg-light-card">
+      <div className="grid grid-cols-7 border-b border-light-outline text-center text-[11px] text-light-muted">
         {MONTH_HEADERS.map((h) => (
           <span key={h} className="py-1">
             {h}
@@ -233,15 +237,15 @@ function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; t
         ))}
       </div>
       {weeks(props.agenda.days).map((week) => (
-        <div key={week[0]} className="grid grid-cols-7 border-b border-cal-line last:border-b-0">
+        <div key={week[0]} className="grid grid-cols-7 border-b border-light-outline last:border-b-0">
           {week.map((d) => {
             const day = props.items.filter((i) => dayOf(i) === d);
             return (
-              <div key={d} className="min-h-20 min-w-0 space-y-0.5 overflow-hidden border-l border-cal-line p-0.5 first:border-l-0">
+              <div key={d} className="min-h-20 min-w-0 space-y-0.5 overflow-hidden border-l border-light-outline p-0.5 first:border-l-0">
                 <span
                   className={cn(
                     "flex size-6 items-center justify-center rounded-full text-xs",
-                    d === props.today ? "bg-cal-accent font-semibold text-cal-canvas" : d.slice(0, 7) === props.date.slice(0, 7) ? "text-cal-text" : "text-cal-done-text",
+                    d === props.today ? "bg-gold font-semibold text-on-gold" : d.slice(0, 7) === props.date.slice(0, 7) ? "text-on-light-card" : "text-light-muted",
                   )}
                 >
                   {Number(d.slice(8))}
@@ -250,7 +254,7 @@ function MonthGrid(props: { agenda: Agenda; items: AgendaItem[]; date: string; t
                   <EventButton key={item.id} item={item} onOpen={props.onOpen} className="w-full" />
                 ))}
                 {day.length > 3 && (
-                  <Link href={href("dia", d)} className={cn("block rounded px-1 text-[11px] text-cal-accent underline", focus)}>
+                  <Link href={href("dia", d)} className={cn("block rounded px-1 text-[11px] text-gold-on-light underline", focus)}>
                     +{day.length - 3} más
                   </Link>
                 )}
@@ -278,12 +282,12 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
 
   return (
     <>
-      <div className="mt-3 flex flex-col gap-2 rounded-t-xl border border-cal-line bg-cal-surface px-3 py-2 sm:grid sm:min-h-[52px] sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-center sm:gap-x-4">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 id="agenda-dia" className="font-heading text-2xl first-letter:uppercase sm:text-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-md border border-light-outline bg-light-card px-3 py-2.5 sm:min-h-[52px] sm:px-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <h2 id="agenda-dia" className="font-headline text-2xl leading-tight first-letter:uppercase">
             {title(view, date, agenda.days)}
           </h2>
-          <nav aria-label="Cambiar de día" className="flex items-center gap-2">
+          <nav aria-label="Cambiar de día" className="flex items-center gap-1">
             <Link href={href(view, shiftPeriod(view, date, -1))} aria-label={before} className={pill}>
               <ChevronLeft aria-hidden className="size-4" />
             </Link>
@@ -296,37 +300,50 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
               <ChevronRight aria-hidden className="size-4" />
             </Link>
           </nav>
+          <nav aria-label="Vista" className="flex rounded-sm border border-light-outline bg-light-canvas p-0.5">
+            {VIEWS.map((v) => (
+              <Link
+                key={v.view}
+                href={href(v.view, date)}
+                aria-current={v.view === view ? "page" : undefined}
+                className={cn(
+                  "inline-flex min-h-9 cursor-pointer items-center rounded-sm px-3 font-label text-label-lg",
+                  motion,
+                  focus,
+                  v.view === view ? "bg-dark-canvas text-on-dark-canvas" : "text-light-muted hover:text-on-light-card",
+                )}
+              >
+                {v.label}
+              </Link>
+            ))}
+          </nav>
         </div>
-        <nav aria-label="Vista" className="flex self-start rounded-full border border-cal-line p-0.5 sm:self-auto">
-          {VIEWS.map((v) => (
-            <Link
-              key={v.view}
-              href={href(v.view, date)}
-              aria-current={v.view === view ? "page" : undefined}
-              className={cn("inline-flex min-h-11 cursor-pointer items-center rounded-full px-4 text-sm transition-colors duration-200", focus, v.view === view ? "bg-cal-accent font-semibold text-cal-canvas" : "hover:text-cal-accent")}
-            >
-              {v.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2">
           {barbers.length > 1 && (
-            <div role="group" aria-label="Ver la agenda de" className="flex flex-wrap gap-2">
+            <div role="group" aria-label="Ver la agenda de" className="flex flex-wrap gap-1">
               {[null, ...barbers].map((name) => (
                 <button
                   key={name ?? ""}
                   type="button"
                   aria-pressed={barber === name}
                   onClick={() => setChosen(name)}
-                  className={cn(pill, "aria-pressed:border-cal-accent aria-pressed:bg-cal-accent aria-pressed:font-semibold aria-pressed:text-cal-canvas")}
+                  className={cn(pill, "aria-pressed:border-dark-canvas aria-pressed:bg-dark-canvas aria-pressed:text-on-dark-canvas")}
                 >
                   {name ?? "Todos"}
                 </button>
               ))}
             </div>
           )}
-          <Link href="/reservar" className={cn(pill, "border-cal-accent text-cal-accent")}>
-            + Nueva cita
+          <Link
+            href="/reservar"
+            className={cn(
+              "inline-flex min-h-10 shrink-0 items-center justify-center gap-gutter-xs rounded-sm bg-gold px-4 font-label text-label-lg text-on-gold hover:opacity-90",
+              motion,
+              focus,
+            )}
+          >
+            <Plus aria-hidden className="size-4" />
+            Nueva cita
           </Link>
         </div>
       </div>
@@ -337,18 +354,22 @@ export function AgendaCalendar(props: { agenda: Agenda; date: string; today: str
         <TimeGrid agenda={agenda} items={operational} barber={barber} gapsFor={view === "dia" ? (barber ?? (agenda.activeBarbers.length === 1 ? agenda.activeBarbers[0] : null)) : null} today={today} onOpen={props.onOpen} />
       )}
 
-      {view === "dia" && agenda.items.length === 0 && <p className="mt-4 text-muted-foreground">No hay citas este día.</p>}
+      {view === "dia" && agenda.items.length === 0 && <p className="mt-4 text-light-muted">No hay citas este día.</p>}
       {view === "dia" && closed.length > 0 && (
-        <>
-          <h3 className="mt-8 font-heading text-2xl">Canceladas y vencidas</h3>
-          <ul className="mt-3 flex flex-wrap gap-2">
+        // Canceladas y vencidas, plegadas bajo la grilla (el heading y los botones siguen en el árbol de accesibilidad).
+        <details className="group mt-4 rounded-md border border-light-outline bg-light-card">
+          <summary className={cn("flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 rounded-md px-4 py-3 text-light-muted hover:text-on-light-card", motion, focus)}>
+            <h3 className="font-title text-title-md">Canceladas y vencidas ({closed.length})</h3>
+            <ChevronDown aria-hidden className="size-5 transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
+          </summary>
+          <ul className="flex flex-wrap gap-2 border-t border-light-outline px-4 pt-3 pb-4">
             {closed.map((item) => (
               <li key={item.id}>
                 <EventButton item={item} onOpen={props.onOpen} label className="min-h-8 items-center" />
               </li>
             ))}
           </ul>
-        </>
+        </details>
       )}
     </>
   );
