@@ -47,3 +47,6 @@ next-env.d.ts
 
 # Originales del usuario (16-22 MB, con audio): la web usa la versión comprimida de public/videos/
 /src/*.mp4
+
+# Referencias de diseño de Google Stitch (solo locales)
+/docs/stitch-ref/
