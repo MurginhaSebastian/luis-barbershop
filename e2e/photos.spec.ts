@@ -68,7 +68,7 @@ test("la foto de un servicio se ve en su mosaico y se puede quitar", async ({ pa
   await expect(form.getByText("Foto actualizada")).toBeVisible();
 
   await page.goto("/");
-  const tile = page.getByRole("link", { name: /Fade/ }).locator("img");
+  const tile = page.getByRole("article").filter({ has: page.getByRole("link", { name: /Fade/ }) }).locator("img");
   await expect(tile).toHaveAttribute("src", /%2Fimagenes%2F/);
 
   await page.goto("/panel/web");
@@ -76,7 +76,7 @@ test("la foto de un servicio se ve en su mosaico y se puede quitar", async ({ pa
   await item.getByRole("button", { name: "Volver a la foto de ejemplo" }).click();
   await expect(item.getByText("Vuelve a verse la foto de ejemplo.")).toBeVisible();
   await page.goto("/");
-  await expect(page.getByRole("link", { name: /Fade/ }).locator("img")).toHaveAttribute("src", /maquina\.jpg/);
+  await expect(page.getByRole("article").filter({ has: page.getByRole("link", { name: /Fade/ }) }).locator("img")).toHaveAttribute("src", /maquina\.jpg/);
 });
 
 test("la ruta de fotos no sirve nada fuera de su carpeta", async ({ request }) => {
