@@ -61,7 +61,7 @@ export function ServiceGallery({ services, assistant }: { services: Service[]; a
                     webHref={`/reservar?servicios=${s.id}`}
                     className={`${darkBtn} mt-auto w-full`}
                   >
-                    Reservar<span className="sr-only"> este servicio: {s.name}</span>
+                    Reservar<span className="sr-only"> este servicio: {s.name}, {formatPrice(s.priceCents)}</span>
                   </BookLink>
                 </div>
               </article>

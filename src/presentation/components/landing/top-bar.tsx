@@ -21,7 +21,7 @@ export function TopBar({
     <div className="border-b border-dark-outline bg-obsidian-bar font-body text-body-md text-on-obsidian-bar">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-gutter-lg gap-y-1 px-4 py-2 sm:px-6 md:justify-between lg:px-8">
         {address && (
-          <p className="hidden items-center gap-gutter-xs md:flex">
+          <p className="flex items-center gap-gutter-xs">
             <MapPin aria-hidden className="size-4 shrink-0 text-gold" />
             {address}
           </p>
