@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import { useState, useTransition } from "react";
 import type { BusinessHours } from "@/core/scheduling/availability";
 import { formatMinuteOfDay, WEEKDAYS } from "@/presentation/lib/format";
@@ -128,8 +129,8 @@ export function HoursEditor({ weeklyHours, action }: { weeklyHours: BusinessHour
           const day = days[weekday];
           const second = showSecond[weekday];
           const field = (name: Name) => (
-            <div key={name} className="min-w-0 flex-1 sm:max-w-28">
-              <label htmlFor={`${weekday}-${name}`} className="mb-0.5 block text-xs whitespace-nowrap text-light-muted">
+            <div key={name} className="min-w-0 flex-1 sm:w-28 sm:flex-none">
+              <label htmlFor={`${weekday}-${name}`} className="sr-only">
                 {LABELS[name]}
               </label>
               <input
@@ -143,6 +144,13 @@ export function HoursEditor({ weeklyHours, action }: { weeklyHours: BusinessHour
               />
             </div>
           );
+          const range = (a: Name, b: Name) => (
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:flex-none">
+              {field(a)}
+              <span aria-hidden="true">–</span>
+              {field(b)}
+            </div>
+          );
           return (
             <form
               key={weekday}
@@ -151,9 +159,9 @@ export function HoursEditor({ weeklyHours, action }: { weeklyHours: BusinessHour
                 e.preventDefault();
                 saveAll();
               }}
-              className="flex flex-wrap items-end gap-x-6 gap-y-3 p-4 sm:px-6"
+              className="flex flex-wrap items-center gap-x-5 gap-y-3 p-4 sm:px-6"
             >
-              <div className="flex w-full items-center justify-between gap-3 sm:w-56 sm:pb-2">
+              <div className="flex w-full items-center justify-between gap-3 sm:w-52">
                 <h3 className="text-base font-semibold">{WEEKDAYS[weekday]}</h3>
                 <Switch
                   checked={day.open}
@@ -164,42 +172,41 @@ export function HoursEditor({ weeklyHours, action }: { weeklyHours: BusinessHour
                   }}
                 />
               </div>
-              <div className="flex w-full flex-wrap items-end gap-3 sm:w-auto sm:flex-1">
-                <div className="flex w-full items-end gap-2 sm:w-auto">
-                  {field("open1")}
-                  <span aria-hidden="true" className="pb-2">
-                    –
-                  </span>
-                  {field("close1")}
+              <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 sm:w-auto sm:flex-1">
+                {range("open1", "close1")}
+                <div className="flex w-full items-center gap-x-3 sm:w-auto">
+                  {second && (
+                    <>
+                      <span aria-hidden="true" className="hidden text-sm text-light-muted sm:inline">
+                        y
+                      </span>
+                      {range("open2", "close2")}
+                    </>
+                  )}
+                  {day.open && (
+                    <button
+                      type="button"
+                      aria-label={second ? `Quitar pausa del ${WEEKDAYS[weekday]}` : undefined}
+                      onClick={() => {
+                        if (second) patch(weekday, { values: { ...day.values, open2: "", close2: "" } });
+                        setShowSecond({ ...showSecond, [weekday]: !second });
+                      }}
+                      className={cn(
+                        "inline-flex min-h-10 shrink-0 items-center justify-center rounded-sm border border-light-outline bg-light-canvas px-3 text-sm font-semibold transition-colors duration-150 hover:border-gold-on-light motion-reduce:transition-none",
+                        second && "size-10 px-0",
+                        FOCUS,
+                      )}
+                    >
+                      {second ? <X aria-hidden="true" className="size-4" /> : "+ Pausa"}
+                    </button>
+                  )}
                 </div>
-                {second && (
-                  <div className="flex w-full items-end gap-2 sm:w-auto">
-                    {field("open2")}
-                    <span aria-hidden="true" className="pb-2">
-                      –
-                    </span>
-                    {field("close2")}
-                  </div>
-                )}
-                {day.open && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (second) patch(weekday, { values: { ...day.values, open2: "", close2: "" } });
-                      setShowSecond({ ...showSecond, [weekday]: !second });
-                    }}
-                    className={cn(
-                      "inline-flex min-h-10 items-center rounded-sm border border-light-outline bg-light-canvas px-3 text-sm font-semibold transition-colors duration-150 hover:border-gold-on-light motion-reduce:transition-none",
-                      FOCUS,
-                    )}
-                  >
-                    {second ? "Quitar pausa" : "+ Pausa"}
-                  </button>
-                )}
               </div>
-              <div className="w-full">
-                <FormStatus state={states[weekday] ?? {}} />
-              </div>
+              {states[weekday] && (
+                <div className="w-full">
+                  <FormStatus state={states[weekday]} />
+                </div>
+              )}
             </form>
           );
         })}
