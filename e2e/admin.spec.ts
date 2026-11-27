@@ -244,7 +244,10 @@ test.describe("barberos", () => {
     await page.goto("/panel/barberos");
     await expect(page.getByText("Luis · Dueño")).toBeVisible();
     await expect(card(page, "Luis")).toHaveCount(0);
-    const form = card(page, "Barbero invitado");
+    await expect(tile(page, "Luis").getByRole("switch")).toHaveCount(0);
+    await expect(tile(page, "Luis").getByRole("button", { name: "Editar" })).toHaveCount(0);
+    await expect(tile(page, "Luis").getByText("Perfil principal siempre activo")).toBeVisible();
+    const form = await editService(page, "Barbero invitado");
     await form.getByLabel("Nombre").fill("Barbero renombrado");
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(card(page, "Barbero renombrado")).toBeVisible();
@@ -253,7 +256,7 @@ test.describe("barberos", () => {
   test("las áreas de un profesional se cambian, y siempre queda una", async ({ page }) => {
     await login(page);
     await page.goto("/panel/barberos");
-    const form = card(page, "Estilista invitada");
+    const form = await editService(page, "Estilista invitada");
     const spa = form.getByRole("group", { name: "Áreas" }).getByLabel("Spa y estilista");
     await expect(spa).toBeChecked();
     await form.getByLabel("Barbería", { exact: true }).check();
@@ -262,6 +265,7 @@ test.describe("barberos", () => {
     await expect(form.getByLabel("Barbería", { exact: true })).toBeChecked();
 
     await page.reload();
+    await editService(page, "Estilista invitada");
     await expect(card(page, "Estilista invitada").getByLabel("Barbería", { exact: true })).toBeChecked();
     await card(page, "Estilista invitada").getByLabel("Barbería", { exact: true }).uncheck();
     await card(page, "Estilista invitada").getByLabel("Spa y estilista").uncheck();
@@ -270,13 +274,27 @@ test.describe("barberos", () => {
     await expect(page.getByText("Luis · Dueño · Barbería")).toBeVisible();
   });
 
+  test("/panel/barberos a 320 px no desborda y es accesible", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await login(page);
+    await page.goto("/panel/barberos");
+    await page.getByRole("article").first().waitFor();
+    for (const open of [false, true]) {
+      if (open) await page.getByRole("button", { name: "Nuevo profesional" }).click();
+      const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+      expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    }
+  });
+
   test("un barbero nuevo se puede elegir al reservar", async ({ page }) => {
     await login(page);
     await page.goto("/panel/barberos");
+    await page.getByRole("button", { name: "Nuevo profesional" }).click();
     const form = card(page, "Añadir barbero");
     await form.getByLabel("Nombre").fill("Barbero Nuevo");
     await form.getByRole("button", { name: "Añadir" }).click();
-    await expect(card(page, "Barbero Nuevo")).toBeVisible();
+    await expect(tile(page, "Barbero Nuevo")).toBeVisible();
 
     await chooseServices(page, [/Corte clásico/]);
     await chooseBarber(page, "Barbero Nuevo");
@@ -290,14 +308,14 @@ test.describe("barberos", () => {
 
     await login(page);
     await page.goto("/panel/barberos");
-    const form = card(page, "Barbero invitado");
-    await form.getByLabel("Visible en la web").uncheck();
-    await form.getByRole("button", { name: "Guardar" }).click();
-    await expect(form.getByText(/1 cita por venir/)).toBeVisible();
-    // Regresión: el reinicio automático del formulario devolvía la casilla a "marcada".
-    await expect(form.getByLabel("Visible en la web")).not.toBeChecked();
+    const guest = tile(page, "Barbero invitado");
+    await guest.getByRole("switch").uncheck();
+    await expect(guest.getByText(/1 cita por venir/)).toBeVisible();
+    // Regresión: el reinicio automático del formulario devolvía el interruptor a "activo".
+    await expect(guest.getByText("Inactivo")).toBeVisible();
+    await expect(guest.getByRole("switch")).not.toBeChecked();
     await page.reload();
-    await expect(card(page, "Barbero invitado").getByLabel("Visible en la web")).not.toBeChecked();
+    await expect(tile(page, "Barbero invitado").getByRole("switch")).not.toBeChecked();
 
     await chooseServices(page, [/Corte clásico/]);
     await expect(page.getByRole("main").getByRole("link", { name: "Barbero invitado", exact: true })).toHaveCount(0);
@@ -475,7 +493,7 @@ test("las pantallas del panel son accesibles y caben en el móvil", async ({ pag
   await login(page);
   for (const path of ["/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario", "/panel/web"]) {
     await page.goto(path);
-    await page.getByRole(path === "/panel/servicios" || path === "/panel/productos" ? "article" : "form").first().waitFor();
+    await page.getByRole(path === "/panel/servicios" || path === "/panel/productos" || path === "/panel/barberos" ? "article" : "form").first().waitFor();
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     const serious = violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id);
     expect(serious, path).toEqual([]);
