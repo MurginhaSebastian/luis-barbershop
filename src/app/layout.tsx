@@ -4,17 +4,15 @@ import "./globals.css";
 import { Playfair_Display, Poppins } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
-import { connection } from "next/server";
 import { Suspense } from "react";
 import { getAssistantWhatsApp, getUseCases } from "@/infrastructure/container";
 import { MotionProvider } from "@/presentation/components/motion-provider";
-import { BookLink } from "@/presentation/components/landing/book-link";
 import { HomeOnly } from "@/presentation/components/landing/home-only";
 import { TopBar } from "@/presentation/components/landing/top-bar";
 import { describeOpening } from "@/presentation/lib/hours";
 import { MobileMenu } from "@/presentation/components/landing/mobile-menu";
 import { SiteFooter } from "@/presentation/components/landing/site-footer";
-import { container, goldBtn } from "@/presentation/components/landing/styles";
+import { container } from "@/presentation/components/landing/styles";
 import { WhatsappButton } from "@/presentation/components/landing/whatsapp-button";
 import { cn } from "@/presentation/lib/utils";
 import { whatsappLink } from "@/presentation/lib/whatsapp";
@@ -46,21 +44,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <HomeTopBar />
             </Suspense>
           </HomeOnly>
-          {/* Fija: reservar y moverse por la portada quedan siempre a mano. */}
+          {/* Fija: moverse por la portada quedan siempre a mano. */}
           <header className="sticky top-0 z-30 border-b border-dark-outline bg-dark-canvas text-on-dark-canvas">
             <div className={`${container} flex h-16 items-center justify-between gap-3 md:h-20`}>
               <Link href="/" className="inline-flex min-h-11 min-w-0 items-center gap-gutter-sm">
                 <Image src="/images/logo.webp" alt={SHOP_NAME} width={52} height={52} sizes="48px" preload className="size-11 shrink-0 md:size-12" />
-                <span aria-hidden className="hidden font-headline text-title-lg tracking-wide min-[420px]:inline xl:hidden 2xl:inline">
-                  {SHOP_NAME}
-                </span>
               </Link>
               <nav aria-label="Principal" className="flex items-center gap-1">
                 <Suspense fallback={null}>
                   <SectionLinks />
-                </Suspense>
-                <Suspense fallback={<BookLink className={headerBookClass}>Reservar cita</BookLink>}>
-                  <HeaderBook />
                 </Suspense>
               </nav>
             </div>
@@ -72,25 +64,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </MotionProvider>
       </body>
     </html>
-  );
-}
-
-const headerBookClass = `ml-2 min-h-11! px-3! sm:px-5! ${goldBtn}`;
-
-async function HeaderBook() {
-  await connection(); // el número se lee de process.env en cada petición, no en el build
-  const assistant = getAssistantWhatsApp();
-  return (
-    <BookLink assistant={assistant} className={headerBookClass}>
-      {assistant ? (
-        <>
-          <span className="sm:hidden">Reservar</span>
-          <span className="max-sm:hidden">Reservar por WhatsApp</span>
-        </>
-      ) : (
-        "Reservar cita"
-      )}
-    </BookLink>
   );
 }
 
