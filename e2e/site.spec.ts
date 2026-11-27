@@ -105,6 +105,16 @@ test.describe("portada", () => {
     }
   });
 
+  test("el logo de la cabecera vuelve al inicio de la portada aunque ya estés en ella", async ({ page }) => {
+    await page.goto("/#horario");
+    await page.mouse.wheel(0, 20000);
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(500);
+    await page.getByRole("banner").getByRole("link", { name: /D.luiss Barber Shop/ }).click();
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeLessThan(5);
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { level: 1 })).toBeInViewport();
+  });
+
   test("el botón principal lleva a la reserva", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("link", { name: "Reservar cita" }).first().click();
