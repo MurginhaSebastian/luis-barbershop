@@ -38,13 +38,14 @@ function toDay(hours: BusinessHours[]): Day {
 const sent = (day: Day): Values => (day.open ? day.values : EMPTY);
 const same = (a: Day, b: Day) => NAMES.every((n) => sent(a)[n] === sent(b)[n]);
 
-function Switch(props: { checked: boolean; label: string; onChange: (on: boolean) => void }) {
+export function Switch(props: { checked: boolean; label: string; onChange: (on: boolean) => void; on?: string; off?: string; name?: string }) {
   return (
     <label className="flex cursor-pointer items-center gap-2.5 text-sm">
       <span className="relative inline-flex h-6 w-11 shrink-0">
         <input
           type="checkbox"
           role="switch"
+          name={props.name}
           checked={props.checked}
           aria-label={props.label}
           onChange={(e) => props.onChange(e.target.checked)}
@@ -66,7 +67,7 @@ function Switch(props: { checked: boolean; label: string; onChange: (on: boolean
         </span>
       </span>
       <span className={props.checked ? "" : "text-light-muted"} aria-hidden="true">
-        {props.checked ? "Abierto" : "Cerrado"}
+        {props.checked ? (props.on ?? "Abierto") : (props.off ?? "Cerrado")}
       </span>
     </label>
   );

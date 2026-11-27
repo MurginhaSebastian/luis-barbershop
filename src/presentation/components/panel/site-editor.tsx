@@ -3,7 +3,8 @@
 import { startTransition, useActionState, useState } from "react";
 import type { ShopContact, SiteSection, SiteSettings } from "@/core/entities/site";
 import type { AdminAction, AdminState } from "./admin-state";
-import { FormStatus, panelField, panelSave } from "./form-status";
+import { FormStatus, lightField, panelGold } from "./form-status";
+import { Switch } from "./hours-editor";
 
 const CONTACT_FIELDS: { name: keyof ShopContact; label: string; placeholder: string; inputMode?: "tel" | "url" }[] = [
   { name: "whatsapp", label: "WhatsApp", placeholder: "9xx xxx xxx", inputMode: "tel" },
@@ -35,11 +36,21 @@ export function ContactForm({ contact, action }: { contact: ShopContact; action:
   );
   const [state, formAction, pending] = useActionState<AdminState, FormData>(action, {});
   return (
-    <form action={formAction} aria-label="Contacto" className="mt-4 space-y-3 rounded-2xl border border-border bg-card p-4">
-      <p className="text-sm text-muted-foreground">Deja vacío lo que no quieras mostrar.</p>
+    <form
+      // Sin `action=`, como el resto del panel: su form.reset() no debe tocar los campos controlados.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = new FormData(e.currentTarget);
+        startTransition(() => formAction(form));
+      }}
+      aria-label="Contacto"
+      className="space-y-4"
+    >
+      <p className="text-sm text-light-muted">Deja vacío lo que no quieras mostrar.</p>
+      <div className="grid gap-4 md:grid-cols-2">
       {CONTACT_FIELDS.map((field) => (
         <div key={field.name}>
-          <label htmlFor={`contact-${field.name}`} className="mb-1 block text-sm">
+          <label htmlFor={`contact-${field.name}`} className="mb-1 block text-sm font-medium">
             {field.label}
           </label>
           <input
@@ -49,12 +60,13 @@ export function ContactForm({ contact, action }: { contact: ShopContact; action:
             placeholder={field.placeholder}
             value={values[field.name]}
             onChange={(e) => setValues({ ...values, [field.name]: e.target.value })}
-            className={panelField}
+            className={lightField}
           />
         </div>
       ))}
+      </div>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} className={panelSave}>
+        <button type="submit" disabled={pending} className={panelGold}>
           {pending ? "Guardando…" : "Guardar contacto"}
         </button>
         <FormStatus state={state} />
@@ -74,22 +86,27 @@ export function SectionsForm({ sections, action }: { sections: SiteSettings["sec
         const form = new FormData(e.currentTarget);
         startTransition(() => formAction(form));
       }}
-      aria-label="Secciones visibles" className="mt-4 space-y-1 rounded-2xl border border-border bg-card p-4">
-      <p className="mb-2 text-sm text-muted-foreground">Servicios y reserva se muestran siempre.</p>
-      {(Object.keys(SECTION_LABELS) as SiteSection[]).map((section) => (
-        <label key={section} className="flex min-h-11 cursor-pointer items-center gap-3">
-          <input
-            type="checkbox"
-            name={section}
-            checked={visible[section]}
-            onChange={(e) => setVisible({ ...visible, [section]: e.target.checked })}
-            className="size-5 accent-primary"
-          />
-          {SECTION_LABELS[section]}
-        </label>
-      ))}
-      <div className="flex flex-wrap items-center gap-3 pt-2">
-        <button type="submit" disabled={pending} className={panelSave}>
+      aria-label="Secciones visibles"
+      className="space-y-4"
+    >
+      <p className="text-sm text-light-muted">Servicios y reserva se muestran siempre.</p>
+      <div className="grid gap-3 md:grid-cols-2">
+        {(Object.keys(SECTION_LABELS) as SiteSection[]).map((section) => (
+          <div key={section} className="flex min-h-12 items-center justify-between gap-3 rounded-sm border border-light-outline bg-light-canvas px-3">
+            <span className="text-sm font-medium">{SECTION_LABELS[section]}</span>
+            <Switch
+              name={section}
+              label={SECTION_LABELS[section]}
+              checked={visible[section]}
+              onChange={(on) => setVisible({ ...visible, [section]: on })}
+              on="Visible"
+              off="Oculta"
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className={panelGold}>
           {pending ? "Guardando…" : "Guardar secciones"}
         </button>
         <FormStatus state={state} />

@@ -21,3 +21,8 @@ export const panelField =
   "h-11 w-full rounded-xl border border-input bg-background px-3 focus-visible:outline-2 focus-visible:outline-ring";
 export const panelSave =
   "inline-flex min-h-11 cursor-pointer items-center rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors duration-200 hover:bg-accent hover:text-accent-foreground disabled:cursor-wait disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+
+export const panelGold =
+  "inline-flex min-h-10 cursor-pointer items-center rounded-sm bg-gold px-4 text-sm font-semibold text-on-gold transition-opacity duration-150 hover:opacity-90 disabled:cursor-wait disabled:opacity-50 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-on-light";
+export const lightField =
+  "h-10 w-full rounded-sm border border-light-outline bg-light-canvas px-3 text-sm text-on-light-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-on-light";
