@@ -15,9 +15,9 @@ const base = (process.argv[2] ?? "http://localhost:3000").replace(/\/$/, "");
 const PAGES = ["/", "/reservar", "/panel/entrar"];
 // El panel lleva noindex y /reservar está bloqueada en robots.txt: su SEO bajo es intencional.
 const PRIVATE = new Set(["/panel/entrar", "/reservar"]);
-// Con PANEL_SESSION_SECRET válido, mide también la agenda y Chats con una sesión firmada (el token no se imprime).
+// Con PANEL_SESSION_SECRET válido, mide también la agenda y las subpáginas con una sesión firmada (el token no se imprime).
 const secret = process.env.PANEL_SESSION_SECRET;
-const AUTH_PAGES = ["/panel", "/panel/chats"];
+const AUTH_PAGES = ["/panel", "/panel/chats", "/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario", "/panel/web"];
 const sessionHeaders = secret && secret.length >= 32 ? { Cookie: `panel_session=${createSessionToken(secret, new Date())}` } : null;
 if (sessionHeaders) {
   PAGES.push(...AUTH_PAGES);
