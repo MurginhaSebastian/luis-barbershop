@@ -25,7 +25,7 @@ export interface EditableItem {
 type ListProps = { fields: EditableField[]; action: AdminAction };
 
 /** Ficha de un elemento. Campos controlados: un error al guardar no borra lo escrito. */
-export function ItemForm(props: ListProps & { item?: EditableItem; heading: string }) {
+export function ItemForm(props: ListProps & { item?: EditableItem; heading: string; onCancel?: () => void }) {
   const { item, fields } = props;
   const blank = Object.fromEntries(fields.map((f) => [f.name, f.options?.[0].value ?? ""]));
   const [values, setValues] = useState(item?.values ?? blank);
@@ -131,6 +131,15 @@ export function ItemForm(props: ListProps & { item?: EditableItem; heading: stri
         <button type="submit" disabled={pending} className={panelSave}>
           {pending ? "Guardando…" : item ? "Guardar" : "Añadir"}
         </button>
+        {props.onCancel && (
+          <button
+            type="button"
+            onClick={props.onCancel}
+            className="inline-flex min-h-11 cursor-pointer items-center rounded-full border border-border px-5 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            Cancelar
+          </button>
+        )}
         <FormStatus state={state} />
       </div>
     </form>

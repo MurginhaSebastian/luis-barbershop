@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, Plus } from "lucide-react";
-import { startTransition, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { cn } from "@/presentation/lib/utils";
 import type { AdminAction, AdminState } from "./admin-state";
 import { type EditableField, type EditableItem, ItemForm } from "./editable-list";
@@ -18,6 +18,26 @@ export interface CatalogItem extends EditableItem {
 }
 
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-on-light";
+
+/** Diálogo modal nativo: Esc lo cierra y el navegador devuelve el foco al botón que lo abrió. */
+function FormDialog(props: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (props.open && !dialog.open) dialog.showModal();
+    if (!props.open && dialog.open) dialog.close();
+  }, [props.open]);
+  return (
+    <dialog
+      ref={ref}
+      onClose={props.onClose}
+      className="m-auto w-[calc(100%-2rem)] max-w-xl bg-transparent p-0 text-foreground backdrop:bg-black/60"
+    >
+      {props.open && props.children}
+    </dialog>
+  );
+}
 
 function Card({ item, fields, action }: { item: CatalogItem; fields: EditableField[]; action: AdminAction }) {
   const [active, setActive] = useState(item.active);
@@ -96,8 +116,8 @@ function Card({ item, fields, action }: { item: CatalogItem; fields: EditableFie
         </label>
         <button
           type="button"
-          aria-expanded={editing}
-          onClick={() => setEditing(!editing)}
+          aria-haspopup="dialog"
+          onClick={() => setEditing(true)}
           className={cn(
             "inline-flex min-h-9 items-center gap-1.5 rounded-sm border border-light-outline bg-light-canvas px-3 text-sm font-semibold transition-colors duration-150 hover:border-gold-on-light motion-reduce:transition-none",
             FOCUS,
@@ -108,7 +128,9 @@ function Card({ item, fields, action }: { item: CatalogItem; fields: EditableFie
         </button>
       </div>
       <FormStatus state={state} />
-      {editing && <ItemForm item={item} heading={item.title} fields={fields} action={action} />}
+      <FormDialog open={editing} onClose={() => setEditing(false)}>
+        <ItemForm item={item} heading={item.title} fields={fields} action={action} onCancel={() => setEditing(false)} />
+      </FormDialog>
     </article>
   );
 }
@@ -155,8 +177,8 @@ export function CatalogGrid(props: {
         </div>
         <button
           type="button"
-          aria-expanded={adding}
-          onClick={() => setAdding(!adding)}
+          aria-haspopup="dialog"
+          onClick={() => setAdding(true)}
           className={cn(
             "inline-flex min-h-10 items-center gap-1 rounded-sm bg-gold px-4 text-sm font-semibold text-on-gold transition-opacity duration-150 hover:opacity-90 motion-reduce:transition-none",
             FOCUS,
@@ -167,11 +189,9 @@ export function CatalogGrid(props: {
         </button>
       </header>
       {props.note && <p className="mt-3 text-sm text-light-muted">{props.note}</p>}
-      {adding && (
-        <div className="mt-4">
-          <ItemForm heading={props.addHeading} fields={props.fields} action={props.action} />
-        </div>
-      )}
+      <FormDialog open={adding} onClose={() => setAdding(false)}>
+        <ItemForm heading={props.addHeading} fields={props.fields} action={props.action} onCancel={() => setAdding(false)} />
+      </FormDialog>
       <div className="mt-4 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {shown.map((item) => (
           <Card key={item.id} item={item} fields={props.fields} action={props.action} />
