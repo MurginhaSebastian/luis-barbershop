@@ -160,6 +160,16 @@ Lo que se fue pidiendo durante el proyecto, en resumen:
   - Horario semanal y bloqueos (feriados, vacaciones). Avisa si quedan citas afectadas, sin cancelarlas.
   - La web: contacto, secciones visibles y fotos. Las fotos se reducen y se les quitan los datos de ubicación.
 
+### Rediseño visual (portada y panel)
+- La portada y el panel se rehicieron según los diseños de Stitch.
+- El panel tiene un cascarón común: barra lateral negra y contenido crema.
+- Servicios, productos y barberos son tarjetas; se editan en una ventana sobre la misma página.
+- Horarios: una fila por día, con un segundo tramo opcional para el almuerzo.
+- Bloqueos y Web también en tarjetas. Chats ofrece atajos de WhatsApp con el mensaje ya escrito.
+- No se añadió pausa del asistente ni envío desde el panel (ver CLAUDE.md).
+
+---
+
 ---
 
 ## 4. Cómo está hecho

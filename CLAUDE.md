@@ -191,6 +191,8 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   oculta.
 
 ### Panel del barbero (`/panel`)
+- Cascarón `PanelShell` (`panel-shell.tsx`): barra lateral negra y contenido crema (`.panel-light` en `globals.css`).
+  Lo usan todas las páginas del panel menos `/panel/entrar`.
 - Una sola clave para la barbería: hash `scrypt` en `PANEL_PASSWORD_HASH`, sesión sin estado firmada con
   `PANEL_SESSION_SECRET` (12 h, cookie `httpOnly`). Sin esas variables el panel no deja entrar a nadie.
   Código en `infrastructure/auth/`; las cookies en `app/panel/session.ts`.
@@ -212,19 +214,28 @@ si `npm run lint` se queja de un import entre capas, se corrige el diseño, no l
   (`presentation/lib/timeline.ts`: `gridHours`, `toGrid`, `placeDay`): las citas que se cruzan van en carriles lado a
   lado, con `position: absolute` solo dentro de la grilla; cerrado y bloqueos van sombreados. Con un barbero a la vista
   (elegido en el filtro, que se arma con `Agenda.activeBarbers`, o único barbero activo), la vista Día dibuja los huecos libres (`freeGaps`, un recuadro punteado no interactivo; `AT_RISK` no
-  ocupa). Cada cita es un botón: abre su ficha, un `<dialog>` nativo (`AppointmentDialog`) que en escritorio se coloca
-  junto a la cita (recortado a la pantalla) y en el móvil es una hoja inferior. Canceladas y vencidas, en una lista bajo
+  ocupa). Cada cita es un botón: abre su ficha, un `<dialog>` nativo no modal (`AppointmentDialog`) que en escritorio ocupa
+  la columna derecha, sin tapar el calendario, y en el móvil es una hoja inferior. Canceladas y vencidas, en una lista bajo
   la vista Día. Paleta dorada monocromática: tokens `--cal-*` y `--status-*` de `globals.css`, sólidos y con el texto por
   encima de 4.5:1 (axe lo vigila); la etiqueta siempre dice el estado en palabras.
-- Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`): acciones en
+- Secciones de administración (`/panel/servicios`, `productos`, `barberos`, `horario`, `web`): acciones en
   `app/panel/admin-actions.ts`, formato en `admin-schema.ts` y reglas en `core/catalog/rules.ts`. Los casos de
-  uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. `EditableList` sirve para cualquier lista simple. Cada
-  servicio y profesional lleva su área; un servicio visible exige precio > 0. `EditableList` y `SectionsForm` envían con
-  `onSubmit` + `startTransition`, no con `action=`: el `form.reset()` de React 19 devolvía las casillas controladas a su
-  valor inicial y no se podía ocultar nada.
+  uso son `ManageCatalogUseCase` y `ManageScheduleUseCase`. Cada servicio y profesional lleva su área; un servicio
+  visible exige precio > 0.
+- Servicios, Productos y Barberos usan `CatalogGrid`: tarjetas con un switch de visible que guarda con el formulario
+  completo, y Editar / Nuevo en un `<dialog>` que conserva el `<form aria-label>` (las pruebas lo buscan por ese nombre).
+  `EditableList` ya no existe: `editable-list.tsx` solo guarda los tipos `EditableField` / `EditableItem` y `ItemForm`,
+  el formulario que reutiliza el diálogo.
+- Todos los formularios del panel envían con `onSubmit` + `startTransition`, no con `action=`: el `form.reset()` de
+  React 19 devolvía las casillas controladas a su valor inicial y no se podía ocultar nada.
+- Horarios (`HoursEditor`): una fila por día con 2.º tramo opcional y "Guardar horario", que guarda solo los días
+  cambiados. Bloqueos (`BlocksEditor`) en tarjetas, con "Revisar en agenda". Web (`SiteEditor`) también en tarjetas.
 - `/panel/chats`: pestaña de solo lectura con las conversaciones de las últimas 24 h del asistente de IA
   (`GetChatsUseCase`, `ChatsView`; la selección es `?c=<celular>`). Solo lo que atiende el asistente de IA: no hay
-  nada si usa el básico. Texto plano y enlace a `wa.me` para escribirle al cliente.
+  nada si usa el básico. Texto plano. Los atajos son enlaces `wa.me/<celular>?text=` con el mensaje ya escrito
+  (la hora de la próxima cita sale de `nextAppointment`). No hay pausa del asistente ni envío desde el panel: la pausa
+  exigiría tabla y cambios en el asistente, y el envío por la API usaría el número del bot, sin su historial y con fallo
+  pasadas 24 h (Meta). Se responde desde WhatsApp.
 - Nada con citas se borra: servicios, productos y barberos solo se ocultan (`active: false`). Editar un
   precio no toca citas existentes, porque guardan su foto de precio.
 - El dueño no se renombra ni se oculta (`assertBarberChange`, `core/catalog/rules.ts`); en `/panel/barberos` sale
