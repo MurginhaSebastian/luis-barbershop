@@ -28,7 +28,7 @@ export interface CatalogItem extends EditableItem {
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-on-light";
 
 /** Diálogo modal nativo: Esc lo cierra y el navegador devuelve el foco al botón que lo abrió. */
-function FormDialog(props: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+export function FormDialog(props: { open: boolean; onClose: () => void; children: React.ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current;
