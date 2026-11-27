@@ -25,7 +25,7 @@ export interface EditableItem {
 type ListProps = { fields: EditableField[]; action: AdminAction };
 
 /** Ficha de un elemento. Campos controlados: un error al guardar no borra lo escrito. */
-function ItemForm(props: ListProps & { item?: EditableItem; heading: string }) {
+export function ItemForm(props: ListProps & { item?: EditableItem; heading: string }) {
   const { item, fields } = props;
   const blank = Object.fromEntries(fields.map((f) => [f.name, f.options?.[0].value ?? ""]));
   const [values, setValues] = useState(item?.values ?? blank);
