@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Plus } from "lucide-react";
+import { Pencil, Plus, ShieldCheck } from "lucide-react";
 import { startTransition, useEffect, useRef, useState } from "react";
 import { cn } from "@/presentation/lib/utils";
 import type { AdminAction, AdminState } from "./admin-state";
@@ -13,6 +13,14 @@ export interface CatalogItem extends EditableItem {
   /** Precio ya formateado, arriba a la derecha. */
   price?: string;
   badge?: { label: string; tone: "dark" | "spa" };
+  /** Varias insignias (p. ej. las dos áreas de un profesional). */
+  badges?: { label: string; tone: "dark" | "spa" }[];
+  /** Muestra la inicial del título en un círculo. */
+  avatar?: boolean;
+  /** Perfil fijo: sin interruptor ni Editar, con esta nota. */
+  lockedNote?: string;
+  /** Texto solo para lectores de pantalla. */
+  srLabel?: string;
   /** Valor que compara el filtro. */
   group?: string;
 }
@@ -39,7 +47,20 @@ function FormDialog(props: { open: boolean; onClose: () => void; children: React
   );
 }
 
-function Card({ item, fields, action }: { item: CatalogItem; fields: EditableField[]; action: AdminAction }) {
+function Badge({ badge }: { badge: { label: string; tone: "dark" | "spa" } }) {
+  return (
+    <span
+      className={cn(
+        "self-start rounded-sm px-2.5 py-0.5 text-xs font-semibold tracking-wider uppercase",
+        badge.tone === "spa" ? "border border-spa-outline bg-spa-surface text-spa-primary" : "bg-dark-canvas text-gold",
+      )}
+    >
+      {badge.label}
+    </span>
+  );
+}
+
+function Card({ item, fields, action, states }: { item: CatalogItem; fields: EditableField[]; action: AdminAction; states: [string, string] }) {
   const [active, setActive] = useState(item.active);
   const [seen, setSeen] = useState(item.active);
   const [state, setState] = useState<AdminState>({});
@@ -71,22 +92,32 @@ function Card({ item, fields, action }: { item: CatalogItem; fields: EditableFie
   return (
     <article className="flex flex-col justify-between gap-4 rounded-md border border-light-outline bg-light-card p-4 text-on-light-card sm:p-5">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          {item.badge && (
-            <span
-              className={cn(
-                "self-start rounded-sm px-2.5 py-0.5 text-xs font-semibold tracking-wider uppercase",
-                item.badge.tone === "spa" ? "border border-spa-outline bg-spa-surface text-spa-primary" : "bg-dark-canvas text-gold",
-              )}
-            >
-              {item.badge.label}
-            </span>
-          )}
-          <h2 className="text-lg font-semibold wrap-anywhere">{item.title}</h2>
+        {item.avatar && (
+          <span
+            aria-hidden="true"
+            className="flex size-12 shrink-0 items-center justify-center rounded-full border border-light-outline bg-light-canvas font-heading text-xl"
+          >
+            {item.title.charAt(0).toUpperCase()}
+          </span>
+        )}
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          {item.badge && <Badge badge={item.badge} />}
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-semibold wrap-anywhere">{item.title}</h2>
+            {item.lockedNote && <Badge badge={{ label: "Dueño", tone: "dark" }} />}
+          </div>
+          {item.srLabel && <span className="sr-only">{item.srLabel}</span>}
+          {item.badges?.map((b) => <Badge key={b.label} badge={b} />)}
           {item.meta && <p className="text-sm text-light-muted tabular-nums">{item.meta}</p>}
         </div>
         {item.price && <span className="shrink-0 text-lg font-semibold tabular-nums">{item.price}</span>}
       </div>
+      {item.lockedNote ? (
+        <p className="flex items-center gap-2 border-t border-light-outline pt-3 text-sm text-light-muted">
+          <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
+          {item.lockedNote}
+        </p>
+      ) : (
       <div className="flex items-center justify-between gap-3 border-t border-light-outline pt-3">
         <label className="flex cursor-pointer items-center gap-2.5 text-sm">
           <span className="relative inline-flex h-6 w-11 shrink-0">
@@ -95,7 +126,7 @@ function Card({ item, fields, action }: { item: CatalogItem; fields: EditableFie
               role="switch"
               checked={active}
               disabled={pending}
-              aria-label={`${active ? "Visible" : "Oculto"}: ${item.title}`}
+              aria-label={`${states[active ? 0 : 1]}: ${item.title}`}
               onChange={(e) => toggle(e.target.checked)}
               className="peer absolute inset-0 z-10 size-full cursor-pointer opacity-0 disabled:cursor-wait"
             />
@@ -114,7 +145,7 @@ function Card({ item, fields, action }: { item: CatalogItem; fields: EditableFie
               />
             </span>
           </span>
-          <span className={active ? "" : "text-light-muted"}>{active ? "Visible" : "Oculto"}</span>
+          <span className={active ? "" : "text-light-muted"}>{states[active ? 0 : 1]}</span>
         </label>
         <button
           type="button"
@@ -129,10 +160,13 @@ function Card({ item, fields, action }: { item: CatalogItem; fields: EditableFie
           Editar
         </button>
       </div>
+      )}
       <FormStatus state={state} />
+      {!item.lockedNote && (
       <FormDialog open={editing} onClose={() => setEditing(false)}>
         <ItemForm item={item} heading={item.title} fields={fields} action={action} onCancel={() => setEditing(false)} />
       </FormDialog>
+      )}
     </article>
   );
 }
@@ -147,6 +181,8 @@ export function CatalogGrid(props: {
   addLabel: string;
   addHeading: string;
   filters?: { value: string; label: string }[];
+  /** Rótulos del interruptor: [encendido, apagado]. */
+  states?: [string, string];
 }) {
   const [filter, setFilter] = useState("");
   const [adding, setAdding] = useState(false);
@@ -196,7 +232,7 @@ export function CatalogGrid(props: {
       </FormDialog>
       <div className="mt-4 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
         {shown.map((item) => (
-          <Card key={item.id} item={item} fields={props.fields} action={props.action} />
+          <Card key={item.id} item={item} fields={props.fields} action={props.action} states={props.states ?? ["Visible", "Oculto"]} />
         ))}
       </div>
     </>
