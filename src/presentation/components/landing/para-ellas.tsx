@@ -32,11 +32,11 @@ export function ParaEllas({
         <div className="grid items-center gap-gutter-xl lg:grid-cols-[1.1fr_1fr]">
         <div>
         <Reveal>
-          <p className="font-eyebrow text-eyebrow uppercase text-spa-primary">Dluiss Spa &amp; Beauty</p>
-          <h2 id="para-ellas-t" className="mt-2 font-headline text-headline-lg-mobile md:text-headline-lg">
+          <p className="font-spa text-lg font-semibold uppercase tracking-[0.3em] text-spa-primary">Dluiss Spa &amp; Beauty</p>
+          <h2 id="para-ellas-t" className="mt-2 font-spa text-5xl font-semibold italic md:text-7xl">
             Para ellas
           </h2>
-          <p className="mt-2 font-headline text-headline-md text-spa-primary">Cuidado y estilo femenino</p>
+          <p className="mt-2 font-spa-script text-4xl text-spa-primary md:text-5xl">Para ti, que mereces sentirte única y hermosa</p>
           <p className="mt-3 max-w-prose font-body text-body-lg text-spa-muted">
             Un espacio creado para realzar tu belleza, cuidar de ti y darte el momento de bienestar que mereces.
           </p>
@@ -73,7 +73,7 @@ export function ParaEllas({
                           <Icon className="size-5" />
                         </span>
                         <span className="flex-1">
-                          <span className="block font-title text-title-md">{s.name}</span>
+                          <span className="block font-spa text-xl font-semibold leading-tight">{s.name}</span>
                           <span className="flex items-center gap-1 font-body text-body-md text-spa-muted tabular-nums">
                             <Clock aria-hidden className="size-3.5" />
                             {s.durationMinutes} min · {formatPrice(s.priceCents)}
@@ -114,6 +114,9 @@ export function ParaEllas({
             </li>
           ))}
         </ul>
+        <p className="mt-10 text-center font-spa text-2xl font-medium italic text-spa-primary md:text-3xl">
+          Porque mereces tu mejor versión, siempre
+        </p>
       </div>
     </section>
   );

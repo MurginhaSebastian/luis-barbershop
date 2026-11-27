@@ -1,7 +1,7 @@
 import { SHOP_NAME } from "@/core/entities/site";
 import type { Metadata } from "next";
 import "./globals.css";
-import { Playfair_Display, Poppins } from "next/font/google";
+import { Cormorant_Garamond, Great_Vibes, Playfair_Display, Poppins } from "next/font/google";
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -21,6 +21,9 @@ import { SITE_URL } from "./site-url";
 
 const sans = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" });
 const display = Playfair_Display({ subsets: ["latin"], weight: ["600", "700"], variable: "--font-display" });
+// Solo "Para ellas" (bajo el pliegue): sin preload para no competir con el LCP del hero.
+const spa = Cormorant_Garamond({ subsets: ["latin"], weight: ["500", "600"], style: ["normal", "italic"], display: "swap", preload: false, variable: "--font-spa-serif" });
+const spaScript = Great_Vibes({ subsets: ["latin"], weight: "400", display: "swap", preload: false, variable: "--font-spa-cursive" });
 
 const TITLE = "D'luiss Barber Shop | Barbería en Las Quintanas, Trujillo — Reserva por WhatsApp";
 const DESCRIPTION =
@@ -35,7 +38,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="es" className={cn("dark font-sans", sans.variable, display.variable)}>
+    <html lang="es" className={cn("dark font-sans", sans.variable, display.variable, spa.variable, spaScript.variable)}>
       <body className="flex min-h-dvh flex-col antialiased">
         <MotionProvider>
           {/* Solo la portada: dirección, abierto ahora y redes. El hueco reservado evita el salto al llegar los datos. */}

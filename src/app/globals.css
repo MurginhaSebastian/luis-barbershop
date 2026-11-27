@@ -114,6 +114,8 @@
     --font-body: var(--font-sans);
     --font-label: var(--font-sans);
     --font-eyebrow: var(--font-sans);
+    --font-spa: var(--font-spa-serif);
+    --font-spa-script: var(--font-spa-cursive);
 
     --text-display-xl: 44px;
     --text-display-xl--line-height: 52px;
