@@ -48,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <header className="sticky top-0 z-30 border-b border-dark-outline bg-dark-canvas text-on-dark-canvas">
             <div className={`${container} flex h-16 items-center justify-between gap-3 md:h-20`}>
               <Link href="/" className="inline-flex min-h-11 min-w-0 items-center gap-gutter-sm">
-                <Image src="/images/logo.webp" alt={SHOP_NAME} width={52} height={52} sizes="48px" preload className="size-11 shrink-0 md:size-12" />
+                <Image src="/images/logo.webp" alt={SHOP_NAME} width={64} height={64} sizes="(min-width: 768px) 64px, 56px" preload className="size-14 shrink-0 md:size-16" />
               </Link>
               <nav aria-label="Principal" className="flex items-center gap-1">
                 <Suspense fallback={null}>
