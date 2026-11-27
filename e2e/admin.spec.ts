@@ -214,14 +214,28 @@ test.describe("servicios", () => {
 test("un producto oculto deja de ofrecerse al reservar", async ({ page }) => {
   await login(page);
   await page.goto("/panel/productos");
-  const form = card(page, "Cera mate");
-  await form.getByLabel("Visible en la web").uncheck();
-  await form.getByRole("button", { name: "Guardar" }).click();
-  await expect(form.getByText("Guardado.")).toBeVisible();
+  await tile(page, "Cera mate").getByRole("switch", { name: /Visible: Cera mate/ }).uncheck();
+  await expect(tile(page, "Cera mate").getByRole("switch", { name: /Oculto: Cera mate/ })).not.toBeChecked();
+  await page.reload();
+  const form = await editService(page, "Cera mate");
+  await expect(form.getByLabel("Visible en la web")).not.toBeChecked();
 
   await bookUntilData(page);
   await expect(page.getByRole("button", { name: "Añadir Cera mate" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Añadir Aceite para barba" })).toBeVisible();
+});
+
+test("/panel/productos a 320 px no desborda y es accesible", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await login(page);
+  await page.goto("/panel/productos");
+  await page.getByRole("article").first().waitFor();
+  for (const open of [false, true]) {
+    if (open) await page.getByRole("button", { name: "Nuevo producto" }).click();
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  }
 });
 
 test.describe("barberos", () => {
@@ -461,7 +475,7 @@ test("las pantallas del panel son accesibles y caben en el móvil", async ({ pag
   await login(page);
   for (const path of ["/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario", "/panel/web"]) {
     await page.goto(path);
-    await page.getByRole(path === "/panel/servicios" ? "article" : "form").first().waitFor();
+    await page.getByRole(path === "/panel/servicios" || path === "/panel/productos" ? "article" : "form").first().waitFor();
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     const serious = violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id);
     expect(serious, path).toEqual([]);
