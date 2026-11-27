@@ -57,7 +57,7 @@ export function ParaEllas({
 
         {services.length > 0 && (
           <>
-            <ul className="mt-8 grid gap-gutter-md sm:grid-cols-2 lg:grid-cols-3">
+            <ul className="mt-8 grid gap-gutter-md sm:grid-cols-2">
               {services.toSorted((a, b) => b.priceCents - a.priceCents).map((s) => {
                 const Icon = spaIconFor(s.name);
                 return (
