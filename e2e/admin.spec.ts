@@ -562,6 +562,16 @@ test("horario a 320x640 no desborda y es accesible, con y sin diálogo", async (
   await check("con diálogo");
 });
 
+test("web a 320x640 no desborda y es accesible", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await login(page);
+  await page.goto("/panel/web");
+  await card(page, "Secciones visibles").waitFor();
+  const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+  expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+});
+
 test.describe("web", () => {
   test("el contacto guardado aparece en la portada y lo vacío desaparece", async ({ page }) => {
     await login(page);
