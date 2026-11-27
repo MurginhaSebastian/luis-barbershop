@@ -90,7 +90,7 @@ export function ChatsView({
         <div className="mt-4 grid gap-4 lg:grid-cols-[340px_1fr]">
           <nav aria-label="Conversaciones" className={cn("min-w-0", selected && "hidden lg:block")}>
             <div className={cn(CARD, "p-3")}>
-              <label className="flex items-center gap-2 rounded-md border border-light-outline bg-light-canvas px-3 py-2 focus-within:outline-2 focus-within:outline-gold-on-light">
+              <label className="flex items-center gap-2 rounded-md border border-light-outline bg-light-canvas px-3 py-2">
                 <Search aria-hidden className="size-4 shrink-0 text-light-muted" />
                 <input
                   type="search"
@@ -98,7 +98,7 @@ export function ChatsView({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Buscar cliente o número…"
                   aria-label="Buscar cliente o número"
-                  className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-light-muted"
+                  className={cn("w-full min-w-0 bg-transparent text-sm placeholder:text-light-muted", FOCUS)}
                 />
               </label>
             </div>

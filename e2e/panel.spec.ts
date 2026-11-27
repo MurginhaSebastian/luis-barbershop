@@ -499,6 +499,7 @@ test.describe("avisos push", () => {
 test.describe("chats", () => {
   const ANA = "51900000001";
   const OTRO = "51900000002";
+  const ANA_CITA = "40000000-0000-4000-8000-0000000000a1";
 
   test.beforeEach(() =>
     withE2eDatabase(async (db) => {
@@ -510,9 +511,26 @@ test.describe("chats", () => {
       await add(ANA, "user", "Quiero un corte mañana", 30);
       await add(ANA, "assistant", "Claro, te muestro los horarios", 29);
       await add(OTRO, "user", "Hola, precios?", 10);
+      // Una cita de Ana dentro de 2 días a las 15:00 de Lima: da la insignia, el chip y el atajo "Te esperamos 15:00".
+      const day = new Date(Date.now() + 2 * 86_400_000).toLocaleDateString("en-CA", { timeZone: "America/Lima" });
+      const start = new Date(`${day}T15:00:00-05:00`);
+      await db.query("DELETE FROM appointments WHERE id = $1", [ANA_CITA]);
+      await db.query(
+        "INSERT INTO appointments (id, barber_id, customer_id, customer_name, starts_at, ends_at, status) VALUES ($1, '10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-0000000000a1', 'Ana de Prueba', $2, $3, 'CONFIRMED')",
+        [ANA_CITA, start, new Date(start.getTime() + 30 * 60_000)],
+      );
+      await db.query(
+        "INSERT INTO appointment_services (appointment_id, position, service_id, name, duration_minutes, price_cents) VALUES ($1, 0, '20000000-0000-4000-8000-000000000001', 'Corte clásico', 30, 3000)",
+        [ANA_CITA],
+      );
     }),
   );
-  test.afterEach(() => withE2eDatabase((db) => db.query("DELETE FROM assistant_messages WHERE phone IN ($1, $2)", [ANA, OTRO])));
+  test.afterEach(() =>
+    withE2eDatabase(async (db) => {
+      await db.query("DELETE FROM appointments WHERE id = $1", [ANA_CITA]);
+      await db.query("DELETE FROM assistant_messages WHERE phone IN ($1, $2)", [ANA, OTRO]);
+    }),
+  );
 
   const accessible = async (page: Page, where: string) => {
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
@@ -531,10 +549,34 @@ test.describe("chats", () => {
     const thread = page.getByRole("region", { name: "Conversación" });
     await expect(thread.getByText("Quiero un corte mañana")).toBeVisible();
     await expect(thread.getByText("Claro, te muestro los horarios")).toBeVisible();
-    await expect(thread.getByText("Solo lectura · Bot automático")).toBeVisible();
+    // Antes decía "Solo lectura · Bot automático"; ahora la insignia de la cabecera dice si el asistente está activo (en e2e, sin IA).
+    await expect(page.getByText("Asistente apagado")).toBeVisible();
     await expect(thread.getByRole("link", { name: "Escribirle por WhatsApp" })).toHaveAttribute("href", `https://wa.me/${ANA}`);
+    await expect(thread.getByText(/Corte clásico/).first()).toBeVisible();
+    await expect(list.getByRole("link", { name: /Ana de Prueba/ })).toContainText("Confirmado");
+    await expect(thread.getByRole("link", { name: "Te esperamos 15:00" })).toHaveAttribute("href", `https://wa.me/${ANA}?text=${encodeURIComponent("Te esperamos a las 15:00.")}`);
+    await expect(thread.getByRole("link", { name: "Reprogramar cita" })).toHaveAttribute("href", /^https:\/\/wa\.me\/51900000001\?text=.+/);
+    await expect(thread.getByRole("link", { name: "Reprogramar cita" })).toHaveAttribute("target", "_blank");
     await expect(list.getByRole("link", { name: /Ana de Prueba/ })).toHaveAttribute("aria-current", "true");
     await accessible(page, "chats escritorio");
+  });
+
+  test("buscador y filtro Por responder", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await login(page);
+    await page.goto("/panel/chats");
+    const list = page.getByRole("navigation", { name: "Conversaciones" });
+    await list.getByRole("searchbox", { name: "Buscar cliente o número" }).fill("ana");
+    await expect(list.getByRole("link", { name: /Ana de Prueba/ })).toBeVisible();
+    await expect(list.getByRole("link", { name: `+${OTRO}` })).toHaveCount(0);
+    await list.getByRole("searchbox").fill("0002");
+    await expect(list.getByRole("link", { name: `+${OTRO}` })).toBeVisible();
+    await list.getByRole("searchbox").fill("");
+    // Ana ya tiene respuesta del asistente; el otro cliente espera.
+    await page.getByRole("button", { name: "Por responder" }).click();
+    await expect(page.getByRole("button", { name: "Por responder" })).toHaveAttribute("aria-pressed", "true");
+    await expect(list.getByRole("link", { name: /Ana de Prueba/ })).toHaveCount(0);
+    await expect(list.getByRole("link", { name: `+${OTRO}` })).toBeVisible();
   });
 
   test("320 px: la lista o el hilo, sin desbordar", async ({ page }) => {
