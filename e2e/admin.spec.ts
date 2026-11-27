@@ -14,6 +14,12 @@ async function login(page: Page) {
 }
 
 const card = (page: Page, name: string) => page.getByRole("form", { name });
+const tile = (page: Page, name: string) => page.getByRole("article").filter({ has: page.getByRole("heading", { name, exact: true }) });
+/** Los servicios se editan en un diálogo: "Editar" en su tarjeta, y el formulario lleva el nombre del servicio. */
+async function editService(page: Page, name: string) {
+  await tile(page, name).getByRole("button", { name: "Editar" }).click();
+  return card(page, name);
+}
 
 /** El próximo lunes con margen, como "YYYY-MM-DD": abierto en los datos de ejemplo y dentro del plazo. */
 function nextMonday() {
@@ -45,13 +51,15 @@ test.describe("servicios", () => {
   test("un servicio nuevo aparece en la web y en la reserva", async ({ page }) => {
     await login(page);
     await page.goto("/panel/servicios");
+    await page.getByRole("button", { name: "Nuevo servicio" }).click();
     const form = card(page, "Añadir servicio");
     await form.getByLabel("Nombre").fill("Tinte de barba");
     await form.getByLabel("Duración (minutos)").fill("20");
     await form.getByLabel("Precio (S/)").fill("25.50");
     await form.getByRole("button", { name: "Añadir" }).click();
 
-    await expect(card(page, "Tinte de barba")).toBeVisible();
+    await expect(form.getByText("Guardado.")).toBeVisible();
+    await expect(tile(page, "Tinte de barba")).toContainText("20 min");
     await expect(form.getByLabel("Nombre")).toHaveValue("");
 
     await page.goto("/");
@@ -68,7 +76,7 @@ test.describe("servicios", () => {
 
     await login(page);
     await page.goto("/panel/servicios");
-    const form = card(page, "Corte clásico");
+    const form = await editService(page, "Corte clásico");
     await form.getByLabel("Precio (S/)").fill("99");
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByText("Guardado.")).toBeVisible();
@@ -82,7 +90,7 @@ test.describe("servicios", () => {
   test("ocultar un servicio lo quita de la web sin perderlo en el panel", async ({ page }) => {
     await login(page);
     await page.goto("/panel/servicios");
-    const form = card(page, "Fade");
+    const form = await editService(page, "Fade");
     await form.getByLabel("Visible en la web").uncheck();
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByText("Guardado.")).toBeVisible();
@@ -91,19 +99,20 @@ test.describe("servicios", () => {
     await page.getByRole("heading", { name: "Servicios" }).waitFor();
     await expect(page.getByRole("link", { name: /Fade/ })).toHaveCount(0);
     await page.goto("/panel/servicios");
-    await expect(card(page, "Fade").getByLabel("Visible en la web")).not.toBeChecked();
+    await expect((await editService(page, "Fade")).getByLabel("Visible en la web")).not.toBeChecked();
+    await expect(tile(page, "Fade").getByRole("switch")).not.toBeChecked();
   });
 
   test("el área de un servicio se cambia y se conserva, y sin precio no se muestra", async ({ page }) => {
     await login(page);
     await page.goto("/panel/servicios");
-    const form = card(page, "Manicure de prueba");
+    const form = await editService(page, "Manicure de prueba");
     await expect(form.getByLabel("Área")).toHaveValue("spa");
     await form.getByLabel("Área").selectOption({ label: "Barbería" });
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByText("Guardado.")).toBeVisible();
     await page.reload();
-    await expect(card(page, "Manicure de prueba").getByLabel("Área")).toHaveValue("barberia");
+    await expect((await editService(page, "Manicure de prueba")).getByLabel("Área")).toHaveValue("barberia");
 
     await card(page, "Manicure de prueba").getByLabel("Precio (S/)").fill("0");
     await card(page, "Manicure de prueba").getByRole("button", { name: "Guardar" }).click();
@@ -113,7 +122,7 @@ test.describe("servicios", () => {
   test("un dato inválido se explica y no borra lo escrito", async ({ page }) => {
     await login(page);
     await page.goto("/panel/servicios");
-    const form = card(page, "Corte clásico");
+    const form = await editService(page, "Corte clásico");
     await form.getByLabel("Precio (S/)").fill("gratis");
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByRole("alert")).toContainText("precio en soles");
@@ -123,6 +132,82 @@ test.describe("servicios", () => {
     await form.getByLabel("Duración (minutos)").fill("32");
     await form.getByRole("button", { name: "Guardar" }).click();
     await expect(form.getByRole("alert")).toContainText("de 5 en 5");
+  });
+
+  test("el interruptor oculta y vuelve a mostrar un servicio al momento", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/servicios");
+    const fade = tile(page, "Fade").getByRole("switch");
+    await expect(fade).toBeChecked();
+    await fade.uncheck();
+    await expect(tile(page, "Fade").getByText("Oculto")).toBeVisible();
+    await expect(fade).not.toBeChecked();
+    await page.goto("/");
+    await page.getByRole("heading", { name: "Servicios" }).waitFor();
+    await expect(page.getByRole("link", { name: /Fade/ })).toHaveCount(0);
+
+    await page.goto("/panel/servicios");
+    await tile(page, "Fade").getByRole("switch").check();
+    await expect(tile(page, "Fade").getByText("Visible")).toBeVisible();
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: /Fade/ })).toBeVisible();
+  });
+
+  test("mostrar un servicio sin precio falla y el interruptor vuelve a Oculto", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/servicios");
+    const form = await editService(page, "Manicure de prueba");
+    await form.getByLabel("Precio (S/)").fill("0");
+    await form.getByLabel("Visible en la web").uncheck();
+    await form.getByRole("button", { name: "Guardar" }).click();
+    await expect(form.getByText("Guardado.")).toBeVisible();
+    await form.getByRole("button", { name: "Cancelar" }).click();
+
+    const sw = tile(page, "Manicure de prueba").getByRole("switch");
+    await expect(sw).not.toBeChecked();
+    await sw.click(); // check() exige que el estado cambie y aquí vuelve atrás
+    await expect(tile(page, "Manicure de prueba").getByRole("alert")).toContainText("Pon un precio");
+    await expect(sw).not.toBeChecked();
+  });
+
+  test("el filtro por área muestra solo Barbería o solo Spa y estilista", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/servicios");
+    await expect(page.getByRole("button", { name: "Todos", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await page.getByRole("button", { name: "Spa y estilista" }).click();
+    await expect(page.getByRole("button", { name: "Spa y estilista" })).toHaveAttribute("aria-pressed", "true");
+    await expect(tile(page, "Manicure de prueba")).toHaveCount(1);
+    await expect(tile(page, "Corte clásico")).toHaveCount(0);
+    await page.getByRole("button", { name: "Barbería", exact: true }).click();
+    await expect(tile(page, "Manicure de prueba")).toHaveCount(0);
+    await expect(tile(page, "Corte clásico")).toHaveCount(1);
+    await page.getByRole("button", { name: "Todos", exact: true }).click();
+    await expect(tile(page, "Manicure de prueba")).toHaveCount(1);
+    await expect(tile(page, "Corte clásico")).toHaveCount(1);
+  });
+
+  test("Esc cierra el diálogo y el foco vuelve al botón Editar", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/servicios");
+    const edit = tile(page, "Fade").getByRole("button", { name: "Editar" });
+    await edit.click();
+    await expect(card(page, "Fade")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(card(page, "Fade")).toHaveCount(0);
+    await expect(edit).toBeFocused();
+  });
+
+  test("/panel/servicios a 320 px no desborda y es accesible", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await login(page);
+    await page.goto("/panel/servicios");
+    await page.getByRole("article").first().waitFor();
+    for (const open of [false, true]) {
+      if (open) await page.getByRole("button", { name: "Nuevo servicio" }).click();
+      const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+      expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id)).toEqual([]);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    }
   });
 });
 
@@ -376,7 +461,7 @@ test("las pantallas del panel son accesibles y caben en el móvil", async ({ pag
   await login(page);
   for (const path of ["/panel/servicios", "/panel/productos", "/panel/barberos", "/panel/horario", "/panel/web"]) {
     await page.goto(path);
-    await page.getByRole("form").first().waitFor();
+    await page.getByRole(path === "/panel/servicios" ? "article" : "form").first().waitFor();
     const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
     const serious = violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id);
     expect(serious, path).toEqual([]);

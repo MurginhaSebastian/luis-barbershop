@@ -89,28 +89,30 @@ function Card({ item, fields, action }: { item: CatalogItem; fields: EditableFie
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-light-outline pt-3">
         <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-          <input
-            type="checkbox"
-            role="switch"
-            checked={active}
-            disabled={pending}
-            aria-label={`${active ? "Visible" : "Oculto"}: ${item.title}`}
-            onChange={(e) => toggle(e.target.checked)}
-            className="peer sr-only"
-          />
-          <span
-            aria-hidden="true"
-            className={cn(
-              "relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-150 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold-on-light peer-disabled:opacity-50 motion-reduce:transition-none",
-              active ? "bg-dark-canvas" : "bg-light-outline",
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block size-5 rounded-full transition-transform duration-150 motion-reduce:transition-none",
-                active ? "translate-x-5 bg-gold" : "translate-x-0 bg-light-card",
-              )}
+          <span className="relative inline-flex h-6 w-11 shrink-0">
+            <input
+              type="checkbox"
+              role="switch"
+              checked={active}
+              disabled={pending}
+              aria-label={`${active ? "Visible" : "Oculto"}: ${item.title}`}
+              onChange={(e) => toggle(e.target.checked)}
+              className="peer absolute inset-0 z-10 size-full cursor-pointer opacity-0 disabled:cursor-wait"
             />
+            <span
+              aria-hidden="true"
+              className={cn(
+                "pointer-events-none inline-flex size-full rounded-full border-2 border-transparent transition-colors duration-150 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-gold-on-light peer-disabled:opacity-50 motion-reduce:transition-none",
+                active ? "bg-dark-canvas" : "bg-light-outline",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block size-5 rounded-full transition-transform duration-150 motion-reduce:transition-none",
+                  active ? "translate-x-5 bg-gold" : "translate-x-0 bg-light-card",
+                )}
+              />
+            </span>
           </span>
           <span className={active ? "" : "text-light-muted"}>{active ? "Visible" : "Oculto"}</span>
         </label>
