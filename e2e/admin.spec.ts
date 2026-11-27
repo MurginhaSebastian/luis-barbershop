@@ -322,15 +322,17 @@ test.describe("barberos", () => {
   });
 });
 
+/** Un solo botón guarda los días que cambiaron. */
+const saveHours = (page: Page) => page.getByRole("button", { name: "Guardar horario" }).click();
+
 test.describe("horario", () => {
   test("cerrar un día lo marca cerrado en la reserva y en la web", async ({ page }) => {
     await login(page);
     await page.goto("/panel/horario");
     const monday = card(page, "Lunes");
-    for (const label of ["Abre", "Cierra", "Abre (2.º tramo)", "Cierra (2.º tramo)"]) {
-      await monday.getByLabel(label, { exact: true }).fill("");
-    }
-    await monday.getByRole("button", { name: "Guardar" }).click();
+    await monday.getByRole("switch").uncheck();
+    await expect(monday.getByLabel("Abre", { exact: true })).toBeDisabled();
+    await saveHours(page);
     await expect(monday.getByText("Guardado.")).toBeVisible();
     await expect(monday.getByText("Cerrado")).toBeVisible();
 
@@ -351,7 +353,7 @@ test.describe("horario", () => {
     await monday.getByLabel("Cierra", { exact: true }).fill("12:00");
     await monday.getByLabel("Abre (2.º tramo)").fill("");
     await monday.getByLabel("Cierra (2.º tramo)").fill("");
-    await monday.getByRole("button", { name: "Guardar" }).click();
+    await saveHours(page);
     await expect(monday.getByText("Guardado.")).toBeVisible();
 
     await chooseServices(page, [/Corte clásico/]);
@@ -369,19 +371,50 @@ test.describe("horario", () => {
     const monday = card(page, "Lunes");
     await monday.getByLabel("Abre", { exact: true }).fill("14:00");
     await monday.getByLabel("Cierra", { exact: true }).fill("10:00");
-    await monday.getByRole("button", { name: "Guardar" }).click();
+    await saveHours(page);
     await expect(monday.getByRole("alert")).toContainText("posterior a la de apertura");
 
     await monday.getByLabel("Abre", { exact: true }).fill("10:00");
     await monday.getByLabel("Cierra", { exact: true }).fill("16:00");
-    await monday.getByRole("button", { name: "Guardar" }).click();
+    await saveHours(page);
     await expect(monday.getByRole("alert")).toContainText("no pueden pisarse");
+  });
+
+  test("un solo botón guarda dos días a la vez, con almuerzo", async ({ page }) => {
+    await login(page);
+    await page.goto("/panel/horario");
+    const monday = card(page, "Lunes");
+    await monday.getByLabel("Abre", { exact: true }).fill("10:00");
+    await monday.getByLabel("Cierra", { exact: true }).fill("14:00");
+    await monday.getByLabel("Abre (2.º tramo)").fill("16:00");
+    await monday.getByLabel("Cierra (2.º tramo)").fill("18:00");
+    await card(page, "Martes").getByRole("switch").uncheck();
+    await saveHours(page);
+    await expect(monday.getByText("Guardado.")).toBeVisible();
+    await expect(card(page, "Martes").getByText("Guardado.")).toBeVisible();
+    // Un día sin cambios no se envía.
+    await expect(card(page, "Miércoles").getByText("Guardado.")).toHaveCount(0);
+
+    await page.reload();
+    await expect(card(page, "Martes").getByRole("switch")).not.toBeChecked();
+    await expect(card(page, "Lunes").getByLabel("Abre (2.º tramo)")).toHaveValue("16:00");
+
+    await chooseServices(page, [/Corte clásico/]);
+    await chooseBarber(page, "Luis");
+    const url = new URL(page.url());
+    url.searchParams.set("dia", nextMonday());
+    await page.goto(url.toString());
+    const hours = page.getByRole("main").getByRole("region").getByRole("link");
+    await expect(hours.first()).toHaveText("10:00");
+    await expect(hours.filter({ hasText: "14:00" })).toHaveCount(0);
+    await expect(hours.filter({ hasText: "16:00" })).toHaveCount(1);
   });
 });
 
 test.describe("bloqueos", () => {
   const blockDay = async (page: Page, date: string, who?: string) => {
     await page.goto("/panel/horario");
+    await page.getByRole("button", { name: "Nuevo bloqueo" }).click();
     const form = card(page, "Añadir bloqueo");
     if (who) await form.getByLabel("Quién").selectOption({ label: who });
     await form.getByLabel("Desde").fill(date);
@@ -442,6 +475,7 @@ test.describe("bloqueos", () => {
     const date = nextMonday();
     await login(page);
     await page.goto("/panel/horario");
+    await page.getByRole("button", { name: "Nuevo bloqueo" }).click();
     const form = card(page, "Añadir bloqueo");
     await form.getByLabel("Desde").fill(date);
     await form.getByLabel("Hasta").fill(date);
@@ -473,11 +507,22 @@ test.describe("bloqueos", () => {
   test("el fin antes del inicio se explica", async ({ page }) => {
     await login(page);
     await page.goto("/panel/horario");
+    await page.getByRole("button", { name: "Nuevo bloqueo" }).click();
     const form = card(page, "Añadir bloqueo");
     await form.getByLabel("Desde").fill(nextMonday());
     await form.getByLabel("Hasta").fill(new Date().toISOString().slice(0, 10));
     await form.getByRole("button", { name: "Añadir bloqueo" }).click();
     await expect(form.getByRole("alert")).toContainText("posterior al inicio");
+  });
+
+  test("Revisar en agenda lleva al día del bloqueo", async ({ page }) => {
+    const date = nextMonday();
+    await login(page);
+    await blockDay(page, date);
+    await page.keyboard.press("Escape");
+    await page.getByRole("list", { name: "Bloqueos vigentes" }).getByRole("link", { name: "Revisar en agenda" }).click();
+    await expect(page).toHaveURL(new RegExp(`/panel\\?vista=dia&dia=${date}`));
+    await expect(page.getByRole("heading", { name: "Agenda", level: 1 })).toBeVisible();
   });
 });
 
@@ -499,6 +544,22 @@ test("las pantallas del panel son accesibles y caben en el móvil", async ({ pag
     expect(serious, path).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), path).toBeLessThanOrEqual(0);
   }
+});
+
+test("horario a 320x640 no desborda y es accesible, con y sin diálogo", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  await login(page);
+  await page.goto("/panel/horario");
+  await card(page, "Lunes").waitFor();
+  const check = async (label: string) => {
+    const { violations } = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze();
+    expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => v.id), label).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), label).toBeLessThanOrEqual(0);
+  };
+  await check("sin diálogo");
+  await page.getByRole("button", { name: "Nuevo bloqueo" }).click();
+  await card(page, "Añadir bloqueo").waitFor();
+  await check("con diálogo");
 });
 
 test.describe("web", () => {

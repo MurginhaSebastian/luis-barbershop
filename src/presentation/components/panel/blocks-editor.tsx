@@ -166,12 +166,12 @@ export function BlocksEditor(props: {
   const [adding, setAdding] = useState(false);
   return (
     <section aria-labelledby="bloqueos" className="rounded-md border border-light-outline bg-light-card text-on-light-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-light-outline p-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-light-outline p-4 sm:px-6">
         <div>
           <h2 id="bloqueos" className="text-lg font-semibold">
             Bloqueos y feriados
           </h2>
-          <p className="text-sm text-light-muted">Cierra días especiales para toda la barbería o para un profesional. Esas horas dejan de ofrecerse.</p>
+          <p className="text-sm text-light-muted">Cierra días especiales para toda la barbería o un profesional.</p>
         </div>
         <button
           type="button"

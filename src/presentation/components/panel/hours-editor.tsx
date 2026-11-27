@@ -104,12 +104,12 @@ export function HoursEditor({ weeklyHours, action }: { weeklyHours: BusinessHour
 
   return (
     <section aria-labelledby="horario-semanal" className="rounded-md border border-light-outline bg-light-card text-on-light-card">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-light-outline p-4 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-b border-light-outline p-4 sm:px-6">
         <div>
           <h2 id="horario-semanal" className="text-lg font-semibold">
             Horario semanal
           </h2>
-          <p className="text-sm text-light-muted">Común a todos los barberos: define los días de atención y el rango de horas disponible para reservas.</p>
+          <p className="text-sm text-light-muted">Común a todos los barberos. Un día cerrado no ofrece horas.</p>
         </div>
         <button
           type="button"
@@ -128,8 +128,8 @@ export function HoursEditor({ weeklyHours, action }: { weeklyHours: BusinessHour
           const day = days[weekday];
           const second = showSecond[weekday];
           const field = (name: Name) => (
-            <div key={name} className="min-w-0 flex-1 sm:max-w-32">
-              <label htmlFor={`${weekday}-${name}`} className="mb-0.5 block text-xs text-light-muted">
+            <div key={name} className="min-w-0 flex-1 sm:max-w-28">
+              <label htmlFor={`${weekday}-${name}`} className="mb-0.5 block text-xs whitespace-nowrap text-light-muted">
                 {LABELS[name]}
               </label>
               <input
@@ -153,7 +153,7 @@ export function HoursEditor({ weeklyHours, action }: { weeklyHours: BusinessHour
               }}
               className="flex flex-wrap items-end gap-x-6 gap-y-3 p-4 sm:px-6"
             >
-              <div className="flex w-full items-center justify-between gap-3 sm:w-72">
+              <div className="flex w-full items-center justify-between gap-3 sm:w-56 sm:pb-2">
                 <h3 className="text-base font-semibold">{WEEKDAYS[weekday]}</h3>
                 <Switch
                   checked={day.open}
