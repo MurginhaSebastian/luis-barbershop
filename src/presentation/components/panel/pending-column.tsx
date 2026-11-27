@@ -45,7 +45,7 @@ export function PendingColumn(props: { items: AgendaItem[]; changeStatus: Change
                   onClick={(event) => props.onOpen(item.id, event.currentTarget)}
                   className="block min-h-11 w-full cursor-pointer rounded-sm text-left transition-colors duration-150 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-on-light"
                 >
-                  <span className="flex items-center justify-between gap-2">
+                  <span className="flex flex-wrap items-baseline justify-between gap-x-2">
                     <strong className="min-w-0 truncate font-title text-title-md">
                       <span className="tabular-nums">{formatTime(item.start)}</span> {item.customerName}
                     </strong>
