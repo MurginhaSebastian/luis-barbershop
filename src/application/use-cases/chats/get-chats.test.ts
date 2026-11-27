@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 import { GetChatsUseCase } from "./get-chats";
 
 const NOW = new Date("2026-11-16T15:30:00-05:00");
@@ -19,6 +19,8 @@ test("agrupa por celular, ordena por el más reciente, pone nombre y vista previ
       },
     } as never,
     customers: { findByPhone: async (p: string) => (p === "51900000001" ? { id: "c1", name: "Pedro", phone: p } : null) } as never,
+    appointments: { findByCustomerFrom: async () => [] } as never,
+    barbers: {} as never,
     now: () => NOW,
   });
   const threads = await useCase.execute();
@@ -32,6 +34,38 @@ test("agrupa por celular, ordena por el más reciente, pone nombre y vista previ
 });
 
 test("sin conversaciones, lista vacía", async () => {
-  const useCase = new GetChatsUseCase({ conversations: { since: async () => [] } as never, customers: {} as never, now: () => NOW });
+  const useCase = new GetChatsUseCase({ conversations: { since: async () => [] } as never, customers: {} as never, appointments: {} as never, barbers: {} as never, now: () => NOW });
   expect(await useCase.execute()).toEqual([]);
+});
+
+describe("nextAppointment", () => {
+  const appt = (status: string, startMin: number, barberId = "b1") => ({
+    status,
+    barberId,
+    slot: { start: new Date(NOW.getTime() + startMin * 60_000) },
+    services: [{ name: "Barba" }, { name: "Corte" }],
+  });
+  const build = (phone: string, found: boolean, appointments: unknown[]) =>
+    new GetChatsUseCase({
+      conversations: { since: async () => [{ phone, role: "user", content: "hola", at: at(5) }] } as never,
+      customers: { findByPhone: async () => (found ? { id: "c1", name: "Pedro" } : null) } as never,
+      appointments: { findByCustomerFrom: async () => appointments } as never,
+      barbers: { findById: async () => ({ name: "Mateo" }) } as never,
+      now: () => NOW,
+    });
+
+  test("toma la más cercana sin atender, con servicios y barbero", async () => {
+    const [t] = await build("51900000001", true, [appt("CONFIRMED", 300), appt("CANCELLED", 10), appt("PENDING", 120)]).execute();
+    expect(t.nextAppointment).toEqual({
+      status: "PENDING",
+      startsAt: new Date(NOW.getTime() + 120 * 60_000).toISOString(),
+      services: ["Barba", "Corte"],
+      barberName: "Mateo",
+    });
+  });
+
+  test("sin cliente o solo con citas canceladas, null", async () => {
+    expect((await build("51900000001", false, []).execute())[0].nextAppointment).toBeNull();
+    expect((await build("51900000001", true, [appt("CANCELLED", 60), appt("COMPLETED", 90)]).execute())[0].nextAppointment).toBeNull();
+  });
 });
