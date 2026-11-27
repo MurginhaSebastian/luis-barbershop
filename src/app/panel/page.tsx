@@ -40,6 +40,8 @@ async function Panel({ searchParams }: Pick<PageProps<"/panel">, "searchParams">
         changeStatus={changeStatusAction}
         extra={
           <PushToggle
+            // Elemento de servidor que pasa por componentes cliente: al navegar sin recargar, React lo exige con key.
+            key="push"
             publicKey={getVapidPublicKey()}
             subscribe={subscribePushAction}
             unsubscribe={unsubscribePushAction}
